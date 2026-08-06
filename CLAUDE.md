@@ -1,50 +1,104 @@
 # CLAUDE.md
 
-Flutter (iOS + Android) pilot logbook and currency tracker for a pilot holding **both EASA
-(primary) and FAA licences**. The app is the pilot's legal record of flight time. Treat data
-integrity as a hard requirement, not a feature.
+Flutter (iOS + Android) pilot logbook and currency tracker for a pilot holding licences under
+**more than one authority** (today: EASA primary, FAA secondary; UK CAA planned). The app is
+the pilot's legal record of flight time. Treat data integrity as a hard requirement, not a
+feature.
 
 ## Non-negotiable domain rules
 
 Read these before touching anything in `lib/domain/`. Most bugs in this codebase come from
 violating one of them.
 
-1. **Never store a derived quantity.** A flight row stores *raw facts only*: UTC block times,
-   aircraft, aerodromes, who was aboard, the pilot's role, instructor presence, landing counts
-   by light condition. Quantities like "PIC time", "cross-country time", "night time" are
-   **computed per jurisdiction** at read time. Do not add a `picTime` column to the flights
-   table. If you think you need one, you need a projection instead.
+The reasoning behind each of these rules is recorded in [docs/adr/](docs/adr/README.md).
+Rules 1–5 correspond to ADR-0001 through ADR-0005.
 
-2. **All stored times are UTC.** AMC1 FCL.050 requires it. Local time is a display concern
+1. **Never store a derived quantity.** A flight row stores *raw facts only*. Quantities like
+   "PIC time", "cross-country time", "night time" are **computed per jurisdiction** at read
+   time. Do not add a `picTime` column to the flights table. If you think you need one, you
+   need a projection instead.
+
+2. **Raw facts must be the union of every authority's discriminators, not just EASA's.** This
+   is the one mistake that cannot be repaired later: you cannot retroactively recall whether
+   you held command authority on a flight from 2023. Before adding or changing a field in
+   `Flight`, check it against FAA, EASA, UK CAA and one unrelated authority (Transport Canada
+   or CASA) as a stress test. Fields that are easy to omit and impossible to backfill:
+   - command authority as a flag **separate** from sole manipulation
+   - instructor aboard, and in what capacity (FI/FE/safety pilot)
+   - solo vs accompanied
+   - full route, so cross-country distance is computable against *any* threshold — never store
+     a precomputed "is cross-country" boolean
+   - landings split full-stop vs touch-and-go, **and** day vs night, as four counts
+   - IFR flight plan filed, distinct from actual instrument conditions, distinct from simulated
+   - FSTD qualification level, not just "sim: yes"
+   - countersignature state and signatory identity
+
+3. **All stored times are UTC.** AMC1 FCL.050 requires it. Local time is a display concern
    only. Never persist a local timestamp, never persist a naive `DateTime`.
 
-3. **FAA and EASA disagree, deliberately.** The same flight yields different numbers under
-   each. Known divergences that must be handled in the projection layer:
-   - *PIC*: FAA §61.51 lets a sole manipulator log PIC while receiving instruction. EASA does
-     not — that is dual. EASA has separate SPIC and PICUS concepts with countersignature rules.
-   - *Night*: differing definitions and differing currency windows.
-   - *Cross-country*: FAA generally needs a landing >50 nm from origin for rating credit;
-     EASA's definition differs and ATPL credit has its own logging requirement.
-   - *Instrument*: FAA splits actual/simulated; EASA logs IFR time.
-   When unsure which rule applies, **stop and ask** rather than guessing. A wrong currency
-   calculation is worse than no calculation.
+4. Entries are drafts until exported, then immutable. A flight entry is freely mutable in place until it is first included in a generated PDF export; at that point it is committed and every subsequent change appends a delta revision retaining the prior state. Committed entries are never UPDATEd or DELETEd. Export is the commit point because it is the moment the record is asserted to an authority — before that, there is nothing to be reliable about. Revision history is device-local and backup-scoped; it is not part of any future sync payload. See ADR-0003.
 
-4. **Entries are append-only.** Edits create a new revision; the prior revision is retained
-   with timestamp and reason. Never `UPDATE` or `DELETE` a flight row in place. EASA's 2023
-   guidance on electronic records expects audit trails, authentication and correction
-   tracking, and this is impossible to retrofit later.
+5. **Never render a jurisdiction-dependent number without its jurisdiction.** Total flight time
+   is universal. PIC, night, cross-country and instrument are not. An unlabelled "PIC: 142.3"
+   is a bug.
 
-5. **Landings are counted separately by day and night.** Not as a single total. Night currency
-   depends on it.
+## Jurisdictions are profiles, not an enum
+
+Do not write `enum Jurisdiction { easa, faa }` or a class per authority. Authorities are
+**declarative profiles** in `assets/jurisdictions/`, resolved through a registry.
+
+They form a lineage, not a flat set. UK Part-FCL is retained EU law that the CAA amends
+independently — currently near-identical to EASA and diverging over time. Model that as
+inheritance so a fix lands in one place. The same mechanism covers national variation *within*
+EASA, since FCL.050 defers to the competent authority (e.g. Ireland does not accept electronic
+signatures for PICUS countersigning).
+
+```yaml
+id: uk.caa.part-fcl
+extends: eu.easa.part-fcl
+overrides:
+  currency_rules: [uk.fcl060.passenger_recency]
+  logbook_layout: uk_caa_amc1_fcl050
+```
+
+**Key on the issuing authority, not the licence type.** A pilot holds N licences; each licence
+records its issuing authority; each authority resolves to a profile. One licence is marked
+primary. "Let the user choose their primary jurisdiction" must be a settings value, never a
+code path — the app is not EASA-first in its architecture, only in its default.
+
+**Where declarative stops.** Thresholds, windows, counts and rule composition are data.
+Deriving PIC from raw facts is real logic and belongs in Dart. YAML references **named, tested
+primitives** rather than expressing the logic itself:
+
+```yaml
+pic_rule: faa.sole_manipulator     # vs easa.command_authority
+night_rule: faa.civil_twilight_plus_hour
+```
+
+Acceptance test for the abstraction: *adding Transport Canada should require a YAML profile and
+at most one new primitive — no changes to the engine, repositories or UI.*
+
+Known divergences the primitives must handle, and which must have table-driven tests:
+- *PIC*: FAA §61.51 lets a sole manipulator log PIC while receiving instruction. EASA does not
+  — that is dual. EASA has separate SPIC and PICUS concepts with countersignature rules.
+- *Night*: differing definitions and differing currency windows.
+- *Cross-country*: FAA generally needs a landing >50 nm from origin for rating credit; EASA's
+  definition differs and ATPL credit has its own logging requirement.
+- *Instrument*: FAA splits actual/simulated; EASA logs IFR time.
+
+When unsure which rule applies, **stop and ask** rather than guessing. A wrong currency
+calculation is worse than no calculation.
 
 ## Architecture
 
 ```
 lib/
   domain/          # Pure Dart. No Flutter imports, no I/O. Fully unit tested.
-    model/         # Flight (raw facts), Aircraft, Crew, Licence, Aerodrome
-    projection/    # EasaProjection, FaaProjection — derive columns from raw facts
-    currency/      # Rule engine: evaluates YAML rule defs against a flight set
+    model/         # Flight (raw facts), Aircraft, Crew, Licence, Authority, Aerodrome
+    jurisdiction/  # Profile registry, YAML loader, inheritance resolution
+    primitives/    # Named derivation functions referenced by profiles
+    projection/    # Applies a resolved profile to a flight set -> derived columns
+    currency/      # Rule engine: evaluates rule defs against a projected flight set
   data/            # Drift/SQLite, repositories, revision history
   io/              # Import/export adapters (ForeFlight, Garmin, CSV)
   export/          # PDF generation (AMC1 FCL.050 layout)
@@ -54,14 +108,14 @@ lib/
 `domain/` must never import `package:flutter/*`. If a domain file needs a Flutter import, the
 logic is in the wrong layer.
 
-## Currency rules are data, not code
+## Currency rules are data
 
-Currency requirements change. Encode them as declarative YAML under `assets/rules/`, versioned
-with an effective-from date, evaluated by a generic engine. Do not hard-code thresholds in Dart.
+Versioned with an effective-from date, evaluated by a generic engine. Do not hard-code
+thresholds in Dart.
 
 ```yaml
 id: easa.fcl060.passenger_recency
-jurisdiction: EASA
+jurisdiction: eu.easa.part-fcl
 effective_from: 2011-11-08
 requires:
   - count: 3
@@ -70,56 +124,75 @@ requires:
 ```
 
 Each rule must record *which flights satisfied it*, so the UI can explain a result rather than
-just showing a red or green pill. "Not current" with no explanation is a bug.
+showing a red or green pill. "Not current" with no explanation is a bug.
+
+## Multi-jurisdiction UX
+
+- Totals, flight entry and dashboard render in the **primary** jurisdiction only.
+- A flight whose derived values differ under a secondary licence gets a badge opening a
+  side-by-side comparison. Do not render both columns everywhere; do not use a global toggle
+  that silently changes what the numbers mean.
+- Currency is the exception: show all held licences grouped, always, since currency is
+  genuinely per-licence.
+- Export asks which jurisdiction explicitly. Never infer it.
+- Adding a licence triggers a recompute plus a **"N past flights need more information" queue**.
+  Never guess a missing discriminator, never silently default it.
 
 ## Import / export
 
-- **ForeFlight**: `logbook_template.csv` — a single CSV containing two tables (Aircraft, then
+- **ForeFlight**: `logbook_template.csv` — one CSV containing two tables (Aircraft, then
   Flights) plus typed custom fields in the form `[Hours]FieldName`. Column order and header
   names are load-bearing; do not reorder or omit columns on export. Importing the same file
   twice creates duplicates in ForeFlight, so exports must be range-scoped.
 - **Garmin Pilot**: CSV logbook export. Distinct from G1000/G3X SD-card *data logs*, which are
   1 Hz telemetry and belong to the flight-recording feature, not the importer.
-- All importers map into a **canonical internal model** via per-vendor adapters. Never let a
-  vendor's field naming leak past `io/`.
-- Every import is a transaction with a preview step and a full undo. Import must never
-  partially apply.
+- Adapters map into the canonical internal model. Never let a vendor's field naming past `io/`.
+  Vendor CSVs carry *derived* columns (e.g. a single "PIC" figure); import must reconstruct raw
+  facts where possible and flag the flight for review where it cannot.
+- Every import is a transaction with a preview step and a full undo. Never partially apply.
 - Expect messy input: decimal hours vs `HH:MM`, ambiguous date formats, non-ICAO type codes.
   Reject with a clear per-row error rather than silently coercing.
 
-## EASA PDF export
+## Printable logbook export
 
 The printable output is the compliance story: an electronic logbook is generally accepted
-provided it can be printed, signed and dated. Use the `pdf` Dart package, landscape A4,
-matching the AMC1 FCL.050 twelve column groups.
+provided it can be printed, signed and dated. Use the `pdf` Dart package, landscape A4.
 
-Requirements that are easy to get wrong:
-- Running totals per page: *brought forward*, *this page*, *total to date*. These must
-  reconcile exactly; add a golden test asserting the arithmetic across a multi-page export.
+Layout is **per profile**, not global — EASA uses the AMC1 FCL.050 twelve column groups; FAA
+output is a different sheet. Treat the layout as another field of the jurisdiction profile.
+
+Easy to get wrong:
+- Running totals per page: *brought forward*, *this page*, *total to date*. These must reconcile
+  exactly; add a golden test asserting the arithmetic across a multi-page export.
 - Signature and certification blocks must be present even when empty.
-- Page output must be deterministic — same input, byte-identical PDF — so it can be tested.
+- Output must be deterministic — same input, byte-identical PDF — so it can be tested.
 
 ## Conventions
 
 - State management: Riverpod. Immutable models via `freezed`. DB via `drift`.
-- Run `dart format .` and `flutter analyze` before committing; both must be clean.
-- Run `flutter test` before committing.
-- Domain logic requires unit tests. Currency rules and projections require table-driven tests
-  with real-world flight fixtures, including the FAA/EASA divergence cases above.
+- Run `dart format .`, `flutter analyze` and `flutter test` before committing; all must be clean.
+- Domain logic requires unit tests. Primitives, profiles and currency rules require
+  table-driven tests with real-world fixtures, including the divergence cases above.
+- Every jurisdiction profile needs a fixture flight set proving its derivations, including at
+  least one flight that produces different numbers from its parent profile.
 - Commits: conventional commits (`feat:`, `fix:`, `refactor:`).
 - Prefer adding a fixture to `test/fixtures/` over inventing test data inline.
 
 ## Working style
 
-- Offline-first. The app must be fully functional with no network. Sync, if added, is an
-  additive layer and never a dependency.
+- Offline-first. Fully functional with no network. Sync, if added, is an additive layer and
+  never a dependency.
 - When a change touches regulatory interpretation, cite the specific rule (e.g. `AMC1
   FCL.050(b)(1)`, `§61.57(c)`) in a code comment and in the commit message.
-- Do not add a cloud backend, account system or analytics without being asked. This data is
-  personal data under GDPR and the scope decision is deliberate.
+- Regulatory text in this file is a working summary, not a verified citation. Confirm against
+  the current instrument before it becomes load-bearing — AMC1 FCL.050 is amended by ED
+  Decision 2025/002/R.
+- Do not add a cloud backend, account system or analytics without being asked. This is personal
+  data under GDPR and the scope decision is deliberate.
 - Ask before adding a dependency. Prefer the standard library and packages already present.
 
 ## Deliberately out of scope for now
 
-Flight recording (background GPS), cloud sync, instructor countersignature workflow,
-multi-user. Do not scaffold for these speculatively.
+Flight recording (background GPS), cloud sync, instructor countersignature *workflow* (the
+data model must still carry countersignature state — see rule 2), multi-user. Do not scaffold
+for these speculatively.
