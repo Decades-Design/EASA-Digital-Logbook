@@ -1,0 +1,46 @@
+# The canonical FAA/EASA divergence case.
+# Rated private pilot, sole manipulator, instructor aboard giving instruction.
+#
+# Expected projections (asserted in M1, issues #18 and #19 — NOT stored here):
+#   FAA  §61.51(e)(1)(i): PIC = full flight time, dual = full flight time
+#   EASA FCL.010:         PIC = 0,                dual = full flight time
+#
+# Raw facts only. See CLAUDE.md rule 1 and ADR-0001.
+
+id: "faa-easa-divergence-001"
+
+# All instants UTC. See ADR-0002.
+off_blocks: "2026-03-14T09:05:00Z"
+takeoff: "2026-03-14T09:18:00Z"
+landing: "2026-03-14T10:42:00Z"
+on_blocks: "2026-03-14T10:51:00Z"
+
+aircraft_registration: "G-ABCD"
+
+# Quoted deliberately — see the YAML caveat in test/fixtures/README.md.
+route:
+  - "EGKA"
+  - "EGHR"
+  - "EGKA"
+
+# The discriminators the divergence turns on.
+command_authority: false      # EASA PIC requires this; the instructor held it
+sole_manipulator: true        # FAA §61.51(e)(1)(i) PIC turns on this
+sole_occupant: false
+instructor_aboard: true
+instructor_capacity: "FI"     # FI | FE | safety_pilot
+instructor_influenced_flight: true   # so this is dual, not SPIC
+multi_pilot_operation: false
+aircraft_requires_multi_crew: false
+
+landings:
+  day_full_stop: 1
+  day_touch_and_go: 3
+  night_full_stop: 0
+  night_touch_and_go: 0
+
+ifr_flight_plan_filed: false
+actual_instrument_minutes: 0
+simulated_instrument_minutes: 0
+
+remarks: "Dual instruction, circuits at EGHR. Student rated PPL(A) SEP."
