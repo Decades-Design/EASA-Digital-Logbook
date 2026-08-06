@@ -37,7 +37,13 @@ covers which decision.
 3. **All stored times are UTC.** AMC1 FCL.050 requires it. Local time is a display concern
    only. Never persist a local timestamp, never persist a naive `DateTime`.
 
-4. Entries are drafts until exported, then immutable. A flight entry is freely mutable in place until it is first included in a generated PDF export; at that point it is committed and every subsequent change appends a delta revision retaining the prior state. Committed entries are never UPDATEd or DELETEd. Export is the commit point because it is the moment the record is asserted to an authority — before that, there is nothing to be reliable about. Revision history is device-local and backup-scoped; it is not part of any future sync payload. See ADR-0003.
+4. Entries are drafts until exported, then immutable. A flight entry is freely mutable in
+   place until it is first included in a generated PDF export; at that point it is committed
+   and every subsequent change appends a delta revision retaining the prior state. Committed
+   entries are never UPDATEd or DELETEd. Export is the commit point because it is the moment
+   the record is asserted to an authority — before that, there is nothing to be reliable
+   about. Revision history is device-local and backup-scoped; it is not part of any future
+   sync payload. See ADR-0003.
 
 5. **Never render a jurisdiction-dependent number without its jurisdiction.** Total flight time
    is universal. PIC, night, cross-country and instrument are not. An unlabelled "PIC: 142.3"
