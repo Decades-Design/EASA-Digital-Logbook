@@ -168,7 +168,9 @@ Closes #3"
 Create `test/tool/check_layering_test.dart`:
 
 ```dart
-import 'package:test/test.dart';
+// flutter_test re-exports test/group/expect from package:test_api, so plain
+// Dart tests need no separate package:test dependency.
+import 'package:flutter_test/flutter_test.dart';
 
 import '../../tool/check_layering.dart';
 
@@ -236,9 +238,9 @@ import 'dart:ui';
 flutter test test/tool/check_layering_test.dart
 ```
 
-Expected: FAIL — `Error: Couldn't resolve the package 'test'` or `tool/check_layering.dart` not found. Both are the expected pre-implementation failure.
+Expected: FAIL — `Error: Error when reading '../../tool/check_layering.dart': No such file or directory`. That is the expected pre-implementation failure.
 
-If the failure is the missing `test` package, add it: `flutter pub add 'dev:test'`. `flutter_test` alone does not expose `package:test` for plain Dart tests.
+Do NOT add `package:test`. `flutter_test` re-exports `test`, `group` and `expect` from `package:test_api`, and it is already a dev dependency. Adding a seventh package would violate this plan's Global Constraints.
 
 - [ ] **Step 3: Write the implementation**
 
@@ -638,7 +640,7 @@ Paste the existing body with `rule 2` corrected to `rule 3`. Retrieve it first w
 Create `test/fixtures/fixture_loader_test.dart`:
 
 ```dart
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:yaml/yaml.dart';
 
 import 'fixture_loader.dart';
@@ -867,4 +869,7 @@ Unblocks #16, #15, #13 and #20 — all pure Dart, all startable immediately.
 
 **Type consistency:** `findViolations(String, String) -> List<Violation>` is defined in Task 2 Step 3 and consumed with that exact signature in Task 2 Step 1. `Violation` exposes `filePath`, `line`, `uri` — the fields the test reads. `loadFixture(String, String) -> YamlMap` and `FixtureNotFoundException` are defined in Task 5 Step 3 and used with those names in Task 5 Step 1. The fixture keys asserted in Task 5 Step 1 (`sole_manipulator`, `command_authority`, `instructor_aboard`) all exist in the YAML written in Step 4.
 
-**Known dependency addition:** Task 2 Step 2 may require `flutter pub add dev:test`. `flutter_test` does not expose `package:test` to plain Dart tests. This is a seventh package beyond the six in Task 1 and is called out here rather than being discovered silently — it is a test-only transitive of the Flutter SDK and does not touch the shipped app.
+**Pre-flight resolutions** (found scanning this plan against its own Global Constraints before execution):
+
+1. *No seventh dependency.* An earlier draft had Task 2 adding `package:test`, which contradicts the Global Constraint limiting this plan to the six packages in Task 1. Both test files import `package:flutter_test/flutter_test.dart` instead — it re-exports `test`, `group` and `expect` from `package:test_api` and is already a dev dependency.
+2. *The "flutter test must be clean" constraint applies from Task 2 onward.* `flutter test` exits 1 with `Test directory "test" not found` when no `test/` exists, which is the state during Task 1. Task 1's verification is `dart format`, `flutter analyze` and a clean `build_runner` run. Every task from 2 on runs the full suite.
