@@ -62,13 +62,13 @@ import 'dart:ui';
     test(
       'strips a banned import written inside a multi-line block comment',
       () {
-        // Pins `dotAll: true` on _blockComment. Without it, `.` does not
-        // match newlines, so `/\*.*?\*/` can only match a comment opener and
-        // closer that sit on the same line. A comment spanning several
-        // physical lines is then never recognised as a single unit and is
-        // not stripped at all — so an import written on its own line *inside*
-        // the comment would surface as a false-positive violation. Removing
-        // `dotAll: true` turns this test red.
+        // Pins the newline-matching class in _comment's block-comment
+        // alternative. With a plain `.` in place of `[\s\S]` the pattern can
+        // only match an opener and closer sitting on the same physical line,
+        // so a comment spanning several lines is never recognised as a single
+        // unit and is not stripped at all — and the import written on its own
+        // line *inside* it surfaces as a false-positive violation. Narrowing
+        // that class turns this test red.
         const source = '''
 /*
 import 'package:flutter/material.dart';
@@ -82,9 +82,10 @@ class Thing {}
     test('known false positive: flags a banned import that only appears '
         'inside a multi-line string literal', () {
       // This is accepted, not desired, behaviour. Matching is
-      // line-syntactic (no package:analyzer), so a Dart triple-quoted
-      // string whose own line reads like an import directive is
-      // indistinguishable from a real one. The guard fails closed: a
+      // syntactic, not semantic (no package:analyzer), so a Dart
+      // triple-quoted string whose own line reads like an import
+      // directive is indistinguishable from a real one. The guard fails
+      // closed: a
       // false positive breaks the build and a human looks, which is the
       // safe direction. See the limitations note on findViolations.
       const source = '''
@@ -96,6 +97,126 @@ import 'package:flutter/material.dart';
 
       expect(violations, hasLength(1));
       expect(violations.single.uri, 'package:flutter/material.dart');
+    });
+  });
+
+  // Every test below reproduces a way the guard was verified to fail *open* —
+  // i.e. a real `lib/domain/` dependency on Flutter or I/O that the CI
+  // pipeline reported as clean. A guard that fails open is worse than no
+  // guard, because the branch is green and nobody looks.
+  group('findViolations — evasion classes', () {
+    test('A1: flags the banned URI of a conditional import', () {
+      // The idiomatic Dart way to reach dart:io behind a platform check, and
+      // therefore the most likely way the dependency is reintroduced. The
+      // banned URI is the *second* quoted string on the line.
+      const source = '''
+import 'a1_stub.dart' if (dart.library.io) 'dart:io';
+
+class Thing {}
+''';
+      final violations = findViolations('lib/domain/thing.dart', source);
+
+      expect(violations, hasLength(1));
+      expect(violations.single.uri, 'dart:io');
+      expect(violations.single.line, 1);
+    });
+
+    test('A2: flags a directive split across physical lines', () {
+      // A directive is terminated by `;`, not by a newline. `dart format`
+      // itself wraps a long directive like this.
+      const source = '''
+import
+    'package:flutter/material.dart';
+
+class Thing {}
+''';
+      final violations = findViolations('lib/domain/thing.dart', source);
+
+      expect(violations, hasLength(1));
+      expect(violations.single.uri, 'package:flutter/material.dart');
+      expect(violations.single.line, 1);
+    });
+
+    test('A3: a `/*` inside a line comment does not swallow a real '
+        'import', () {
+      // If block comments are stripped before line comments, the `/*` below
+      // opens a comment that runs to the `*/` on line 3, deleting the real
+      // violation on line 2 along with it.
+      const source = '''
+// toggle: /*
+import 'dart:io';
+// end: */
+
+class Thing {}
+''';
+      final violations = findViolations('lib/domain/thing.dart', source);
+
+      expect(violations, hasLength(1));
+      expect(violations.single.uri, 'dart:io');
+      expect(violations.single.line, 2);
+    });
+
+    test('A4: flags cross-layer and remaining platform URIs', () {
+      // domain/ is the innermost layer: it may not depend on data/, io/,
+      // export/ or ui/ by package: URI or by a relative path that climbs out
+      // of the domain tree. dart:isolate is not hypothetical — the
+      // solar-position engine is exactly the kind of domain code that reaches
+      // for one.
+      const cases = <String>[
+        'package:easa_digital_log/data/db.dart',
+        'package:easa_digital_log/io/foreflight.dart',
+        'package:easa_digital_log/export/pdf.dart',
+        'package:easa_digital_log/ui/app.dart',
+        '../../data/db.dart',
+        'dart:ffi',
+        'dart:isolate',
+        'dart:developer',
+        'dart:html',
+      ];
+
+      for (final uri in cases) {
+        final violations = findViolations(
+          'lib/domain/model/thing.dart',
+          "import '$uri';\n",
+        );
+
+        expect(violations.map((v) => v.uri), <String>[
+          uri,
+        ], reason: '$uri must be reported');
+      }
+    });
+
+    test('A5: flags exotic URI spellings', () {
+      // A raw string is a legal directive URI, and adjacent string literals
+      // concatenate — `'dart:' 'io'` *is* `dart:io` to the compiler.
+      const cases = <String>[
+        "import r'dart:io';\n",
+        "import 'dart:' 'io';\n",
+        'import r"package:flutter/material.dart";\n',
+      ];
+      const expected = <String>[
+        'dart:io',
+        'dart:io',
+        'package:flutter/material.dart',
+      ];
+
+      for (var i = 0; i < cases.length; i++) {
+        final violations = findViolations('lib/domain/thing.dart', cases[i]);
+
+        expect(violations.map((v) => v.uri), <String>[
+          expected[i],
+        ], reason: 'case ${cases[i]} must be reported');
+      }
+    });
+
+    test('allows a relative import that stays inside the domain tree', () {
+      const source = '''
+import '../model/flight.dart';
+import 'aircraft.dart';
+
+class Thing {}
+''';
+      expect(findViolations('lib/domain/model/thing.dart', source), isEmpty);
     });
   });
 }
