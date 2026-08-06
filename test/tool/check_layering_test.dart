@@ -58,5 +58,44 @@ import 'dart:ui';
 
       expect(violations.single.line, 3);
     });
+
+    test(
+      'strips a banned import written inside a multi-line block comment',
+      () {
+        // Pins `dotAll: true` on _blockComment. Without it, `.` does not
+        // match newlines, so `/\*.*?\*/` can only match a comment opener and
+        // closer that sit on the same line. A comment spanning several
+        // physical lines is then never recognised as a single unit and is
+        // not stripped at all — so an import written on its own line *inside*
+        // the comment would surface as a false-positive violation. Removing
+        // `dotAll: true` turns this test red.
+        const source = '''
+/*
+import 'package:flutter/material.dart';
+*/
+class Thing {}
+''';
+        expect(findViolations('lib/domain/thing.dart', source), isEmpty);
+      },
+    );
+
+    test('known false positive: flags a banned import that only appears '
+        'inside a multi-line string literal', () {
+      // This is accepted, not desired, behaviour. Matching is
+      // line-syntactic (no package:analyzer), so a Dart triple-quoted
+      // string whose own line reads like an import directive is
+      // indistinguishable from a real one. The guard fails closed: a
+      // false positive breaks the build and a human looks, which is the
+      // safe direction. See the limitations note on findViolations.
+      const source = '''
+const example = \'\'\'
+import 'package:flutter/material.dart';
+\'\'\';
+''';
+      final violations = findViolations('lib/domain/thing.dart', source);
+
+      expect(violations, hasLength(1));
+      expect(violations.single.uri, 'package:flutter/material.dart');
+    });
   });
 }

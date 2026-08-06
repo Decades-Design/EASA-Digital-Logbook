@@ -44,6 +44,17 @@ final RegExp _directive = RegExp(
 /// Block and line comments are stripped first, so a commented-out import is
 /// not a violation. Both `import` and `export` are checked — a re-export
 /// reintroduces the dependency just as effectively.
+///
+/// Known limitations, both accepted trade-offs of matching line-syntactically
+/// instead of depending on `package:analyzer`:
+/// - A banned import or export written inside a multi-line string literal
+///   (e.g. a triple-quoted Dart string whose own line reads like an import
+///   directive) is reported as a violation. This is a known false positive,
+///   not desired behaviour — the guard fails closed, so a false positive
+///   breaks the build and a human looks, which is the safe direction.
+/// - Line numbers after a multi-line block comment shift, because block
+///   comments are stripped from the whole source before it is split into
+///   lines, collapsing the comment's line breaks along with its content.
 List<Violation> findViolations(String filePath, String source) {
   final withoutBlockComments = source.replaceAll(_blockComment, '');
   final lines = withoutBlockComments.split('\n');
