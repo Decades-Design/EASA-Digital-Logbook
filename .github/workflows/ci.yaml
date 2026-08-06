@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    # ubuntu is sufficient: analysis and unit tests need no iOS/Android toolchain.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # Pinned deliberately, not `stable`. A silent SDK bump breaking the
+          # build is a bad way to lose an evening. Matches the local puro env.
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Format runs BEFORE codegen. Generated files are gitignored but present
+      # on disk once build_runner has run, and `--set-exit-if-changed` would
+      # then fail CI on output nobody controls.
+      - name: Check formatting
+        run: dart format --set-exit-if-changed .
+
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Check domain layering
+        run: dart run tool/check_layering.dart
+
+      - name: Test
+        run: flutter test
