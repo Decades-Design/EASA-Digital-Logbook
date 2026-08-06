@@ -10,8 +10,9 @@ feature.
 Read these before touching anything in `lib/domain/`. Most bugs in this codebase come from
 violating one of them.
 
-The reasoning behind each of these rules is recorded in [docs/adr/](docs/adr/README.md).
-Rules 1–5 correspond to ADR-0001 through ADR-0005.
+The reasoning behind these rules — and other foundational decisions not tied to a single
+numbered rule — is recorded in [docs/adr/](docs/adr/README.md), whose index names which ADR
+covers which decision.
 
 1. **Never store a derived quantity.** A flight row stores *raw facts only*. Quantities like
    "PIC time", "cross-country time", "night time" are **computed per jurisdiction** at read

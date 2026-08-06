@@ -9,9 +9,8 @@ Currency thresholds and windows differ per authority and change over time with e
 dates — `docs/jurisdiction-matrix.md` §5 alone lists rolling-day windows (EASA FCL.060(b)(1): 3
 take-offs, approaches and landings in 90 days), calendar-month windows (FAA §61.57(c): 6 months),
 and a UK divergence in the same requirement (12 hours across the whole 2-year validity period
-rather than the 12 months preceding expiry) that took effect after EASA's rule was already
-settled. Hard-coding any of this in Dart means every new authority, and every amendment to an
-existing one, is a code change and a release.
+rather than the 12 months preceding expiry). Hard-coding any of this in Dart means every new
+authority, and every amendment to an existing one, is a code change and a release.
 
 ## Decision
 
