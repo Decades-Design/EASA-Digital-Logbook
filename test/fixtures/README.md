@@ -49,13 +49,18 @@ made almost entirely of the two shapes that *do* still collide:
   on which schema variant a future loader or a copy-pasted snippet happens
   to implement.
 - **Bare `1:30`** — hours-and-minutes duration notation, which is exactly
-  the sexagesimal shape 1.1 would silently coerce to the integer 90. The
-  fixtures in this repo don't store elapsed durations as raw facts (see
-  Rule 1 below — durations are derived at read time), but timestamps,
-  remarks and free-text fields can still contain a `HH:MM`-shaped
+  the sexagesimal shape 1.1 would silently coerce to the integer 90. Some
+  elapsed durations *are* raw facts and are stored: actual and simulated
+  instrument time are attested by the pilot, not computed from anything
+  else, and `docs/jurisdiction-matrix.md` §9 lists both among the facts a
+  jurisdiction's numbers cannot be recovered without. What Rule 1 below
+  forbids is storing a *derived* duration — PIC, night, cross-country and
+  friends, which are projections of the raw facts, not facts. Either way,
+  timestamps, remarks and free-text fields can also contain a `HH:MM`-shaped
   substring, and an unquoted scalar starting with digits and a colon is
   parsed as a plain string only by convention, not by guarantee across
-  tooling.
+  tooling. Store durations in unambiguous units (`_minutes`) and quote
+  anything that reads as `HH:MM`.
 
 So: quote every aerodrome identifier, every field that starts with digits
 and a colon, and every field that could ever be typed as `NO`, `YES`, `ON`

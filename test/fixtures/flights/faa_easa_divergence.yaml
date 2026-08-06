@@ -33,6 +33,24 @@ instructor_influenced_flight: true   # so this is dual, not SPIC
 multi_pilot_operation: false
 aircraft_requires_multi_crew: false
 
+# Take-offs and landings are stored as two independent sets of four counts,
+# never one combined figure and never one derived from the other. A pilot who
+# takes over in flight has zero take-offs and one landing; a pilot who hands
+# over has the reverse. FAA §61.57(a) and §61.57(b) both count take-offs;
+# EASA AMC1 FCL.050 column 8 counts landings. See docs/jurisdiction-matrix.md
+# §9 and docs/entry-form.md §5 — omitting take-offs cannot be backfilled.
+#
+# The split mirrors the landings so the two stay pairable: a take-off is
+# either from a standing start (`full_stop`) or the rolling departure out of a
+# touch-and-go. Four circuits at EGHR by day, all flown by this pilot: the
+# standing departure from EGKA, three rolling take-offs out of the three
+# touch-and-goes, and the full-stop landing back at EGKA. No night flying.
+takeoffs:
+  day_full_stop: 1
+  day_touch_and_go: 3
+  night_full_stop: 0
+  night_touch_and_go: 0
+
 landings:
   day_full_stop: 1
   day_touch_and_go: 3
