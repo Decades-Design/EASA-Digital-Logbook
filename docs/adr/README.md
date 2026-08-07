@@ -8,6 +8,7 @@
 | [0004](0004-rules-as-data.md) | Currency rules are versioned data, not Dart logic | Accepted | Currency thresholds and windows live in versioned YAML evaluated by a generic engine, referencing named Dart primitives rather than embedding logic. |
 | [0005](0005-offline-first.md) | Offline-first, no cloud backend by default | Accepted | The app is fully functional offline with no account system or analytics; sync, if ever added, is additive and never a dependency. |
 | [0006](0006-dependency-stack.md) | Settle the dependency stack now, add packages per milestone | Accepted | The full package list is decided up front, but each dependency is only added to `pubspec.yaml` in the milestone that first imports it. |
+| [0007](0007-duration-representation.md) | Represent logbook durations as integer minutes | Accepted | `FlightDuration` stores whole minutes for exact arithmetic; `HH:MM` and decimal hours (tenths, half away from zero) are display-only formats, and rounding never happens before a total is summed. |
 
 New ADRs are numbered sequentially and are never renumbered. A decision that is later reversed
 is superseded by a new ADR, not edited in place — the old record stays as evidence of what was
