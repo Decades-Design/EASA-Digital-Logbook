@@ -98,6 +98,38 @@ import 'package:flutter/material.dart';
       expect(violations, hasLength(1));
       expect(violations.single.uri, 'package:flutter/material.dart');
     });
+
+    test('known gap: a banned import is not reported when a comment '
+        'delimiter is opened inside a string literal above it', () {
+      // This pins accepted, NOT desired, behaviour, in the opposite
+      // direction from the false positive above: this one fails OPEN. A
+      // library-level annotation is the one place a string literal can
+      // legally sit above an import, since directives must precede other
+      // declarations. `_stripComments` has no notion of string literals, so
+      // the `/*` inside `@Deprecated('/*')` is read as a real block-comment
+      // opener, and everything up to the next `*/` — including the
+      // `dart:io` import below it — is stripped before the directive scan
+      // ever runs. The import is real and reaches lib/domain/, but the
+      // guard reports the file as clean. See the limitations note on
+      // findViolations.
+      //
+      // If this test ever goes red because the hole was closed, that is
+      // good news, but update this test deliberately rather than deleting
+      // it — it exists to make a future fix visible, not to block one.
+      const source = '''
+@Deprecated('/*')
+library;
+
+import 'dart:io';
+
+String readLogbook(String path) => File(path).readAsStringSync();
+
+const closer = '*/';
+''';
+      final violations = findViolations('lib/domain/thing.dart', source);
+
+      expect(violations, isEmpty);
+    });
   });
 
   // Every test below reproduces a way the guard was verified to fail *open* —

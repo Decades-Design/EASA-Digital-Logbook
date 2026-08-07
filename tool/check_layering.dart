@@ -162,15 +162,45 @@ bool _escapesDomain(String uri, String filePath) {
 /// Both `import` and `export` are checked — a re-export reintroduces the
 /// dependency just as effectively.
 ///
-/// Known limitations, both accepted trade-offs of matching syntactically
-/// instead of depending on `package:analyzer`:
-/// - A banned import or export written inside a multi-line string literal
-///   (e.g. a triple-quoted Dart string whose own line reads like an import
-///   directive) is reported as a violation. This is a known false positive,
-///   not desired behaviour — the guard fails closed, so a false positive
-///   breaks the build and a human looks, which is the safe direction.
-/// - For the same reason, a comment delimiter inside a string literal
-///   (`const s = '/*';`) is read as a real delimiter.
+/// Both limitations below are accepted trade-offs of matching syntactically
+/// instead of depending on `package:analyzer`. They are not the same kind of
+/// trade-off, though — one is safe and one is not:
+///
+/// - **Fails closed (safe).** A banned import or export written inside a
+///   multi-line string literal (e.g. a triple-quoted Dart string whose own
+///   line reads like an import directive) is reported as a violation. This
+///   is a known false positive, not desired behaviour, but it over-reports:
+///   it breaks the build, a human looks, and no real violation slips
+///   through.
+/// - **Fails open (unsafe, accepted gap).** [_stripComments] has no notion
+///   of string literals, so a comment delimiter opened *inside a string
+///   literal that sits above an import* is read as a real delimiter, and
+///   the "comment" it opens can swallow a genuine banned import before the
+///   directive scan ever sees it. Directives must precede other
+///   declarations, so the one place a string literal can legally sit above
+///   an import is a library-level annotation:
+///   ```dart
+///   @Deprecated('/*')
+///   library;
+///
+///   import 'dart:io'; // never reported — stripped as "inside a comment"
+///
+///   const closer = '*/';
+///   ```
+///   This file passes `dart format`, `flutter analyze --fatal-infos` and
+///   this guard. It is a known, accepted gap, not an oversight — closing it
+///   needs `package:analyzer`, which is excluded (see ADR-0001) — and a
+///   `lib/domain/` file that reaches for a platform API must not be assumed
+///   clean merely because this guard passed. See the fail-open pin in
+///   `test/tool/check_layering_test.dart`.
+///
+/// A third, minor gap: two directives on one physical line
+/// (`import 'dart:math'; import 'dart:io';`) escape [_directive], which
+/// anchors to the start of a line. Unlike the gap above this one is caught
+/// downstream — `dart format` exits non-zero on that source, and formatting
+/// runs before this guard in CI — so it is noted here only so this list
+/// doesn't overstate what slips past every check, not because it needs its
+/// own defence here.
 List<Violation> findViolations(String filePath, String source) {
   final stripped = _stripComments(source);
   final violations = <Violation>[];
