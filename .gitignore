@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Code generation output (ADR-0006: regenerated in CI, never committed)
+*.freezed.dart
+*.g.dart
