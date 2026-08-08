@@ -5,3 +5,4 @@
 id: eu.easa.part-fcl
 
 pic_rule: easa.pilot_function_time
+night_rule: easa.night_time

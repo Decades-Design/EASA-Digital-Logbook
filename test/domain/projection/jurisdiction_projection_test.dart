@@ -2,15 +2,18 @@
 // Dart tests need no separate package:test dependency.
 import 'package:easa_digital_log/domain/jurisdiction/jurisdiction_profile.dart';
 import 'package:easa_digital_log/domain/jurisdiction/jurisdiction_registry.dart';
+import 'package:easa_digital_log/domain/model/aerodrome_directory.dart';
 import 'package:easa_digital_log/domain/model/aircraft.dart';
 import 'package:easa_digital_log/domain/model/flight.dart';
 import 'package:easa_digital_log/domain/model/flight_duration.dart';
 import 'package:easa_digital_log/domain/model/pilot_capacity.dart';
 import 'package:easa_digital_log/domain/model/utc_instant.dart';
-import 'package:easa_digital_log/domain/primitives/pilot_function_time.dart';
+import 'package:easa_digital_log/domain/primitives/primitive_registry.dart';
 import 'package:easa_digital_log/domain/projection/derived_quantity.dart';
 import 'package:easa_digital_log/domain/projection/jurisdiction_projection.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+AerodromeDirectory _emptyAerodromes() => AerodromeDirectory(const []);
 
 /// A fake primitive, not EASA or FAA logic — #18/#19 own the real rules.
 /// This proves the engine (profile resolution -> primitive dispatch ->
@@ -23,6 +26,16 @@ Map<String, DerivedQuantity> _fakeRule(
   'pic': flight.capacity.commandAuthority
       ? DerivedQuantity.creditable(blockTime, 'fake: command authority held')
       : DerivedQuantity.zero('fake: no command authority'),
+};
+
+/// A fake night-time primitive, proving `pic_rule` and `night_rule`
+/// quantities merge into one [ProjectionResult] rather than one
+/// overwriting the other.
+Map<String, DerivedQuantity> _fakeNightRule(
+  Flight flight,
+  AerodromeDirectory aerodromes,
+) => {
+  'night': DerivedQuantity.creditable(const FlightDuration(15), 'fake: night'),
 };
 
 Aircraft _aircraft() => const Aircraft(
@@ -75,10 +88,14 @@ void main() {
       ),
       const JurisdictionProfile(id: 'test.no-rules', rules: {}),
     ]);
-    final primitives = PrimitiveRegistry({'test.fake_rule': _fakeRule});
+    final primitives = PrimitiveRegistry(
+      pilotFunctionTimeRules: {'test.fake_rule': _fakeRule},
+      nightTimeRules: const {},
+    );
     projection = JurisdictionProjection(
       registry: registry,
       primitives: primitives,
+      aerodromes: _emptyAerodromes(),
       jurisdictionId: 'test.fake',
     );
   });
@@ -115,7 +132,11 @@ void main() {
         ]);
         final bare = JurisdictionProjection(
           registry: registry,
-          primitives: PrimitiveRegistry(const {}),
+          primitives: PrimitiveRegistry(
+            pilotFunctionTimeRules: const {},
+            nightTimeRules: const {},
+          ),
+          aerodromes: _emptyAerodromes(),
           jurisdictionId: 'test.no-rules',
         );
 
@@ -127,6 +148,33 @@ void main() {
       },
     );
 
+    test('pic_rule and night_rule quantities merge into one result, neither '
+        'overwriting the other', () {
+      final registry = JurisdictionRegistry([
+        const JurisdictionProfile(
+          id: 'test.both-rules',
+          rules: {
+            'pic_rule': 'test.fake_rule',
+            'night_rule': 'test.fake_night_rule',
+          },
+        ),
+      ]);
+      final both = JurisdictionProjection(
+        registry: registry,
+        primitives: PrimitiveRegistry(
+          pilotFunctionTimeRules: {'test.fake_rule': _fakeRule},
+          nightTimeRules: {'test.fake_night_rule': _fakeNightRule},
+        ),
+        aerodromes: _emptyAerodromes(),
+        jurisdictionId: 'test.both-rules',
+      );
+
+      final result = both.project(_flight(commandAuthority: true), _aircraft());
+
+      expect(result['pic']?.value, const FlightDuration(90));
+      expect(result['night']?.value, const FlightDuration(15));
+    });
+
     test('an unregistered primitive id throws ArgumentError', () {
       final registry = JurisdictionRegistry([
         const JurisdictionProfile(
@@ -136,7 +184,11 @@ void main() {
       ]);
       final broken = JurisdictionProjection(
         registry: registry,
-        primitives: PrimitiveRegistry(const {}),
+        primitives: PrimitiveRegistry(
+          pilotFunctionTimeRules: const {},
+          nightTimeRules: const {},
+        ),
+        aerodromes: _emptyAerodromes(),
         jurisdictionId: 'test.broken',
       );
 
@@ -176,7 +228,11 @@ void main() {
         ]);
         final pendingProjection = JurisdictionProjection(
           registry: registry,
-          primitives: PrimitiveRegistry({'test.pending_rule': pendingRule}),
+          primitives: PrimitiveRegistry(
+            pilotFunctionTimeRules: {'test.pending_rule': pendingRule},
+            nightTimeRules: const {},
+          ),
+          aerodromes: _emptyAerodromes(),
           jurisdictionId: 'test.pending',
         );
 

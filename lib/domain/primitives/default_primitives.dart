@@ -1,16 +1,24 @@
+import 'easa_night_time.dart';
 import 'easa_pilot_function_time.dart';
+import 'faa_night_time.dart';
 import 'faa_pilot_function_time.dart';
-import 'pilot_function_time.dart';
+import 'primitive_registry.dart';
 
 /// The [PrimitiveRegistry] the app actually ships — every primitive id an
 /// `assets/jurisdictions/*.yaml` profile can reference, wired to its real
 /// implementation.
 ///
-/// Grows by one line per primitive as later issues (#21-26:
-/// night/cross-country/instrument) land — never by a change to
+/// Grows by one line per primitive as later issues (#23-26:
+/// cross-country/instrument) land — never by a change to
 /// [JurisdictionProjection], which only ever sees this through the
 /// [PrimitiveRegistry] interface.
-final PrimitiveRegistry defaultPrimitives = PrimitiveRegistry({
-  'easa.pilot_function_time': easaPilotFunctionTime,
-  'faa.pilot_function_time': faaPilotFunctionTime,
-});
+final PrimitiveRegistry defaultPrimitives = PrimitiveRegistry(
+  pilotFunctionTimeRules: {
+    'easa.pilot_function_time': easaPilotFunctionTime,
+    'faa.pilot_function_time': faaPilotFunctionTime,
+  },
+  nightTimeRules: {
+    'easa.night_time': easaNightTime,
+    'faa.night_time': faaNightTime,
+  },
+);

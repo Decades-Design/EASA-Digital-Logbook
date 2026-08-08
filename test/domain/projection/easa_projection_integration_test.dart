@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:easa_digital_log/domain/jurisdiction/jurisdiction_profile.dart';
 import 'package:easa_digital_log/domain/jurisdiction/jurisdiction_registry.dart';
+import 'package:easa_digital_log/domain/model/aerodrome_directory.dart';
 import 'package:easa_digital_log/domain/model/aircraft.dart';
 import 'package:easa_digital_log/domain/model/flight.dart';
 import 'package:easa_digital_log/domain/model/flight_duration.dart';
@@ -46,6 +47,7 @@ void main() {
       final projection = JurisdictionProjection(
         registry: registry,
         primitives: defaultPrimitives,
+        aerodromes: AerodromeDirectory(const []),
         jurisdictionId: 'eu.easa.part-fcl',
       );
 
@@ -92,6 +94,7 @@ void main() {
     final projection = JurisdictionProjection(
       registry: registry,
       primitives: defaultPrimitives,
+      aerodromes: AerodromeDirectory(const []),
       jurisdictionId: 'eu.easa.part-fcl',
     );
 
