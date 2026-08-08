@@ -210,10 +210,12 @@ abstract class Approach with _$Approach {
     /// alternate or a training stop that isn't where the flight ended.
     required String aerodromeIcao,
 
-    /// Runway number, 1 to 36. Does not distinguish parallel runways
-    /// (L/C/R) — not asked for, and `§61.57(c)` currency does not turn on
-    /// the distinction.
-    required int runway,
+    /// Runway designator, e.g. `09`, `27L`, `36C` — the two-digit heading
+    /// number, optionally followed by `L`/`C`/`R` for parallel runways. A
+    /// string, not an int: the L/C/R suffix is not decoration, it is which
+    /// physical runway was used at an airport with parallel pairs or
+    /// triples, and a bare 1-36 number cannot express it.
+    required String runway,
 
     /// How many times this exact procedure — same [type], [aerodromeIcao]
     /// and [runway] — was flown on this flight. "2x ILS 36 LIML" is

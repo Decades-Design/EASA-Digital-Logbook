@@ -310,7 +310,7 @@ licences held.
 | IFR time | EASA licence held | Operational condition — time under IFR, regardless of meteorological conditions |
 | Actual instrument | FAA licence held | Time solely by reference to instruments, §61.51(g)(1) |
 | Simulated instrument | FAA licence held | Separate condition; reveals the safety pilot field in 4C |
-| Approaches flown | FAA IR held, or FAA IR training in progress | One row per distinct procedure: type (picker — ILS, RNAV, GPS, VOR, LOC, NDB, back course, LDA, SDF, TACAN, PAR, ASR, MLS, roughly most to least common), aerodrome ICAO identifier (pre-filled from the flight's destination, editable), runway (1–36), and a repeat count. §61.51(g)(3) requires type and location per approach for §61.57(c) currency. Not shown to an EASA-only pilot |
+| Approaches flown | FAA IR held, or FAA IR training in progress | One row per distinct procedure: type (picker — ILS, RNAV, GPS, VOR, LOC, NDB, back course, LDA, SDF, TACAN, PAR, ASR, MLS, roughly most to least common), aerodrome ICAO identifier (pre-filled from the flight's destination, editable), runway (`01`-`36`, plus `L`/`C`/`R` for parallel runways), and a repeat count. §61.51(g)(3) requires type and location per approach for §61.57(c) currency. Not shown to an EASA-only pilot |
 | Holding procedures | FAA IR held, or FAA IR training in progress | Count, not a toggle — holding is repeatable within one flight |
 | Course tracking | FAA IR held, or FAA IR training in progress | A single toggle, independent of the holding count — intercepting and tracking a course via a nav system either happened or didn't |
 

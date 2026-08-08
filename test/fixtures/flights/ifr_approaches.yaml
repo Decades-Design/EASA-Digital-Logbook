@@ -1,0 +1,48 @@
+# FAA IR currency scenario: two distinct approach procedures in one flight,
+# one of them to a parallel runway. Exercises Approach.runway's L/C/R
+# suffix — the reason runway is a string, not a 1-36 int.
+
+aircraft_registration: "N12345"
+route:
+  - "KJFK"
+  - "KJFK"
+
+off_blocks: "2026-04-02T14:00:00Z"
+on_blocks: "2026-04-02T15:30:00Z"
+
+capacity:
+  command_authority: true
+  sole_manipulator: true
+  sole_occupant: true
+  multi_pilot_operation: false
+  additional_crew_required_by_rule: false
+  acting_as_instructor: false
+  acting_as_examiner: false
+  picus_claimed: false
+  pic_intervention_not_required: false
+
+carrying_passengers: false
+
+takeoffs:
+  day_full_stop: 1
+landings:
+  day_full_stop: 1
+
+ifr_flight_plan_filed: true
+actual_instrument_minutes: 20
+simulated_instrument_minutes: 60
+
+# "2x ILS 4L + 1 RNAV 22R" — two distinct procedures, the first flown twice.
+approaches:
+  - type: "ils"
+    aerodrome_icao: "KJFK"
+    runway: "04L"
+    count: 2
+  - type: "rnav"
+    aerodrome_icao: "KJFK"
+    runway: "22R"
+
+holding_procedures_count: 1
+tracking_performed: true
+
+remarks: "IPC. Two ILS 4L, one RNAV 22R, one holding pattern."

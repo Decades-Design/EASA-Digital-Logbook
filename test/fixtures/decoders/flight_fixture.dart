@@ -125,13 +125,16 @@ ApproachType _approachType(YamlMap yaml, String fixture) {
   return type;
 }
 
-int _runway(YamlMap yaml, String fixture) {
-  final runway = requiredInt(yaml, 'runway', fixture);
-  if (runway < 1 || runway > 36) {
+/// Two digits, `01`-`36`, optionally followed by `L`, `C` or `R`.
+final RegExp _runwayPattern = RegExp(r'^(0[1-9]|[12][0-9]|3[0-6])[LCR]?$');
+
+String _runway(YamlMap yaml, String fixture) {
+  final runway = requiredString(yaml, 'runway', fixture);
+  if (!_runwayPattern.hasMatch(runway)) {
     throw FixtureFieldException(
       fixture,
       'approaches.runway',
-      'an integer between 1 and 36, got $runway',
+      'two digits 01-36 with an optional L/C/R suffix, got "$runway"',
     );
   }
   return runway;

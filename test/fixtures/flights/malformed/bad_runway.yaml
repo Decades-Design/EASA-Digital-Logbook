@@ -1,5 +1,6 @@
-# Deliberately invalid: runway 37 is out of range (1-36). Proves the decoder
-# rejects it rather than silently storing a runway that cannot exist.
+# Deliberately invalid: runway 37 is out of range (01-36). Proves the
+# decoder rejects it rather than silently storing a runway that cannot
+# exist. Quoted — see the YAML caveat in test/fixtures/README.md.
 
 aircraft_registration: "G-ABCD"
 route:
@@ -34,7 +35,7 @@ simulated_instrument_minutes: 0
 approaches:
   - type: "ils"
     aerodrome_icao: "EGKA"
-    runway: 37
+    runway: "37"
 
 holding_procedures_count: 0
 tracking_performed: false

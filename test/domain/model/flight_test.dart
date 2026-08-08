@@ -102,10 +102,10 @@ void main() {
           Approach(
             type: ApproachType.ils,
             aerodromeIcao: 'LIML',
-            runway: 36,
+            runway: '36',
             count: 2,
           ),
-          Approach(type: ApproachType.loc, aerodromeIcao: 'LIMG', runway: 27),
+          Approach(type: ApproachType.loc, aerodromeIcao: 'LIMG', runway: '27'),
         ];
 
         expect(approaches, hasLength(2));
@@ -136,8 +136,24 @@ void main() {
     });
   });
 
+  group('the IFR approaches fixture', () {
+    test('decodes a parallel-runway suffix and a repeat count', () {
+      final flight = flightFromFixture('ifr_approaches');
+
+      expect(flight.approaches, hasLength(2));
+      expect(flight.approaches[0].type, ApproachType.ils);
+      expect(flight.approaches[0].runway, '04L');
+      expect(flight.approaches[0].count, 2);
+      expect(flight.approaches[1].type, ApproachType.rnav);
+      expect(flight.approaches[1].runway, '22R');
+      expect(flight.approaches[1].count, 1);
+      expect(flight.holdingProceduresCount, 1);
+      expect(flight.trackingPerformed, isTrue);
+    });
+  });
+
   group('the fixture decoder', () {
-    test('rejects a runway outside 1-36 rather than storing it', () {
+    test('rejects a malformed runway rather than storing it', () {
       expect(
         () => flightFromFixture('malformed/bad_runway'),
         throwsA(
