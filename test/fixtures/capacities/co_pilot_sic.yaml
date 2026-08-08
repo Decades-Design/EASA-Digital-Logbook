@@ -1,0 +1,37 @@
+# Co-pilot / SIC on a multi-pilot sector, with the captain flying and no
+# PICUS claimed. The ordinary airline right-hand-seat sector.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA AMC1 FCL.050: co-pilot time = full block time (column 11 pilot
+#                      function time), recorded as multi-pilot time (column 6).
+#                      PIC = 0.
+#   FAA  §61.51(f):    SIC = full block time, provided the pilot is qualified
+#                      under §61.55 and the aircraft requires more than one
+#                      pilot by type certificate or by the rules the flight
+#                      is operated under.
+#   FAA  §61.51(e):    PIC = 0. Not acting PIC, not the sole manipulator.
+#
+# Distinguished from the two PICUS fixtures by `picus_claimed` alone being
+# false — the arrangement is otherwise the same seat on the same kind of
+# sector. That is the point: PICUS is an assertion the pilot makes, not
+# something derivable from where they sat.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+
+id: "capacity-co-pilot-sic"
+
+command_authority: false
+sole_manipulator: false       # the captain flew this sector
+sole_occupant: false
+multi_pilot_operation: true   # §61.51(f); AMC1 FCL.050 column 6
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false   # no claim, so it carries no meaning
+
+other_pilot_role: "required_crew"      # the captain
+
+# No countersignature: AMC1 FCL.050 requires one for SPIC, PICUS, instruction
+# received and SEP/TMG revalidation flights. A plain co-pilot sector is none
+# of those, which is also what makes the field's absence meaningful here
+# rather than merely unfilled.

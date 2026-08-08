@@ -1,0 +1,21 @@
+# Deliberately broken: `signed_at` carries no zone designator.
+#
+# DateTime.parse would resolve this to LOCAL time without complaint, which is
+# the silent failure CLAUDE.md rule 3 and ADR-0002 exist to prevent. The
+# fixture path must reject it as loudly as the model does.
+
+id: "malformed-naive-timestamp"
+
+command_authority: true
+sole_manipulator: true
+sole_occupant: false
+multi_pilot_operation: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+countersignature:
+  status: "signed"
+  signatory_name: "R. Mallory"
+  signed_at: "2026-03-14T11:05:00"   # no Z — must be rejected

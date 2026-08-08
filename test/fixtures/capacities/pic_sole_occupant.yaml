@@ -1,0 +1,26 @@
+# Solo. The pilot alone in the aircraft, in command, flying it.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:     PIC = full block time. Column 11 pilot function = PIC.
+#   FAA  §61.51(e)(1)(i): PIC = full block time (sole manipulator, rated).
+#   FAA  §61.51(d):   solo = full block time (sole occupant).
+#
+# The only scenario in this set where FAA solo time is loggable at all:
+# §61.51(d) allows it only when the pilot is the sole occupant.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+
+id: "capacity-pic-sole-occupant"
+
+command_authority: true       # FCL.010 — designated in command
+sole_manipulator: true        # §61.51(e)(1)(i)
+sole_occupant: true           # §61.51(d) — the discriminator for solo
+multi_pilot_operation: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false   # no PICUS claim; carries no meaning
+
+# No instructor, no other pilot, and nothing to countersign: AMC1 FCL.050
+# requires a countersignature for SPIC, PICUS, instruction received and
+# SEP/TMG revalidation flights, and this flight is none of those.

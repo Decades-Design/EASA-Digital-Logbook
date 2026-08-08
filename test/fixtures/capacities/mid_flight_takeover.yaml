@@ -1,0 +1,43 @@
+# Mid-flight takeover. Two rated pilots in a single-pilot aeroplane; this
+# pilot holds command throughout and flies the second half.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:         PIC = full block time. Command was held throughout,
+#                         and EASA PIC time does not depend on who was
+#                         handling the controls.
+#   FAA §61.51(e)(1)(i):  PIC = 45 minutes only — the sole-manipulator claim
+#                         covers exactly the time manipulated.
+#   FAA §91.3:            the FAA projection may ALSO log PIC for the whole
+#                         flight as the acting pilot in command; #19 decides
+#                         which claim to render. Both are legitimate.
+#
+# This is the fixture that proves manipulation_time is not decorative. A bare
+# sole_manipulator boolean would force a choice between "yes" (overclaiming 45
+# minutes of FAA PIC) and "no" (throwing 45 real minutes away). Neither is
+# recoverable afterwards. See docs/entry-form.md §4C, which surfaces the
+# duration control exactly when the sole-manipulator toggle is off.
+#
+# It is also the only fixture where the other pilot is NOT required crew: a
+# qualified friend along for the ride in an aircraft certificated for one
+# pilot. Under EASA that pilot logs nothing for the sector they flew, however
+# competently (docs/jurisdiction-matrix.md §4) — which is precisely why the
+# role is stored rather than inferred from whether they touched the controls.
+#
+# Raw facts only. See CLAUDE.md rule 1.
+
+id: "capacity-mid-flight-takeover"
+
+command_authority: true       # held for the whole flight, both halves
+sole_manipulator: false       # NOT throughout — see manipulation_time
+sole_occupant: false
+multi_pilot_operation: false  # single-pilot aeroplane; the other pilot is spare
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+# Quoted deliberately: bare 0:45 is the sexagesimal shape YAML 1.1 would
+# coerce to 45. See the quoting caveat in test/fixtures/README.md.
+manipulation_time: "0:45"     # §61.51(e)(1)(i) covers exactly this much
+
+other_pilot_role: "not_required_crew"

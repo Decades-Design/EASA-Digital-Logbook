@@ -1,0 +1,42 @@
+# PICUS, countersigned. A co-pilot on a multi-pilot sector performing the
+# duties and functions of a PIC under the supervision of the PIC, whose
+# intervention in the interest of safety was not required, and whose
+# countersignature has arrived.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:      PIC = full block time, as PICUS.
+#   EASA FCL.510(a)(2): creditable toward the ATPL(A) PIC requirement, up to
+#                      500 hours in total across the logbook.
+#   FAA §61.51(e)(1)(i): PIC = full block time — as sole manipulator, for an
+#                      entirely different reason, and only if rated.
+#   FAA §61.51(f):     the FAA has no PICUS concept at all.
+#
+# Identical in every raw fact to picus_pending.yaml except the
+# countersignature. That pair is the whole reason PICUS is not stored as a
+# role: the same flight is creditable or not creditable depending on
+# something that happens after it lands. See ADR-0008 and CLAUDE.md rule 1.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+
+id: "capacity-picus-countersigned"
+
+command_authority: false      # FCL.010 — the supervising PIC held command
+sole_manipulator: true        # pilot flying for this sector
+sole_occupant: false
+multi_pilot_operation: true   # AMC1 FCL.050 column 6; PICUS is a co-pilot case
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: true                    # the pilot's assertion — a raw fact
+pic_intervention_not_required: true    # the substantive FCL.010 condition
+
+other_pilot_role: "required_crew"      # the supervising PIC. §61.51(f)
+
+# AMC1 FCL.050: the PIC's name, signature and licence number. Ireland
+# additionally refuses an electronic signature for this and treats unsigned
+# PICUS time as unusable — see docs/jurisdiction-matrix.md §1, which is why
+# the competent authority, not just the jurisdiction, has to be modelled.
+countersignature:
+  status: "signed"
+  signatory_name: "K. Almqvist"
+  signatory_credential_number: "SWE.ATPL.90233"
+  signed_at: "2026-04-02T18:22:00Z"

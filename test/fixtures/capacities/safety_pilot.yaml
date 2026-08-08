@@ -1,0 +1,46 @@
+# Simulated instrument flight under the hood, with a safety pilot in the
+# other control seat. This pilot is the one flying; the safety pilot is the
+# *other* pilot — `other_pilot_role` always describes the other pilot, per
+# docs/entry-form.md §4C and the OtherPilotRole dartdoc.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   FAA  §61.51(e)(1)(i): PIC = full block time (sole manipulator, rated) and
+#                      acting PIC under §91.3 as well.
+#   FAA  §91.109(c):   the safety pilot is a required crewmember, so this is
+#                      not solo — §61.51(d) solo = 0.
+#   FAA  §61.51(b)(1)(v): the safety pilot's NAME is mandatory logbook
+#                      content. It is not stored in PilotCapacity — see the
+#                      note below, and the PilotCapacity class dartdoc.
+#   EASA:              no safety-pilot category exists at all
+#                      (docs/jurisdiction-matrix.md §4). EASA reads only
+#                      command authority: PIC = full block time.
+#
+# KNOWN GAP: §61.51(b)(1)(v) requires the safety pilot's name, and
+# docs/jurisdiction-matrix.md §9 lists safety-pilot identity among the raw
+# facts whose absence makes a jurisdiction's numbers unrecoverable. This model
+# carries the safety pilot's *role* but not their *identity*; crew identity is
+# expected to land on Flight/Crew (issue #11). Until it does, a §61.51(b)(1)
+# -compliant FAA export cannot be produced from this fixture alone.
+#
+# The simulated instrument time that makes §91.109(c) apply is a condition of
+# the flight, not of this pilot's capacity, and belongs to Flight (issue #11)
+# — see docs/entry-form.md §6.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+
+id: "capacity-safety-pilot"
+
+command_authority: true       # the hooded pilot was acting PIC under §91.3
+sole_manipulator: true        # §61.51(e)(1)(i)
+sole_occupant: false          # §91.109(c) puts someone in the other seat
+multi_pilot_operation: false  # required by §91.109(c), not by type certificate
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+other_pilot_role: "safety_pilot"   # §91.109(c). No EASA equivalent exists
+
+# No countersignature: a safety pilot certifies nothing. AMC1 FCL.050 requires
+# a countersignature for SPIC, PICUS, instruction received and SEP/TMG
+# revalidation flights only.

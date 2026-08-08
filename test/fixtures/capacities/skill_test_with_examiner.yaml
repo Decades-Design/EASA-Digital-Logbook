@@ -1,0 +1,37 @@
+# Skill test — the pilot being tested, with a flight examiner aboard.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:  PIC = full block time. The candidate holds command on a
+#                  skill test; the examiner is aboard to assess, not to fly.
+#   AMC1 FCL.050:  the details of the skill test are a MANDATORY column 12
+#                  remark. This is the obligation that makes an examiner
+#                  aboard different from an instructor aboard, and it is why
+#                  InstructorCapacity has two values rather than one.
+#   EASA:          dual = 0. A skill test is an assessment, not instruction.
+#   FAA §61.51(e)(1)(i): PIC = full block time (sole manipulator, rated).
+#
+# Contrast examiner.yaml, which is this same flight seen from the examiner's
+# own logbook — there acting_as_examiner is true and this pilot is the one
+# assessing. Here the examiner is the other person aboard.
+#
+# Raw facts only. See CLAUDE.md rule 1.
+
+id: "capacity-skill-test-with-examiner"
+
+command_authority: true       # FCL.010 — the candidate commands the flight
+sole_manipulator: true
+sole_occupant: false          # the examiner was aboard
+multi_pilot_operation: false
+acting_as_instructor: false
+acting_as_examiner: false     # this pilot is being tested, not testing
+picus_claimed: false
+pic_intervention_not_required: false
+
+instructor:
+  capacity: "FE"              # flight examiner, NOT an instructor
+  influenced_flight: false    # an examiner assesses; they do not instruct
+  name: "P. Okonjo"
+  credential_number: "GBR.FE.1180"
+
+# No countersignature block: AMC1 FCL.050 requires the skill test details as a
+# column 12 remark, not a countersignature. Null means none is required.

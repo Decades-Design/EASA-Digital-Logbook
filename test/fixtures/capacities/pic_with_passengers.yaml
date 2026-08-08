@@ -1,0 +1,27 @@
+# PIC carrying passengers. Identical to pic_sole_occupant except that the
+# pilot was not alone aboard — which is the whole point of the pair.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:     PIC = full block time.
+#   FAA  §61.51(e)(1)(i): PIC = full block time.
+#   FAA  §61.51(d):   solo = 0. Not the sole occupant.
+#
+# Feeds passenger recency — EASA FCL.060(b)(1) and FAA §61.57(a) — but only
+# by way of `carrying_passengers`, which is a fact about the *flight* and
+# belongs to Flight (issue #11), not to the pilot's capacity. What capacity
+# records is `sole_occupant: false`; who the other occupants were, and
+# whether they were passengers rather than crew, is decided one layer out.
+# See docs/entry-form.md §4, which explains why passengers are never counted.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+
+id: "capacity-pic-with-passengers"
+
+command_authority: true
+sole_manipulator: true
+sole_occupant: false          # §61.51(d) — no solo time on this flight
+multi_pilot_operation: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false

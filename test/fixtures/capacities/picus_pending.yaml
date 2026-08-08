@@ -1,0 +1,43 @@
+# PICUS, awaiting countersignature. Every raw fact about the flight is
+# identical to picus_countersigned.yaml; only the countersignature differs.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA AMC1 FCL.050: PICUS time NOT creditable as PIC while unsigned. The
+#                      projection must return it as *not creditable, with a
+#                      reason* — never silently 0 and never silently valid.
+#                      docs/entry-form.md §4B states the same requirement.
+#   EASA FCL.510(a)(2): no ATPL(A) credit while unsigned.
+#   FAA §61.51(e)(1)(i): PIC = full block time, unchanged. The FAA has no
+#                      countersignature requirement for this, so the two
+#                      jurisdictions answer differently for a reason that has
+#                      nothing to do with what happened in the air.
+#
+# The pair picus_pending / picus_countersigned is the concrete proof that
+# "PICUS" cannot be a stored role: this fixture becomes the other one when a
+# signature arrives, without a single fact about the flight changing. A
+# stored role would have to be rewritten — and CLAUDE.md rule 4 makes an
+# exported entry immutable, so it could not be. See ADR-0008.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+
+id: "capacity-picus-pending"
+
+command_authority: false
+sole_manipulator: true
+sole_occupant: false
+multi_pilot_operation: true
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: true
+pic_intervention_not_required: true
+
+other_pilot_role: "required_crew"
+
+countersignature:
+  status: "pending"
+  signatory_name: "K. Almqvist"
+  signatory_credential_number: "SWE.ATPL.90233"
+  # signed_at is absent, necessarily: nothing has been signed. A `pending`
+  # countersignature carrying a signing time is a contradiction, which is why
+  # the test asserts the two PICUS fixtures agree on every capacity fact and
+  # differ in their countersignature, rather than in the status alone.

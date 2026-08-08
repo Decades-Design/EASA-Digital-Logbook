@@ -1,0 +1,17 @@
+# Deliberately broken: `other_pilot_role` uses a spelling the model does not
+# define. "co_pilot" is plausible and wrong — EASA co-pilot is `required_crew`
+# here — which is exactly why it must be rejected rather than mapped to a
+# nearest match.
+
+id: "malformed-bad-enum-value"
+
+command_authority: false
+sole_manipulator: false
+sole_occupant: false
+multi_pilot_operation: true
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+other_pilot_role: "co_pilot"

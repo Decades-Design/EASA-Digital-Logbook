@@ -1,0 +1,49 @@
+# Dual instruction with the instructor flying — a demonstration sortie, or
+# the leg where the instructor took the aircraft back.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:   dual = full block time, PIC = 0.
+#   FAA  §61.51(h): training received = full block time.
+#   FAA  §61.51(e): PIC = 0 — not the sole manipulator, not acting PIC.
+#
+# This is the one dual case the two authorities agree on, and it is the
+# counterpart to sole_manipulator_receiving_instruction.yaml: the same
+# arrangement with the single fact `sole_manipulator` flipped, which is
+# exactly the fact the FAA answer turns on and the EASA answer ignores.
+#
+# Contrast spic.yaml on the fact that matters under FCL.010: there the
+# instructor did not influence or control the flight and the pilot held
+# command, so the flight is SPIC. Here the instructor influenced it, so the
+# flight is dual. SPIC and dual are mutually exclusive under FCL.010 and
+# cannot be recorded concurrently (docs/jurisdiction-matrix.md §4).
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+
+id: "capacity-dual-received-not-manipulating"
+
+command_authority: false
+sole_manipulator: false       # the instructor was flying
+sole_occupant: false
+multi_pilot_operation: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+# `manipulation_minutes` is deliberately absent. With `sole_manipulator:
+# false` its absence means "did not manipulate at all"; a value would mean a
+# partial takeover, loggable under §61.51(e)(1)(i). See the field dartdoc on
+# PilotCapacity.manipulationTime for the four-way reading.
+
+instructor:
+  capacity: "FI"
+  influenced_flight: true     # the instructor flew it — dual, never SPIC
+  name: "R. Mallory"
+  credential_number: "GBR.FI.4471"
+
+# AMC1 FCL.050(b)(1)(ii): instruction received is certified by the instructor.
+countersignature:
+  status: "signed"
+  signatory_name: "R. Mallory"
+  signatory_credential_number: "GBR.FI.4471"
+  signed_at: "2026-03-21T15:40:00Z"

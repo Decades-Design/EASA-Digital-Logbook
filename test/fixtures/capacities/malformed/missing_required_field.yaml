@@ -1,0 +1,16 @@
+# Deliberately broken: `sole_manipulator` is absent.
+#
+# A missing discriminator must NOT default to false. CLAUDE.md rule 2 — a
+# silently defaulted fact is indistinguishable from a deliberate one, and the
+# FAA PIC answer for this flight would be wrong with no way to tell.
+
+id: "malformed-missing-required-field"
+
+command_authority: false
+# sole_manipulator: intentionally omitted
+sole_occupant: false
+multi_pilot_operation: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
