@@ -86,18 +86,41 @@ single canonical model satisfies both, but the print/export layouts must be per 
 | **Flight time (helicopter)** | Rotor start to rotor stop | Same practical effect via §1.1 | Aligned |
 | **Night (logging)** | End of evening civil twilight to beginning of morning civil twilight | Same — §1.1 defines night by the sun's position, not a fixed clock time | **Aligned for logging** |
 | **Night (currency)** | Same civil-twilight window (FCL.060) | 1 hour after sunset to 1 hour before sunrise (§61.57(b)) | **Two different night windows under FAA alone.** A landing can be night-for-logging but not night-for-currency. |
-| **Cross-country** | Single definition: flight time navigating to a destination away from the departure aerodrome following a pre-planned route using standard navigation procedures — no minimum distance in the definition itself; specific distances sit in the individual experience requirements | At least four distinct definitions under §61.1(b)(3) depending on the certificate sought | **Largest divergence.** Store the route; never store an `isCrossCountry` boolean. |
+| **Cross-country** | Single definition: flight time navigating to a destination away from the departure aerodrome following a pre-planned route using standard navigation procedures — no minimum distance in the definition itself; specific distances sit in the individual experience requirements | A general logging definition with no minimum distance (§61.1(b)(3)(i)), plus six purpose-specific credit tests at 50, 25 or 15 nm depending on the certificate or rating being credited (§61.1(b)(3)(ii)–(vii)) | **Largest divergence.** Store the route; never store an `isCrossCountry` boolean — FAA alone needs several simultaneously live answers per flight. |
 | **Instrument time** | Column 9 records **IFR time** — an operational condition | Only time operating the aircraft solely by reference to instruments under actual or simulated instrument conditions (§61.51(g)(1)) | An IFR flight entirely in VMC = full EASA IFR time, **zero** FAA instrument time. |
 | **Simulated instrument** | Not separately columned | Separate condition (§61.51(b)(3)(iii)) | FAA needs actual/simulated split; EASA does not |
 | **FSTD time** | Column 11, separated from flight time (group 6) | Logged, but not flight time | Aligned in principle |
 
-### ⚠️ Cross-country, expanded
+### Cross-country, expanded
 
-The EASA definition does not require the arrival point to differ from departure, so a
-pre-planned navigation exercise returning to the origin can qualify. This is contested in
-practice and interpretation varies by authority. The FAA general definition requires a landing
-at a point other than departure; most rating credit additionally requires a landing more than
-50 nm straight-line from the origin. ATPL credit differs again under both systems.
+**FAA — §61.1(b)(3).** Seven sub-paragraphs, not one. (i) is what cross-country *time* actually
+is — no minimum distance — and is what gets logged as such; (ii)–(vii) are purpose-specific
+*credit* tests layered on top, each gating whether a cross-country flight counts toward one
+particular certificate or rating's aeronautical experience requirement.
+
+| § | Applies to | Minimum landing distance | Notes |
+|---|---|---|---|
+| (i) | General definition — any certificated pilot, any aircraft | None | A landing anywhere other than the point of departure, navigated to by dead reckoning, pilotage, or an electronic/radio/other nav system. This is the loggable definition, not a credit test. |
+| (ii) | Private (except powered-parachute rating), commercial, instrument rating; recreational privileges except rotorcraft | > 50 nm straight-line | The threshold most people mean by "the 50 nm rule" |
+| (iii) | Sport pilot, except powered-parachute privileges | > 25 nm straight-line | |
+| (iv) | Sport pilot with powered-parachute privileges; private pilot with powered-parachute category rating | > 15 nm straight-line | |
+| (v) | Any certificate with rotorcraft category rating; instrument–helicopter rating; recreational privileges in a rotorcraft | > 25 nm straight-line | Rotorcraft takes the sport-pilot distance, not the private-pilot one |
+| (vi) | Airline transport pilot, except rotorcraft category rating | > 50 nm straight-line | |
+| (vii) | Military pilot qualifying for a commercial certificate under §61.73, except rotorcraft | > 50 nm straight-line | |
+
+**Consequence for the model:** a single flight can be cross-country under the general definition
+(i) — and loggable as such — while failing every credit test that applies to the certificate the
+pilot is actually pursuing, or passing some and not others if the pilot is working toward more
+than one. Which threshold applies is a function of *which certificate or rating's credit is being
+evaluated* and *the aircraft's category* (rotorcraft vs. not; powered-parachute vs. not — see
+`AircraftCategory` in `lib/domain/model/aircraft.dart`), never a single number. #24's projection
+needs to answer "is this cross-country toward a private certificate" and "is this cross-country
+toward a rotorcraft rating" as two different questions over the same flight and the same stored
+route.
+
+**EASA / UK.** The definition does not require the arrival point to differ from departure, so a
+pre-planned navigation exercise returning to the origin can qualify. This is contested in practice
+and interpretation varies by competent authority. ATPL credit differs again.
 
 **Implication:** cross-country is not one field. It is a per-profile, per-purpose predicate
 evaluated over the stored route.
