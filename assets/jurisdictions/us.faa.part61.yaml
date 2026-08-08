@@ -1,0 +1,7 @@
+# FAA 14 CFR Part 61. See docs/jurisdiction-matrix.md and docs/adr/0001-raw-facts-only.md.
+#
+# A root profile like eu.easa.part-fcl.yaml — the FAA is its own lineage,
+# not a variant of EASA, so it does not extend anything.
+id: us.faa.part61
+
+pic_rule: faa.pilot_function_time
