@@ -10,6 +10,7 @@ import 'package:easa_digital_log/domain/model/utc_instant.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../tool/dart_source.dart';
+import '../../fixtures/decoders/fixture_fields.dart';
 import '../../fixtures/decoders/flight_fixture.dart';
 
 /// The names issue #11 explicitly lists as forbidden — every one of them is
@@ -80,7 +81,8 @@ void main() {
         actualInstrumentTime: FlightDuration.zero,
         simulatedInstrumentTime: FlightDuration.zero,
         approaches: const [],
-        holdingAndTrackingPerformed: false,
+        holdingProceduresCount: 0,
+        trackingPerformed: false,
         remarks: '',
       );
 
@@ -90,6 +92,27 @@ void main() {
       expect(flight.seriesGroupId, isNull);
       expect(flight.airworthinessBasis, isNull);
     });
+
+    test(
+      'multiple approach procedures are distinct list entries with their own count',
+      () {
+        // "2x ILS 36 LIML + 1 LOC 27 LIMG" — one Approach per distinct
+        // procedure, the repeat count carried on the entry, not the list.
+        const approaches = [
+          Approach(
+            type: ApproachType.ils,
+            aerodromeIcao: 'LIML',
+            runway: 36,
+            count: 2,
+          ),
+          Approach(type: ApproachType.loc, aerodromeIcao: 'LIMG', runway: 27),
+        ];
+
+        expect(approaches, hasLength(2));
+        expect(approaches[0].count, 2);
+        expect(approaches[1].count, 1, reason: 'default count is 1');
+      },
+    );
   });
 
   group('the FAA/EASA divergence fixture', () {
@@ -110,6 +133,21 @@ void main() {
       expect(flight.approaches, isEmpty);
       expect(flight.seriesGroupId, isNull);
       expect(flight.airworthinessBasis, isNull);
+    });
+  });
+
+  group('the fixture decoder', () {
+    test('rejects a runway outside 1-36 rather than storing it', () {
+      expect(
+        () => flightFromFixture('malformed/bad_runway'),
+        throwsA(
+          isA<FixtureFieldException>().having(
+            (e) => e.key,
+            'key',
+            'approaches.runway',
+          ),
+        ),
+      );
     });
   });
 }

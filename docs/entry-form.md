@@ -310,16 +310,20 @@ licences held.
 | IFR time | EASA licence held | Operational condition — time under IFR, regardless of meteorological conditions |
 | Actual instrument | FAA licence held | Time solely by reference to instruments, §61.51(g)(1) |
 | Simulated instrument | FAA licence held | Separate condition; reveals the safety pilot field in 4C |
-| Approaches flown | FAA IR held, or FAA IR training in progress | Count, plus type and location **per approach** — §61.51(g)(3) requires both to be recorded for §61.57(c) currency. Not shown to an EASA-only pilot |
-| Holding / course tracking | FAA IR held, or FAA IR training in progress | §61.57(c) requires these alongside the six approaches and they are routinely forgotten |
+| Approaches flown | FAA IR held, or FAA IR training in progress | One row per distinct procedure: type (picker — ILS, RNAV, GPS, VOR, LOC, NDB, back course, LDA, SDF, TACAN, PAR, ASR, MLS, roughly most to least common), aerodrome ICAO identifier (pre-filled from the flight's destination, editable), runway (1–36), and a repeat count. §61.51(g)(3) requires type and location per approach for §61.57(c) currency. Not shown to an EASA-only pilot |
+| Holding procedures | FAA IR held, or FAA IR training in progress | Count, not a toggle — holding is repeatable within one flight |
+| Course tracking | FAA IR held, or FAA IR training in progress | A single toggle, independent of the holding count — intercepting and tracking a course via a nav system either happened or didn't |
 
-**Approaches are an FAA-only field.** EASA IR revalidation is by annual proficiency check, not by
-counting approaches, so an EASA-only pilot never needs the control. If an EASA pilot wants to
-record approaches for their own purposes, that belongs in remarks — AMC1 FCL.050 permits column
-12 to be used at the holder's discretion, and recent amendments reference recording PBN and RNP
-APCH approaches there. Optional, free-text, never a structured requirement. ⚠️ Verify the
-current AMC1 wording on this before implementing; the PBN remarks provision appeared in draft
-amendment material and its status in the adopted text needs checking.
+**Approaches, holding and tracking are FAA-only fields**, and belong together as an **IR Currency
+and Proficiency** group within this section rather than three separate rows — they are the raw
+facts behind one recency requirement (§61.57(c)) and a pilot filling them in is thinking about
+that requirement as a whole. EASA IR revalidation is by annual proficiency check, not by counting
+approaches, so an EASA-only pilot never needs any of the group. If an EASA pilot wants to record
+approaches for their own purposes, that belongs in remarks — AMC1 FCL.050 permits column 12 to be
+used at the holder's discretion, and recent amendments reference recording PBN and RNP APCH
+approaches there. Optional, free-text, never a structured requirement. ⚠️ Verify the current AMC1
+wording on this before implementing; the PBN remarks provision appeared in draft amendment
+material and its status in the adopted text needs checking.
 
 **Do not conflate IFR time with instrument time.** They are different quantities and a flight
 conducted under IFR entirely in VMC produces full EASA IFR time and zero FAA instrument time.

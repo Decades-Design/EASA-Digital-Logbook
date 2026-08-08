@@ -127,14 +127,25 @@ abstract class Flight with _$Flight {
     /// by counting approaches (`docs/jurisdiction-matrix.md` §9). Empty, not
     /// null, when none. `§61.51(g)(3)` requires type and location per
     /// approach for `§61.57(c)` currency — a bare count is not enough.
+    ///
+    /// One entry per distinct procedure, not per approach flown: two ILS
+    /// approaches to runway 36 at the same aerodrome are one [Approach] with
+    /// [Approach.count] 2, not two identical list entries. A flight with
+    /// "2x ILS 36 LIML + 1 LOC 27 LIMG" is a two-element list.
     required List<Approach> approaches,
 
-    /// Whether holding procedures and intercepting/tracking a course via a
-    /// navigation system were performed. `§61.57(c)`; a single fact per
-    /// `docs/jurisdiction-matrix.md` §9, which notes it is "often
+    /// Number of holding patterns flown. `§61.57(c)`. A count, not a bool —
+    /// unlike [trackingPerformed], holding is naturally repeatable within
+    /// one flight and the number matters for the pilot's own proficiency
+    /// tracking beyond the bare currency minimum.
+    required int holdingProceduresCount,
+
+    /// Whether intercepting and tracking a course through the use of an
+    /// electronic navigation system was performed. `§61.57(c)`;
+    /// `docs/jurisdiction-matrix.md` §9 notes this whole area is "often
     /// forgotten" precisely because most logbook software has nowhere to
     /// put it.
-    required bool holdingAndTrackingPerformed,
+    required bool trackingPerformed,
 
     // ---- Facts unbackfillable if omitted, from jurisdiction-matrix.md §9.
     /// The EASA "flights of short duration" 30-minute rule lets a series of
@@ -177,21 +188,76 @@ abstract class CircuitCounts with _$CircuitCounts {
   }) = _CircuitCounts;
 }
 
-/// One instrument approach: what kind, and where. `§61.51(g)(3)` requires
-/// both to be recorded, not just a count, for `§61.57(c)` currency.
+/// One distinct instrument approach procedure flown, and how many times.
+/// `§61.51(g)(3)` requires type and location to be recorded, not just a
+/// count, for `§61.57(c)` currency — this carries a runway too, since two
+/// approaches to the same aerodrome by different runways are different
+/// procedures.
+///
+/// One [Approach] per distinct procedure, not per approach flown — see
+/// [Flight.approaches].
 @freezed
 abstract class Approach with _$Approach {
   const factory Approach({
-    /// Free text (e.g. `ILS`, `RNAV (GPS)`, `VOR`) rather than a controlled
-    /// vocabulary — `§61.57(c)` counts approaches regardless of type, so
-    /// nothing in this codebase currently needs to branch on it, and the
-    /// real-world list is long and evolving (RNP variants, GLS, and so on).
-    required String type,
+    required ApproachType type,
 
-    /// The aerodrome identifier the approach was flown to or at, in the
-    /// same free-form shape as [Flight.route].
-    required String location,
+    /// ICAO identifier of the aerodrome the approach was flown to. Always a
+    /// real ICAO code, unlike [Flight.route]: an instrument approach only
+    /// exists at an aerodrome with a published procedure, which rules out
+    /// the private-strip case that makes `route` free text. The entry form
+    /// pre-fills this from the flight's destination aerodrome — it is not
+    /// necessarily the same one, since an approach can be flown at an
+    /// alternate or a training stop that isn't where the flight ended.
+    required String aerodromeIcao,
+
+    /// Runway number, 1 to 36. Does not distinguish parallel runways
+    /// (L/C/R) — not asked for, and `§61.57(c)` currency does not turn on
+    /// the distinction.
+    required int runway,
+
+    /// How many times this exact procedure — same [type], [aerodromeIcao]
+    /// and [runway] — was flown on this flight. "2x ILS 36 LIML" is
+    /// `count: 2`, not two separate list entries.
+    @Default(1) int count,
   }) = _Approach;
+}
+
+/// Instrument approach procedure types, ordered roughly most to least
+/// common in current use — not alphabetical, not the order a pilot would
+/// necessarily type them in, but the order that puts the frequent choices
+/// (ILS, RNAV/GPS) at the top of a picker.
+enum ApproachType {
+  ils,
+  rnav,
+  gps,
+  vor,
+  loc,
+
+  /// Non-directional beacon.
+  ndb,
+
+  /// Back-course localizer.
+  backCourse,
+
+  /// Localizer-type directional aid.
+  lda,
+
+  /// Simplified directional facility.
+  sdf,
+
+  /// Tactical air navigation — mostly military/international, though some
+  /// U.S. VORTACs support civil TACAN approaches.
+  tacan,
+
+  /// Precision approach radar — chiefly military.
+  par,
+
+  /// Airport surveillance radar approach.
+  asr,
+
+  /// Microwave landing system — essentially obsolete, kept for completeness
+  /// and for reading historical entries.
+  mls,
 }
 
 /// Which of `§61.51(j)`'s four categories an aircraft's registry and

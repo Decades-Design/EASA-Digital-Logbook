@@ -70,6 +70,7 @@ landings:
 ifr_flight_plan_filed: false
 actual_instrument_minutes: 0
 simulated_instrument_minutes: 0
-holding_and_tracking_performed: false
+holding_procedures_count: 0
+tracking_performed: false
 
 remarks: "Dual instruction, circuits at EGHR. Student rated PPL(A) SEP."

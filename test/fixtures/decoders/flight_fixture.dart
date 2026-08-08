@@ -17,6 +17,22 @@ const Map<String, AirworthinessBasis> _airworthinessBases =
       'public_aircraft_operation': AirworthinessBasis.publicAircraftOperation,
     };
 
+const Map<String, ApproachType> _approachTypes = <String, ApproachType>{
+  'ils': ApproachType.ils,
+  'rnav': ApproachType.rnav,
+  'gps': ApproachType.gps,
+  'vor': ApproachType.vor,
+  'loc': ApproachType.loc,
+  'ndb': ApproachType.ndb,
+  'back_course': ApproachType.backCourse,
+  'lda': ApproachType.lda,
+  'sdf': ApproachType.sdf,
+  'tacan': ApproachType.tacan,
+  'par': ApproachType.par,
+  'asr': ApproachType.asr,
+  'mls': ApproachType.mls,
+};
+
 /// Decodes `test/fixtures/flights/<name>.yaml` into a [Flight].
 Flight flightFromFixture(String name) {
   final yaml = loadFixture('flights', name);
@@ -46,11 +62,8 @@ Flight flightFromFixture(String name) {
       requiredInt(yaml, 'simulated_instrument_minutes', name),
     ),
     approaches: _approaches(yaml, name),
-    holdingAndTrackingPerformed: requiredBool(
-      yaml,
-      'holding_and_tracking_performed',
-      name,
-    ),
+    holdingProceduresCount: requiredInt(yaml, 'holding_procedures_count', name),
+    trackingPerformed: requiredBool(yaml, 'tracking_performed', name),
     seriesGroupId: optionalString(yaml, 'series_group_id', name),
     airworthinessBasis: _airworthinessBasis(yaml, name),
     remarks: requiredString(yaml, 'remarks', name),
@@ -85,8 +98,10 @@ List<Approach> _approaches(YamlMap yaml, String fixture) {
     for (final entry in value)
       if (entry is YamlMap)
         Approach(
-          type: requiredString(entry, 'type', fixture),
-          location: requiredString(entry, 'location', fixture),
+          type: _approachType(entry, fixture),
+          aerodromeIcao: requiredString(entry, 'aerodrome_icao', fixture),
+          runway: _runway(entry, fixture),
+          count: optionalInt(entry, 'count', fixture) ?? 1,
         )
       else
         throw FixtureFieldException(
@@ -95,6 +110,31 @@ List<Approach> _approaches(YamlMap yaml, String fixture) {
           'a list of maps, got an entry ${describe(entry)}',
         ),
   ];
+}
+
+ApproachType _approachType(YamlMap yaml, String fixture) {
+  final raw = requiredString(yaml, 'type', fixture);
+  final type = _approachTypes[raw];
+  if (type == null) {
+    throw FixtureFieldException(
+      fixture,
+      'approaches.type',
+      'one of ${_approachTypes.keys.join(', ')}, got "$raw"',
+    );
+  }
+  return type;
+}
+
+int _runway(YamlMap yaml, String fixture) {
+  final runway = requiredInt(yaml, 'runway', fixture);
+  if (runway < 1 || runway > 36) {
+    throw FixtureFieldException(
+      fixture,
+      'approaches.runway',
+      'an integer between 1 and 36, got $runway',
+    );
+  }
+  return runway;
 }
 
 AirworthinessBasis? _airworthinessBasis(YamlMap yaml, String fixture) {
