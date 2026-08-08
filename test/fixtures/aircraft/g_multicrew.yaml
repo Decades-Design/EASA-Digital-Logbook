@@ -1,20 +1,10 @@
 # A multi-crew type-rated jet. Drives AMC1 FCL.050 column 5 multi-pilot time,
-# and is the aircraft §61.51(f) SIC time and §61.51(e)(1)(iii) acting-PIC
-# logging both require.
+# and is the aircraft §61.51(f) SIC time requires.
 #
-# Derived FAA categories (computed, NOT stored):
-#   §61.31(e)  complex              = false — the rule is written for
-#                                     propeller aeroplanes; a type rating
-#                                     covers the ground it exists to cover
-#   §61.31(f)  high-performance     = unknown (horsepower absent, and the
-#                                     concept does not apply to a turbofan).
-#                                     NOT false: see isHighPerformance
-#   §61.31(g)  high-altitude        = true — the LOWER of 39,800 service
-#                                     ceiling and 39,100 max operating is
-#                                     39,100, well above 25,000
-#   §61.31(a)  FAA type rating      = true, on both limbs at once
-#   §61.129(j) technically advanced = false
-#   EASA rating                     = type rating A320, not a class rating
+# Type-rated under both authorities, on the same identifier — which is the
+# point of storing the identifier rather than a boolean. A second A32N
+# registration would carry "A320" too, and both resolve to the one type rating
+# the pilot holds, with one validity date.
 
 registration: "G-EZAB"
 manufacturer: "Airbus"
@@ -26,20 +16,13 @@ engine_type: "turbofan"
 engine_count: 2
 operating_surface: "land"
 
-type_rating_designator: "A320"
 requires_multi_crew: true
+type_rating_designator: "A320"
 
-# horsepower omitted deliberately — a turbofan has none, and the FAA
-# high-performance question is therefore unanswerable rather than answerable
-# as false.
-
-maximum_takeoff_mass_kg: 78000    # far over the 12,500 lb type-rating limb
-service_ceiling_feet: 39800
-maximum_operating_altitude_feet: 39100   # the LOWER of the two — §61.31(g)
-
-equipment:
-  - "retractable_undercarriage"
-  - "flaps"
-  - "pressurised"
-  - "electronic_flight_instrument_system"
-  - "integrated_autopilot"
+required_qualifications:
+  # Set up for EASA only. The FAA key is ABSENT, not empty — this aeroplane
+  # has never been set up under Part 61, which is a different statement from
+  # "set up, and requires nothing".
+  "eu.easa.part-fcl":
+    - "easa_cabin_pressurisation"
+    - "easa_electronic_flight_instrument_system"

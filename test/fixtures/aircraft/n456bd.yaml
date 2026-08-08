@@ -1,16 +1,9 @@
-# A complex, high-performance, technically advanced single. The fixture that
-# makes all three FAA derivations answer true at once, so a primitive that
-# ignores one of its conditions cannot pass unnoticed.
+# A retractable, constant-speed, 300 hp single. The fixture that shows the two
+# authorities reaching different lists from the same aeroplane.
 #
-# Derived FAA categories (computed, NOT stored):
-#   §61.31(e)  complex              = true  (retractable + flaps + var pitch)
-#   §61.31(f)  high-performance     = true  (300 hp > 200)
-#   §61.129(j) technically advanced = true  (PFD + MFD moving map + autopilot)
-#   EASA class rating               = SEP(land)
-#
-# GM1 FCL.700 differences training applies for retractable undercarriage,
-# variable pitch and EFIS — a different list from the FAA's, over the same
-# facts, which is the whole reason equipment is stored and categories are not.
+# docs/ratings-and-endorsements.md §3: the systems are not translations of
+# each other. Here the FAA wants two endorsements and EASA wants two
+# differences items, and they are not the same two.
 
 registration: "N456BD"
 manufacturer: "Beechcraft"
@@ -24,15 +17,11 @@ operating_surface: "land"
 
 requires_multi_crew: false
 
-horsepower: 300
-maximum_takeoff_mass_lb: 3650     # certificated in lb; see Mass
-service_ceiling_feet: 18500
-
-equipment:
-  - "retractable_undercarriage"
-  - "flaps"
-  - "variable_pitch_propeller"
-  - "electronic_flight_instrument_system"
-  - "primary_flight_display"
-  - "multi_function_display_with_moving_map"
-  - "integrated_autopilot"
+required_qualifications:
+  "us.faa.part61":
+    - "faa_complex"            # §61.31(e)
+    - "faa_high_performance"   # §61.31(f) — 300 hp
+  "eu.easa.part-fcl":
+    - "easa_variable_pitch_propeller"      # VP
+    - "easa_retractable_undercarriage"     # RU
+    - "easa_electronic_flight_instrument_system"  # EFIS

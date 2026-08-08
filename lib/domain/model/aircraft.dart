@@ -1,119 +1,108 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'mass.dart';
-
 part 'aircraft.freezed.dart';
 
 /// An aircraft the logbook holder has flown.
 ///
-/// **Physical facts only.** `complex`, `high-performance` and `technically
-/// advanced` are FAA *categories* defined by `§61.31` in terms of what the
-/// aircraft carries, and EASA differences training keys off an overlapping but
-/// differently-drawn list. Both are read from [equipment] and [horsepower] by
-/// `lib/domain/primitives/faa_aircraft_categories.dart` rather than stored —
-/// CLAUDE.md rule 1. The two taxonomies "not aligning" is not a problem to
-/// solve; they are two readings of one set of facts.
+/// **The pilot declares what the aircraft requires; the app does not work it
+/// out.** [requiredQualifications] is entered, not derived from physical
+/// attributes. Three reasons, and the first is the decisive one:
 ///
-/// A simulator is **not** an aircraft with a flag set. See [Fstd] in
-/// `fstd.dart`: `AMC1 FCL.050` column 11 gives a device session its own date
-/// and keeps its total out of total time of flight, so the two are separate
-/// types and simulator time cannot reach a flight total by accident.
+/// 1. **Import round-trips.** ForeFlight and Garmin export aircraft profiles
+///    carrying `complex` and `high performance` as flags. Physical attributes
+///    cannot be reconstructed from a category flag, so a derived model could
+///    never store what those files actually say.
+/// 2. **The pilot already knows.** These come from an EFB and from training,
+///    and setting up an aircraft is rare. Asking for the answer is less work
+///    than asking for the six inputs a derivation would need.
+/// 3. **Rules have exemptions a derivation cannot see** — the pre-1997
+///    grandfathering on complex and high performance, permit aircraft, and
+///    national variations. See `docs/ratings-and-endorsements.md` §3.
+///
+/// This is a deliberate departure from CLAUDE.md rule 1, and a narrow one.
+/// Rule 1 protects *flights*, which are historical records: nobody can revisit
+/// whether they held command in 2023. An aircraft is a current reference
+/// record, editable whenever a rule changes, so nothing here is unrecoverable.
+/// The fields below that are **not** qualifications — category, engine,
+/// surface, multi-crew — remain plain facts because logging depends on them.
+///
+/// A simulator is not an aircraft with a flag set: see `fstd.dart`.
 @freezed
 abstract class Aircraft with _$Aircraft {
   const factory Aircraft({
-    /// Registration as displayed, e.g. `G-ABCD`, `N123AB`. The identifier the
-    /// pilot actually types; `AMC1 FCL.050` column 4 prints it verbatim.
+    /// Registration as displayed, e.g. `G-ABCD`. `AMC1 FCL.050` column 4
+    /// prints it verbatim.
     required String registration,
 
-    /// Manufacturer and model as free text, e.g. `Cessna`, `152`.
-    /// `AMC1 FCL.050` column 4 wants make, model and variant, and no
-    /// controlled vocabulary covers the long tail of GA types.
+    /// Make and model as free text, e.g. `Cessna`, `152`. `AMC1 FCL.050`
+    /// column 4 wants make, model and variant, and no controlled vocabulary
+    /// covers the long tail of GA types.
     required String manufacturer,
     required String model,
 
-    /// ICAO type designator, e.g. `C152`. Null for the many aircraft that have
-    /// none — homebuilts, microlights, vintage types. CLAUDE.md's import notes
-    /// expect non-ICAO type codes in vendor CSVs, so this can never be
-    /// required.
+    /// ICAO type designator, e.g. `C152`. Null for the many aircraft with
+    /// none — homebuilts, microlights, vintage types.
     String? icaoTypeDesignator,
 
+    /// Decides which flight-time definition applies: `FCL.010` measures an
+    /// aeroplane from first movement and a helicopter rotor-start to
+    /// rotor-stop. A fact about the machine, not a qualification.
     required AircraftCategory category,
+
+    /// With [engineCount] and [operatingSurface], what shows the EASA class
+    /// rating — SEP(land), MEP(sea) and so on — and what `AMC1 FCL.050`
+    /// column 5 needs to split SE from ME.
     required EngineType engineType,
-
-    /// Zero for a glider or balloon.
     required int engineCount,
-
     required OperatingSurface operatingSurface,
 
-    /// The type rating designator where one applies, e.g. `A320`. Null means
-    /// the aircraft is class-rated.
-    ///
-    /// This carries the fact; there is deliberately no `requiresTypeRating`
-    /// boolean beside it. The FAA half of the question *is* derivable — over
-    /// 12,500 lb, or turbojet-powered — and
-    /// `primitives/faa_aircraft_categories.dart` derives it. The EASA half
-    /// partly is not: "individually listed in the EASA Class and Type Rating
-    /// List" is a lookup, not a calculation, and this field is where that
-    /// lookup's answer lands. See `docs/ratings-and-endorsements.md` §5, which
-    /// lists `requiresTypeRating` among the values never to store.
-    String? typeRatingDesignator,
-
     /// Whether the aircraft's certification requires more than one pilot.
-    /// `§61.51(e)(1)(iii)` and `§61.51(f)` both read this, and `AMC1 FCL.050`
-    /// column 5 splits single-pilot from multi-pilot time.
-    ///
-    /// Pre-fills a flight's multi-pilot fact without replacing it — an
-    /// operation can require two pilots by rule in a single-pilot aircraft.
+    /// `§61.51(f)` gates SIC time on it and `AMC1 FCL.050` column 5 splits
+    /// single-pilot from multi-pilot time. A logging discriminator, not a
+    /// qualification.
     required bool requiresMultiCrew,
 
-    /// Maximum continuous engine power, per engine, in horsepower.
+    /// The type rating identifier where one applies, e.g. `A320`. Null means
+    /// class-rated.
     ///
-    /// Stored because `§61.31(f)` draws the high-performance line at more than
-    /// 200 hp. Null where unknown or not meaningful; a null makes the
-    /// high-performance question unanswerable rather than answerable as false.
-    int? horsepower,
-
-    /// Maximum certificated takeoff mass, in the unit it was certificated in.
+    /// One field rather than a boolean beside it: set *is* "a type rating is
+    /// required", so the two states that could contradict each other — true
+    /// with no identifier, false with one — cannot be expressed.
     ///
-    /// Drives the FAA type-rating threshold of more than 12,500 lb and the
-    /// EASA thresholds expressed in kilograms. See [Mass] on why the unit is
-    /// stored rather than normalised: both authorities draw sharp lines in
-    /// their own units, and 12,500 lb is a common certification limit
-    /// precisely because it is the line.
-    Mass? maximumTakeoffMass,
+    /// This is the join. Several registrations sharing an identifier share one
+    /// type rating, so two A32N airframes resolve to the same `A320` rating
+    /// the pilot holds, with one validity date. Revalidating updates one
+    /// record rather than one per aeroplane. The validity itself lives with
+    /// the pilot's held rating, never here — an aircraft has no expiry.
+    String? typeRatingDesignator,
 
-    /// Service ceiling in feet.
+    /// What the pilot must hold to fly this aircraft, per authority.
     ///
-    /// `§61.31(g)` requires a high-altitude endorsement where the service
-    /// ceiling *or* maximum operating altitude, **whichever is lower**, is
-    /// above 25,000 ft. Both are stored because the rule compares the lower
-    /// of the two, and neither can stand in for the other.
-    int? serviceCeilingFeet,
-
-    /// Maximum operating altitude in feet. The other half of `§61.31(g)`; see
-    /// [serviceCeilingFeet].
-    int? maximumOperatingAltitudeFeet,
-
-    /// Everything the aircraft carries that any authority's rules turn on.
+    /// Keyed by jurisdiction profile id (`eu.easa.part-fcl`, `us.faa.part61`).
+    /// A **missing key** means the aircraft has not been set up for that
+    /// authority yet; a **present but empty** set means it has, and nothing is
+    /// required. Those are different answers and the UI must not conflate
+    /// them.
     ///
-    /// A set rather than a row of booleans so a new attribute is one enum
-    /// value, not a schema change — an explicit requirement of issue #12,
-    /// and the reason this survives both authorities revising their lists.
-    @Default(<AircraftEquipment>{}) Set<AircraftEquipment> equipment,
+    /// Per authority because the two systems are not translations of each
+    /// other (`docs/ratings-and-endorsements.md` §3): a 180 hp Arrow is
+    /// complex but not high performance under the FAA, and needs variable
+    /// pitch plus retractable under EASA. A 300 hp fixed-gear 206 is the
+    /// reverse.
+    @Default(<String, Set<AircraftQualification>>{})
+    Map<String, Set<AircraftQualification>> requiredQualifications,
   }) = _Aircraft;
 }
 
-/// The broad kind of aircraft. Determines which time definition applies —
-/// `FCL.010` measures aeroplane flight time from first movement and helicopter
-/// time rotor-start to rotor-stop — and which labels the entry form shows.
+/// The broad kind of aircraft.
 enum AircraftCategory {
   aeroplane,
   helicopter,
   poweredLift,
   glider,
 
-  /// Touring motor glider. A separate EASA class rating with its own
-  /// revalidation rules under `FCL.740.A`, and not simply a glider.
+  /// Touring motor glider — a separate EASA class rating with its own
+  /// revalidation rules under `FCL.740.A`, not simply a glider.
   touringMotorGlider,
 
   airship,
@@ -122,59 +111,66 @@ enum AircraftCategory {
 
 enum EngineType { none, piston, turboprop, turbojet, turbofan, electric }
 
-/// Where the aircraft operates from. With [Aircraft.engineType] and
-/// [Aircraft.engineCount] this yields the EASA class rating — SEP(land),
-/// MEP(sea) and so on — which is therefore never stored.
+/// Where the aircraft operates from. With engine type and count this gives the
+/// EASA class rating suffix — (land) or (sea).
 enum OperatingSurface { land, sea, amphibian }
 
-/// Physical and avionic attributes that an authority's rules read.
+/// A qualification an aircraft can require.
 ///
-/// EASA differences training (`GM1 FCL.700`) and FAA aircraft categories
-/// (`§61.31`) draw different lines through this same list, which is why the
-/// list holds facts and not either authority's conclusions.
-enum AircraftEquipment {
-  /// EASA differences training under `GM1 FCL.700`; also one of the three
-  /// conditions for FAA complex under `§61.31(e)`.
-  retractableUndercarriage,
+/// One list covering both authorities, because [Aircraft.requiredQualifications]
+/// is keyed by authority and each key's set draws only on its own values.
+/// Putting an FAA endorsement in an EASA list is a data error, not a type
+/// error — the app should not stop you recording something unusual.
+///
+/// Deliberately excludes everything `docs/ratings-and-endorsements.md` marks
+/// ⚠️: no BIR, no IR(R), no NPPL SSEA items, no UK national licence classes.
+/// Those rows are unverified, and half-encoding a regulation is worse than
+/// leaving it out.
+enum AircraftQualification {
+  // ---- FAA §61.31 endorsements. Permanent once given; they never expire.
+  /// `§61.31(e)` — retractable gear, flaps and a controllable-pitch propeller;
+  /// for seaplanes, flaps and controllable-pitch propeller alone.
+  faaComplex,
 
-  /// Variable- or controllable-pitch propeller. `GM1 FCL.700`; the second
-  /// `§61.31(e)` condition.
-  variablePitchPropeller,
+  /// `§61.31(f)` — an engine of more than 200 horsepower.
+  faaHighPerformance,
 
-  /// The third `§61.31(e)` condition. Recorded explicitly because a handful of
-  /// types genuinely have none, and assuming flaps would make them complex.
-  flaps,
+  /// `§61.31(g)` — service ceiling or maximum operating altitude, whichever is
+  /// lower, above 25,000 ft MSL. Not the same as being pressurised.
+  faaHighAltitude,
 
-  /// `GM1 FCL.700` treats turbocharging and supercharging as distinct
-  /// differences-training items.
-  turbocharged,
-  supercharged,
+  /// `§61.31(i)` — tailwheel-equipped aeroplanes.
+  faaTailwheel,
 
-  /// `GM1 FCL.700`.
-  pressurised,
+  /// `§61.69` — glider or banner towing.
+  faaTowing,
 
-  /// Tailwheel undercarriage. `GM1 FCL.700`, and an FAA endorsement
-  /// requirement under `§61.31(i)`.
-  tailwheel,
+  // ---- EASA / UK differences training within a class. `GM1 FCL.700`, and the
+  // EASA Class and Type Rating & Licence Endorsement List. Recorded in the
+  // logbook and signed by an instructor; no licence reissue.
+  /// Variable-pitch propellers (VP).
+  easaVariablePitchPropeller,
 
-  /// Electronic flight instrument system. The EASA differences item under
-  /// `GM1 FCL.700`, drawn differently from the FAA's technically-advanced
-  /// test — which is why both appear in this list rather than one standing in
-  /// for the other.
-  electronicFlightInstrumentSystem,
+  /// Retractable undercarriage (RU). Not applicable to seaplane classes.
+  easaRetractableUndercarriage,
 
-  /// Single lever power control. `GM1 FCL.700`.
-  singleLeverPowerControl,
+  /// Turbo- or super-charged engines (T).
+  easaTurboOrSupercharged,
 
-  /// Primary flight display. First condition of FAA technically advanced
-  /// under `§61.129(j)`.
-  primaryFlightDisplay,
+  /// Cabin pressurisation (P).
+  easaCabinPressurisation,
 
-  /// Multifunction display showing a moving map with GPS. Second `§61.129(j)`
-  /// condition.
-  multiFunctionDisplayWithMovingMap,
+  /// Tail wheels (TW). The one item that maps roughly one-to-one onto an FAA
+  /// endorsement — see [faaTailwheel].
+  easaTailwheel,
 
-  /// Two-axis autopilot integrated with the navigation and heading guidance.
-  /// Third `§61.129(j)` condition.
-  integratedAutopilot,
+  /// Electronic flight instrument system (EFIS). Drawn differently from the
+  /// FAA's technically-advanced test, which is why there is no shared value.
+  easaElectronicFlightInstrumentSystem,
+
+  /// Single lever power control (SLPC).
+  easaSingleLeverPowerControl,
+
+  /// Another type of engine, per Article 2(8c).
+  easaOtherEngineType,
 }

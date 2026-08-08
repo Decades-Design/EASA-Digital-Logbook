@@ -1,0 +1,23 @@
+# The mirror of g_arrow.yaml, also from docs/ratings-and-endorsements.md §3:
+#
+#   "A fixed-gear, constant-speed 300 hp Cessna 206 is high performance but
+#    NOT complex under the FAA, and needs only VP under EASA."
+
+registration: "G-C206"
+manufacturer: "Cessna"
+model: "206 Stationair"
+icao_type_designator: "C206"
+
+category: "aeroplane"
+engine_type: "piston"
+engine_count: 1
+operating_surface: "land"
+
+requires_multi_crew: false
+
+required_qualifications:
+  "us.faa.part61":
+    - "faa_high_performance"   # §61.31(f) — 300 hp
+                               # NOT complex: fixed gear
+  "eu.easa.part-fcl":
+    - "easa_variable_pitch_propeller"

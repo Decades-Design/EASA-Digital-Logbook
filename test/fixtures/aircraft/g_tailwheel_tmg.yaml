@@ -1,13 +1,10 @@
 # A touring motor glider with a tailwheel. TMG is its own EASA class rating
 # with its own revalidation rules under FCL.740.A, and is not a glider.
 #
-# Derived FAA categories (computed, NOT stored):
-#   §61.31(e)  complex              = false — not an aeroplane category
-#   §61.31(f)  high-performance     = false (80 hp)
-#   §61.129(j) technically advanced = false
-#   §61.31(i)  tailwheel endorsement applies
-#
-# GM1 FCL.700 differences training: tailwheel, variable pitch.
+# Carries the one qualification that maps roughly one-to-one between the two
+# systems — tailwheel is an FAA endorsement (§61.31(i)) and an EASA
+# differences item (TW). They are still separate values, because the app must
+# not assume any other pair corresponds.
 
 registration: "G-TMGA"
 manufacturer: "Scheibe"
@@ -20,10 +17,9 @@ operating_surface: "land"
 
 requires_multi_crew: false
 
-horsepower: 80
-maximum_takeoff_mass_kg: 650
-service_ceiling_feet: 16000
-
-equipment:
-  - "tailwheel"
-  - "variable_pitch_propeller"
+required_qualifications:
+  "us.faa.part61":
+    - "faa_tailwheel"          # §61.31(i)
+  "eu.easa.part-fcl":
+    - "easa_tailwheel"         # TW
+    - "easa_variable_pitch_propeller"

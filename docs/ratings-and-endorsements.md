@@ -145,8 +145,24 @@ The two systems are not translations of each other:
 - Tailwheel is an FAA endorsement and an EASA differences item, so it maps roughly one-to-one —
   the only clean correspondence in the table.
 
-Store the aircraft's **physical attributes**, then let each jurisdiction profile derive its own
-required-qualification list. Never store "complex: true" as an aircraft property.
+**Superseded 2026-08-08 — the app stores the declared list, not the physical attributes.**
+
+The original guidance here was to store physical attributes and derive each authority's list.
+That was reversed for three reasons, the first decisive:
+
+1. **Import round-trips.** ForeFlight and Garmin export aircraft profiles carrying `complex` and
+   `high performance` as flags. Physical attributes cannot be reconstructed from a category flag,
+   so a derived model could never store what those files actually say.
+2. **The pilot already knows**, from the EFB and from training, and setting up an aircraft is
+   rare. Asking for the answer is less work than asking for the six inputs a derivation needs.
+3. **Exemptions a derivation cannot see** — the pre-1997 grandfathering in this section, permit
+   aircraft, national variations.
+
+CLAUDE.md rule 1 bites less here than it looks: rule 1 protects *flights*, which are historical
+records nobody can revisit. An aircraft is a current reference record, editable whenever a rule
+changes, so nothing is unrecoverable. `Aircraft.requiredQualifications` holds one list per
+authority, keyed by jurisdiction profile id. The app offers no hints and never second-guesses
+the entry — the pilot is the authority.
 
 ---
 
@@ -216,10 +232,25 @@ UI should not try to present them with one shared widget.
 
 ---
 
-## 7. Aircraft attributes the data model must carry
+## 7. Aircraft attributes
 
-Every qualification above must be derivable from these. Absence of any makes the
-required-qualification check impossible for that jurisdiction.
+⚠️ **Superseded 2026-08-08 for the qualification attributes.** See §3. The app does not derive
+qualifications, so the attributes that existed only to feed a derivation — horsepower, MTOW,
+service ceiling, retractable gear, propeller, flaps, turbocharging, pressurisation, tailwheel,
+EFIS, SLPC, cruise speed — are **not** stored. The pilot declares the resulting list instead.
+
+What the model does carry, because logging depends on it rather than qualification:
+
+| Attribute | Drives |
+|---|---|
+| Category (aeroplane / helicopter / TMG / …) | Which flight-time definition applies — `FCL.010` |
+| Engine count and type | EASA class rating display; `AMC1 FCL.050` column 5 SE/ME |
+| Land / sea / amphibian | Class rating suffix |
+| Multi-pilot by type certificate | `§61.51(f)` SIC logging; column 5 single/multi-pilot split |
+| Type rating identifier | Set means one is required; the join to the pilot's held rating |
+
+The table below is retained as the reference for *what each qualification means*, which the
+entry form's information popups draw on.
 
 | Attribute | Type | Drives |
 |---|---|---|

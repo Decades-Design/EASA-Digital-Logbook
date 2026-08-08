@@ -1,29 +1,32 @@
 import 'package:easa_digital_log/domain/model/aircraft.dart';
-import 'package:easa_digital_log/domain/model/mass.dart';
 import 'package:yaml/yaml.dart';
 
 import '../fixture_loader.dart';
 import 'fixture_fields.dart';
 
-/// Snake-case YAML spellings for [AircraftEquipment].
+/// Snake-case YAML spellings for [AircraftQualification].
 ///
 /// Spelt out rather than derived from the enum name, so renaming a Dart value
 /// cannot silently change what a fixture means.
-const Map<String, AircraftEquipment> _equipment = <String, AircraftEquipment>{
-  'retractable_undercarriage': AircraftEquipment.retractableUndercarriage,
-  'variable_pitch_propeller': AircraftEquipment.variablePitchPropeller,
-  'flaps': AircraftEquipment.flaps,
-  'turbocharged': AircraftEquipment.turbocharged,
-  'supercharged': AircraftEquipment.supercharged,
-  'pressurised': AircraftEquipment.pressurised,
-  'tailwheel': AircraftEquipment.tailwheel,
-  'electronic_flight_instrument_system':
-      AircraftEquipment.electronicFlightInstrumentSystem,
-  'single_lever_power_control': AircraftEquipment.singleLeverPowerControl,
-  'primary_flight_display': AircraftEquipment.primaryFlightDisplay,
-  'multi_function_display_with_moving_map':
-      AircraftEquipment.multiFunctionDisplayWithMovingMap,
-  'integrated_autopilot': AircraftEquipment.integratedAutopilot,
+const Map<String, AircraftQualification>
+_qualifications = <String, AircraftQualification>{
+  'faa_complex': AircraftQualification.faaComplex,
+  'faa_high_performance': AircraftQualification.faaHighPerformance,
+  'faa_high_altitude': AircraftQualification.faaHighAltitude,
+  'faa_tailwheel': AircraftQualification.faaTailwheel,
+  'faa_towing': AircraftQualification.faaTowing,
+  'easa_variable_pitch_propeller':
+      AircraftQualification.easaVariablePitchPropeller,
+  'easa_retractable_undercarriage':
+      AircraftQualification.easaRetractableUndercarriage,
+  'easa_turbo_or_supercharged': AircraftQualification.easaTurboOrSupercharged,
+  'easa_cabin_pressurisation': AircraftQualification.easaCabinPressurisation,
+  'easa_tailwheel': AircraftQualification.easaTailwheel,
+  'easa_electronic_flight_instrument_system':
+      AircraftQualification.easaElectronicFlightInstrumentSystem,
+  'easa_single_lever_power_control':
+      AircraftQualification.easaSingleLeverPowerControl,
+  'easa_other_engine_type': AircraftQualification.easaOtherEngineType,
 };
 
 const Map<String, AircraftCategory> _categories = <String, AircraftCategory>{
@@ -64,82 +67,74 @@ Aircraft aircraftFromFixture(String name) {
     engineType: _enumValue(yaml, 'engine_type', name, _engineTypes),
     engineCount: _int(yaml, 'engine_count', name),
     operatingSurface: _enumValue(yaml, 'operating_surface', name, _surfaces),
-    typeRatingDesignator: optionalString(yaml, 'type_rating_designator', name),
     requiresMultiCrew: requiredBool(yaml, 'requires_multi_crew', name),
-    horsepower: _optionalInt(yaml, 'horsepower', name),
-    maximumTakeoffMass: _mass(yaml, name),
-    serviceCeilingFeet: _optionalInt(yaml, 'service_ceiling_feet', name),
-    maximumOperatingAltitudeFeet: _optionalInt(
-      yaml,
-      'maximum_operating_altitude_feet',
-      name,
-    ),
-    equipment: _equipmentSet(yaml, name),
+    typeRatingDesignator: optionalString(yaml, 'type_rating_designator', name),
+    requiredQualifications: _requiredQualifications(yaml, name),
   );
 }
 
-Set<AircraftEquipment> _equipmentSet(YamlMap yaml, String fixture) {
-  final value = yaml['equipment'];
-  if (value == null) {
-    return const <AircraftEquipment>{};
-  }
-  if (value is! YamlList) {
-    throw FixtureFieldException(
-      fixture,
-      'equipment',
-      'a list, got ${describe(value)}',
-    );
+/// Reads the per-authority qualification lists.
+///
+/// A missing `required_qualifications` block, and a key absent from it, both
+/// mean "not set up for that authority" — distinct from a present but empty
+/// list, which means set up and requiring nothing.
+Map<String, Set<AircraftQualification>> _requiredQualifications(
+  YamlMap yaml,
+  String fixture,
+) {
+  final block = optionalMap(yaml, 'required_qualifications', fixture);
+  if (block == null) {
+    return const <String, Set<AircraftQualification>>{};
   }
 
-  final result = <AircraftEquipment>{};
-  for (final entry in value) {
-    if (entry is! String) {
+  final result = <String, Set<AircraftQualification>>{};
+  for (final entry in block.entries) {
+    final jurisdiction = entry.key;
+    if (jurisdiction is! String) {
       throw FixtureFieldException(
         fixture,
-        'equipment',
-        'a list of strings, got an entry ${describe(entry)}',
+        'required_qualifications',
+        'jurisdiction ids as strings, got ${describe(jurisdiction)}',
       );
     }
-    final item = _equipment[entry];
-    if (item == null) {
+
+    final listed = entry.value;
+    if (listed is! YamlList) {
       throw FixtureFieldException(
         fixture,
-        'equipment',
-        'a known attribute, got "$entry"',
+        'required_qualifications.$jurisdiction',
+        'a list, got ${describe(listed)}',
       );
     }
-    if (!result.add(item)) {
-      throw FixtureFieldException(
-        fixture,
-        'equipment',
-        'no duplicates, got "$entry" twice',
-      );
+
+    final qualifications = <AircraftQualification>{};
+    for (final item in listed) {
+      if (item is! String) {
+        throw FixtureFieldException(
+          fixture,
+          'required_qualifications.$jurisdiction',
+          'a list of strings, got an entry ${describe(item)}',
+        );
+      }
+      final qualification = _qualifications[item];
+      if (qualification == null) {
+        throw FixtureFieldException(
+          fixture,
+          'required_qualifications.$jurisdiction',
+          'a known qualification, got "$item"',
+        );
+      }
+      if (!qualifications.add(qualification)) {
+        throw FixtureFieldException(
+          fixture,
+          'required_qualifications.$jurisdiction',
+          'no duplicates, got "$item" twice',
+        );
+      }
     }
+    result[jurisdiction] = qualifications;
   }
   return result;
-}
-
-/// Reads `maximum_takeoff_mass_kg` or `maximum_takeoff_mass_lb`, keeping the
-/// unit the fixture states. See [Mass] on why the unit is part of the fact.
-Mass? _mass(YamlMap yaml, String fixture) {
-  final kilograms = _optionalInt(yaml, 'maximum_takeoff_mass_kg', fixture);
-  final pounds = _optionalInt(yaml, 'maximum_takeoff_mass_lb', fixture);
-
-  if (kilograms != null && pounds != null) {
-    throw FixtureFieldException(
-      fixture,
-      'maximum_takeoff_mass_kg',
-      'only one of _kg and _lb — the certificated unit is the fact, and two '
-          'values can disagree',
-    );
-  }
-  if (kilograms != null) {
-    return Mass.kilograms(kilograms);
-  }
-  if (pounds != null) {
-    return Mass.pounds(pounds);
-  }
-  return null;
 }
 
 T _enumValue<T extends Object>(
@@ -161,18 +156,7 @@ T _enumValue<T extends Object>(
 }
 
 int _int(YamlMap yaml, String key, String fixture) {
-  final value = _optionalInt(yaml, key, fixture);
-  if (value == null) {
-    throw FixtureFieldException(fixture, key, 'an integer, got nothing');
-  }
-  return value;
-}
-
-int? _optionalInt(YamlMap yaml, String key, String fixture) {
   final value = yaml[key];
-  if (value == null) {
-    return null;
-  }
   if (value is int) {
     return value;
   }
