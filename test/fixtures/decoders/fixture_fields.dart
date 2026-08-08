@@ -69,6 +69,14 @@ String? optionalString(YamlMap yaml, String key, String fixture) {
   throw FixtureFieldException(fixture, key, 'a string, got ${describe(value)}');
 }
 
+YamlMap requiredMap(YamlMap yaml, String key, String fixture) {
+  final value = optionalMap(yaml, key, fixture);
+  if (value == null) {
+    throw FixtureFieldException(fixture, key, 'a map, got nothing');
+  }
+  return value;
+}
+
 YamlMap? optionalMap(YamlMap yaml, String key, String fixture) {
   final value = yaml[key];
   if (value == null) {
@@ -78,4 +86,49 @@ YamlMap? optionalMap(YamlMap yaml, String key, String fixture) {
     return value;
   }
   throw FixtureFieldException(fixture, key, 'a map, got ${describe(value)}');
+}
+
+int requiredInt(YamlMap yaml, String key, String fixture) {
+  final value = optionalInt(yaml, key, fixture);
+  if (value == null) {
+    throw FixtureFieldException(fixture, key, 'an integer, got nothing');
+  }
+  return value;
+}
+
+int? optionalInt(YamlMap yaml, String key, String fixture) {
+  final value = yaml[key];
+  if (value == null) {
+    return null;
+  }
+  if (value is int) {
+    return value;
+  }
+  throw FixtureFieldException(
+    fixture,
+    key,
+    'an integer, got ${describe(value)}',
+  );
+}
+
+List<String> requiredStringList(YamlMap yaml, String key, String fixture) {
+  final value = yaml[key];
+  if (value is! YamlList) {
+    throw FixtureFieldException(
+      fixture,
+      key,
+      'a list of strings, got ${describe(value)}',
+    );
+  }
+  return [
+    for (final item in value)
+      if (item is String)
+        item
+      else
+        throw FixtureFieldException(
+          fixture,
+          key,
+          'a list of strings, got an entry ${describe(item)}',
+        ),
+  ];
 }

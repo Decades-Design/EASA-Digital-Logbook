@@ -252,8 +252,9 @@ any of these makes a jurisdiction's numbers unrecoverable for historical flights
 | IFR flight plan filed (bool) | EASA column 9 | Distinct from actual conditions |
 | Actual instrument time | FAA | §61.51(g)(1) |
 | Simulated instrument time | FAA | §61.51(b)(3)(iii) |
-| Approach count, type and location | FAA §61.57(c) only | §61.51(g)(3) requires type and location per approach. **No EASA equivalent** — AMC1 FCL.050 has no approach column and FCL.060's "approaches" wording is a recency condition, not a logging obligation |
-| Holding / course tracking performed (bool) | FAA §61.57(c) | Often forgotten |
+| Approach type, aerodrome, runway and count per procedure | FAA §61.57(c) only | §61.51(g)(3) requires type and location per approach; runway distinguishes two procedures at the same aerodrome. **No EASA equivalent** — AMC1 FCL.050 has no approach column and FCL.060's "approaches" wording is a recency condition, not a logging obligation |
+| Holding procedures performed (count) | FAA §61.57(c) | A count, not a bool — holding is naturally repeatable within one flight |
+| Intercepting and tracking a course via a nav system (bool) | FAA §61.57(c) | A single yes/no fact, independent of the holding count. Both often forgotten |
 | FSTD identity and qualification level | Both | Column 11; FFS vs FTD vs ATD matters to FAA |
 | Countersignature: signatory, credential no., expiry, timestamp | EASA SPIC/PICUS, FAA instruction | Uncountersigned PICUS is not creditable |
 | Series-of-flights grouping key | EASA | 30-minute rule |

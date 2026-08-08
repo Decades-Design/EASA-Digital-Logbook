@@ -7,6 +7,8 @@
 #
 # Raw facts only. See CLAUDE.md rule 1 and ADR-0001.
 
+# Descriptive only — not decoded onto Flight, which has no synthetic id
+# (persistence identity is M2's concern). Kept for human readability.
 id: "faa-easa-divergence-001"
 
 # All instants UTC. See ADR-0002.
@@ -23,15 +25,23 @@ route:
   - "EGHR"
   - "EGKA"
 
-# The discriminators the divergence turns on.
-command_authority: false      # EASA PIC requires this; the instructor held it
-sole_manipulator: true        # FAA §61.51(e)(1)(i) PIC turns on this
-sole_occupant: false
-instructor_aboard: true
-instructor_capacity: "FI"     # FI | FE | safety_pilot
-instructor_influenced_flight: true   # so this is dual, not SPIC
-multi_pilot_operation: false
-aircraft_requires_multi_crew: false
+# The discriminators the divergence turns on — PilotCapacity (#13), embedded
+# as one block rather than flattened back onto Flight.
+capacity:
+  command_authority: false      # EASA PIC requires this; the instructor held it
+  sole_manipulator: true        # FAA §61.51(e)(1)(i) PIC turns on this
+  sole_occupant: false
+  multi_pilot_operation: false
+  additional_crew_required_by_rule: false
+  acting_as_instructor: false   # this pilot is the student, not the instructor
+  acting_as_examiner: false
+  picus_claimed: false
+  pic_intervention_not_required: false
+  instructor:
+    capacity: "FI"                # FI | FE
+    influenced_flight: true       # so this is dual, not SPIC
+
+carrying_passengers: false
 
 # Take-offs and landings are stored as two independent sets of four counts,
 # never one combined figure and never one derived from the other. A pilot who
@@ -60,5 +70,7 @@ landings:
 ifr_flight_plan_filed: false
 actual_instrument_minutes: 0
 simulated_instrument_minutes: 0
+holding_procedures_count: 0
+tracking_performed: false
 
 remarks: "Dual instruction, circuits at EGHR. Student rated PPL(A) SEP."

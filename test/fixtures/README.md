@@ -7,9 +7,10 @@ typed per-model decoders on top of this loader; it does not replace it.
 
 ## Subdirectories
 
-- `flights/` — raw-fact flight entries, one YAML file per flight. Every field
-  is a fact the pilot could attest to at the time of flight — never a
-  derived quantity. See "Rule 1" below.
+- `flights/` — raw-fact flight entries, one YAML file per flight, decoded by
+  `decoders/flight_fixture.dart`. Every field is a fact the pilot could
+  attest to at the time of flight — never a derived quantity. See "Rule 1"
+  below.
 - `capacities/` — `PilotCapacity` scenarios, one YAML file per operating
   arrangement, decoded by `decoders/pilot_capacity_fixture.dart`. Together they
   cover every case issue #13 requires the model to tell apart, and issues #18

@@ -1,0 +1,43 @@
+# Deliberately invalid: runway 37 is out of range (01-36). Proves the
+# decoder rejects it rather than silently storing a runway that cannot
+# exist. Quoted — see the YAML caveat in test/fixtures/README.md.
+
+aircraft_registration: "G-ABCD"
+route:
+  - "EGKA"
+  - "EGKA"
+
+off_blocks: "2026-03-14T09:05:00Z"
+on_blocks: "2026-03-14T10:51:00Z"
+
+capacity:
+  command_authority: true
+  sole_manipulator: true
+  sole_occupant: true
+  multi_pilot_operation: false
+  additional_crew_required_by_rule: false
+  acting_as_instructor: false
+  acting_as_examiner: false
+  picus_claimed: false
+  pic_intervention_not_required: false
+
+carrying_passengers: false
+
+takeoffs:
+  day_full_stop: 1
+landings:
+  day_full_stop: 1
+
+ifr_flight_plan_filed: true
+actual_instrument_minutes: 30
+simulated_instrument_minutes: 0
+
+approaches:
+  - type: "ils"
+    aerodrome_icao: "EGKA"
+    runway: "37"
+
+holding_procedures_count: 0
+tracking_performed: false
+
+remarks: ""
