@@ -1,0 +1,28 @@
+# A multi-crew type-rated jet. Drives AMC1 FCL.050 column 5 multi-pilot time,
+# and is the aircraft §61.51(f) SIC time requires.
+#
+# Type-rated under both authorities, on the same identifier — which is the
+# point of storing the identifier rather than a boolean. A second A32N
+# registration would carry "A320" too, and both resolve to the one type rating
+# the pilot holds, with one validity date.
+
+registration: "G-EZAB"
+manufacturer: "Airbus"
+model: "A320-214"
+icao_type_designator: "A320"
+
+category: "aeroplane"
+engine_type: "turbofan"
+engine_count: 2
+operating_surface: "land"
+
+requires_multi_crew: true
+type_rating_designator: "A320"
+
+required_qualifications:
+  # Set up for EASA only. The FAA key is ABSENT, not empty — this aeroplane
+  # has never been set up under Part 61, which is a different statement from
+  # "set up, and requires nothing".
+  "eu.easa.part-fcl":
+    - "easa_cabin_pressurisation"
+    - "easa_electronic_flight_instrument_system"

@@ -1,0 +1,20 @@
+# Deliberately broken: a qualification the model does not define.
+#
+# Silently dropping it would make the aeroplane look as though it needs less
+# than the pilot said it does — and "faa_complex_high_performance" is exactly
+# the plausible mistake, a single value where two are required.
+
+registration: "G-BAD1"
+manufacturer: "Piper"
+model: "PA-28R"
+
+category: "aeroplane"
+engine_type: "piston"
+engine_count: 1
+operating_surface: "land"
+
+requires_multi_crew: false
+
+required_qualifications:
+  "us.faa.part61":
+    - "faa_complex_high_performance"    # not an AircraftQualification value

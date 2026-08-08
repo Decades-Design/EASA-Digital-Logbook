@@ -1,0 +1,27 @@
+# A retractable, constant-speed, 300 hp single. The fixture that shows the two
+# authorities reaching different lists from the same aeroplane.
+#
+# docs/ratings-and-endorsements.md §3: the systems are not translations of
+# each other. Here the FAA wants two endorsements and EASA wants two
+# differences items, and they are not the same two.
+
+registration: "N456BD"
+manufacturer: "Beechcraft"
+model: "A36 Bonanza"
+icao_type_designator: "BE36"
+
+category: "aeroplane"
+engine_type: "piston"
+engine_count: 1
+operating_surface: "land"
+
+requires_multi_crew: false
+
+required_qualifications:
+  "us.faa.part61":
+    - "faa_complex"            # §61.31(e)
+    - "faa_high_performance"   # §61.31(f) — 300 hp
+  "eu.easa.part-fcl":
+    - "easa_variable_pitch_propeller"      # VP
+    - "easa_retractable_undercarriage"     # RU
+    - "easa_electronic_flight_instrument_system"  # EFIS

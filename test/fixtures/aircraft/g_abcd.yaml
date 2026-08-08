@@ -1,0 +1,23 @@
+# The aircraft in flights/faa_easa_divergence.yaml — a basic SEP trainer.
+# Referenced there since M0 without ever existing; issue #101 asked for it.
+#
+# Set up under both authorities and requiring nothing under either. That is
+# why both keys are present with empty lists: an absent key would mean "not
+# set up for this authority yet", which is a different answer.
+
+registration: "G-ABCD"
+manufacturer: "Cessna"
+model: "152"
+icao_type_designator: "C152"
+
+category: "aeroplane"
+engine_type: "piston"
+engine_count: 1
+operating_surface: "land"
+
+requires_multi_crew: false
+# No type_rating_designator: class-rated, SEP(land).
+
+required_qualifications:
+  "us.faa.part61": []
+  "eu.easa.part-fcl": []

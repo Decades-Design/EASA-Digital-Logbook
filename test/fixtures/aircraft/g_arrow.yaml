@@ -1,0 +1,30 @@
+# The asymmetry case, straight from docs/ratings-and-endorsements.md §3:
+#
+#   "A retractable-gear, constant-speed, 180 hp Arrow is complex but NOT high
+#    performance under the FAA, and needs VP + RU differences training under
+#    EASA."
+#
+# Paired with g_c206.yaml, which is the exact mirror image. Between them they
+# prove the app cannot treat either authority's list as a translation of the
+# other's — the two aeroplanes swap FAA answers while their EASA lists differ
+# by one item.
+
+registration: "G-ARRW"
+manufacturer: "Piper"
+model: "PA-28R-180 Arrow"
+icao_type_designator: "P28R"
+
+category: "aeroplane"
+engine_type: "piston"
+engine_count: 1
+operating_surface: "land"
+
+requires_multi_crew: false
+
+required_qualifications:
+  "us.faa.part61":
+    - "faa_complex"            # §61.31(e) — retractable, flaps, CS prop
+                               # NOT high performance: 180 hp
+  "eu.easa.part-fcl":
+    - "easa_variable_pitch_propeller"
+    - "easa_retractable_undercarriage"
