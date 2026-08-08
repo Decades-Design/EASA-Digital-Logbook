@@ -1,0 +1,22 @@
+# Deliberately broken: an equipment value the model does not define.
+#
+# Silently dropping it would make the aeroplane look less capable than it is
+# and change what §61.31 says about it — "winglets" is harmless, but the same
+# silence would swallow a misspelt "retractable_gear" and turn a complex
+# aeroplane into a simple one.
+
+registration: "G-BAD1"
+manufacturer: "Piper"
+model: "PA-28R"
+
+category: "aeroplane"
+engine_type: "piston"
+engine_count: 1
+operating_surface: "land"
+
+requires_type_rating: false
+requires_multi_crew: false
+
+equipment:
+  - "flaps"
+  - "winglets"        # not an AircraftEquipment value

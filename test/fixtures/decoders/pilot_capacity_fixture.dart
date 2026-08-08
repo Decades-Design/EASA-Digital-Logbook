@@ -6,25 +6,7 @@ import 'package:easa_digital_log/domain/model/utc_instant.dart';
 import 'package:yaml/yaml.dart';
 
 import '../fixture_loader.dart';
-
-/// Thrown when a fixture field is missing or the wrong shape, naming the
-/// fixture and the key so the failure is actionable without opening the YAML.
-///
-/// A missing required key must never fall back to a default: a silently
-/// defaulted discriminator is exactly the failure CLAUDE.md rule 2 exists to
-/// prevent, and it would be indistinguishable from a deliberate `false`.
-class FixtureFieldException implements Exception {
-  const FixtureFieldException(this.fixture, this.key, this.expected);
-
-  final String fixture;
-  final String key;
-  final String expected;
-
-  @override
-  String toString() =>
-      'FixtureFieldException: capacities/$fixture.yaml key "$key" — '
-      'expected $expected';
-}
+import 'fixture_fields.dart';
 
 /// Decodes `test/fixtures/capacities/<name>.yaml` into a [PilotCapacity].
 ///
@@ -34,34 +16,34 @@ PilotCapacity pilotCapacityFromFixture(String name) {
   final yaml = loadFixture('capacities', name);
 
   return PilotCapacity(
-    commandAuthority: _bool(yaml, 'command_authority', name),
-    soleManipulator: _bool(yaml, 'sole_manipulator', name),
-    soleOccupant: _bool(yaml, 'sole_occupant', name),
-    multiPilotOperation: _bool(yaml, 'multi_pilot_operation', name),
-    additionalCrewRequiredByRule: _bool(
+    commandAuthority: requiredBool(yaml, 'command_authority', name),
+    soleManipulator: requiredBool(yaml, 'sole_manipulator', name),
+    soleOccupant: requiredBool(yaml, 'sole_occupant', name),
+    multiPilotOperation: requiredBool(yaml, 'multi_pilot_operation', name),
+    additionalCrewRequiredByRule: requiredBool(
       yaml,
       'additional_crew_required_by_rule',
       name,
     ),
-    soloEndorsementHeld: _optionalBool(yaml, 'solo_endorsement_held', name),
-    endorsingInstructorName: _optionalString(
+    soloEndorsementHeld: optionalBool(yaml, 'solo_endorsement_held', name),
+    endorsingInstructorName: optionalString(
       yaml,
       'endorsing_instructor_name',
       name,
     ),
-    actingAsInstructor: _bool(yaml, 'acting_as_instructor', name),
-    actingAsExaminer: _bool(yaml, 'acting_as_examiner', name),
-    picusClaimed: _bool(yaml, 'picus_claimed', name),
-    picInterventionNotRequired: _bool(
+    actingAsInstructor: requiredBool(yaml, 'acting_as_instructor', name),
+    actingAsExaminer: requiredBool(yaml, 'acting_as_examiner', name),
+    picusClaimed: requiredBool(yaml, 'picus_claimed', name),
+    picInterventionNotRequired: requiredBool(
       yaml,
       'pic_intervention_not_required',
       name,
     ),
     manipulationTime: _duration(yaml, 'manipulation_time', name),
-    instructor: _instructor(_map(yaml, 'instructor', name), name),
+    instructor: _instructor(optionalMap(yaml, 'instructor', name), name),
     otherPilotRole: _otherPilotRole(yaml, name),
     countersignature: _countersignature(
-      _map(yaml, 'countersignature', name),
+      optionalMap(yaml, 'countersignature', name),
       name,
     ),
   );
@@ -77,7 +59,7 @@ InstructorPresence? _instructor(YamlMap? yaml, String fixture) {
     'FE': InstructorCapacity.flightExaminer,
   };
 
-  final raw = _string(yaml, 'capacity', fixture);
+  final raw = requiredString(yaml, 'capacity', fixture);
   final capacity = capacities[raw];
   if (capacity == null) {
     throw FixtureFieldException(
@@ -89,9 +71,9 @@ InstructorPresence? _instructor(YamlMap? yaml, String fixture) {
 
   return InstructorPresence(
     capacity: capacity,
-    influencedFlight: _bool(yaml, 'influenced_flight', fixture),
-    name: _optionalString(yaml, 'name', fixture),
-    credentialNumber: _optionalString(yaml, 'credential_number', fixture),
+    influencedFlight: requiredBool(yaml, 'influenced_flight', fixture),
+    name: optionalString(yaml, 'name', fixture),
+    credentialNumber: optionalString(yaml, 'credential_number', fixture),
     credentialExpiry: _instant(yaml, 'credential_expiry', fixture),
   );
 }
@@ -107,7 +89,7 @@ Countersignature? _countersignature(YamlMap? yaml, String fixture) {
     'refused': CountersignatureStatus.refused,
   };
 
-  final raw = _string(yaml, 'status', fixture);
+  final raw = requiredString(yaml, 'status', fixture);
   final status = statuses[raw];
   if (status == null) {
     throw FixtureFieldException(
@@ -119,8 +101,8 @@ Countersignature? _countersignature(YamlMap? yaml, String fixture) {
 
   return Countersignature(
     status: status,
-    signatoryName: _optionalString(yaml, 'signatory_name', fixture),
-    signatoryCredentialNumber: _optionalString(
+    signatoryName: optionalString(yaml, 'signatory_name', fixture),
+    signatoryCredentialNumber: optionalString(
       yaml,
       'signatory_credential_number',
       fixture,
@@ -141,7 +123,7 @@ OtherPilotRole? _otherPilotRole(YamlMap yaml, String fixture) {
     'safety_pilot': OtherPilotRole.safetyPilot,
   };
 
-  final raw = _optionalString(yaml, 'other_pilot_role', fixture);
+  final raw = optionalString(yaml, 'other_pilot_role', fixture);
   if (raw == null) {
     return null;
   }
@@ -157,71 +139,10 @@ OtherPilotRole? _otherPilotRole(YamlMap yaml, String fixture) {
   return role;
 }
 
-bool _bool(YamlMap yaml, String key, String fixture) {
-  final value = yaml[key];
-  if (value is bool) {
-    return value;
-  }
-  throw FixtureFieldException(
-    fixture,
-    key,
-    'a boolean, got ${_describe(value)}',
-  );
-}
-
-bool? _optionalBool(YamlMap yaml, String key, String fixture) {
-  final value = yaml[key];
-  if (value == null) {
-    return null;
-  }
-  if (value is bool) {
-    return value;
-  }
-  throw FixtureFieldException(
-    fixture,
-    key,
-    'a boolean, got ${_describe(value)}',
-  );
-}
-
-String _string(YamlMap yaml, String key, String fixture) {
-  final value = _optionalString(yaml, key, fixture);
-  if (value == null) {
-    throw FixtureFieldException(fixture, key, 'a string, got nothing');
-  }
-  return value;
-}
-
-String? _optionalString(YamlMap yaml, String key, String fixture) {
-  final value = yaml[key];
-  if (value == null) {
-    return null;
-  }
-  if (value is String) {
-    return value;
-  }
-  throw FixtureFieldException(
-    fixture,
-    key,
-    'a string, got ${_describe(value)}',
-  );
-}
-
-YamlMap? _map(YamlMap yaml, String key, String fixture) {
-  final value = yaml[key];
-  if (value == null) {
-    return null;
-  }
-  if (value is YamlMap) {
-    return value;
-  }
-  throw FixtureFieldException(fixture, key, 'a map, got ${_describe(value)}');
-}
-
 /// Durations are written `"H:MM"` and quoted — see the YAML caveat in
 /// `test/fixtures/README.md`.
 FlightDuration? _duration(YamlMap yaml, String key, String fixture) {
-  final value = _optionalString(yaml, key, fixture);
+  final value = optionalString(yaml, key, fixture);
   if (value == null) {
     return null;
   }
@@ -235,7 +156,7 @@ FlightDuration? _duration(YamlMap yaml, String key, String fixture) {
 /// Instants are ISO-8601 with an explicit `Z`; [UtcInstant.parse] rejects
 /// anything without a zone designator, so a naive fixture value fails loudly.
 UtcInstant? _instant(YamlMap yaml, String key, String fixture) {
-  final value = _optionalString(yaml, key, fixture);
+  final value = optionalString(yaml, key, fixture);
   if (value == null) {
     return null;
   }
@@ -249,6 +170,3 @@ UtcInstant? _instant(YamlMap yaml, String key, String fixture) {
     );
   }
 }
-
-String _describe(Object? value) =>
-    value == null ? 'nothing' : '${value.runtimeType} ($value)';

@@ -1,0 +1,17 @@
+# Deliberately broken: `category` is absent.
+#
+# Category decides which flight-time definition applies (FCL.010 measures an
+# aeroplane from first movement and a helicopter rotor-start to rotor-stop),
+# so defaulting it to "aeroplane" would silently produce the wrong total.
+
+registration: "G-BAD2"
+manufacturer: "Robinson"
+model: "R44"
+
+# category: intentionally omitted
+engine_type: "piston"
+engine_count: 1
+operating_surface: "land"
+
+requires_type_rating: false
+requires_multi_crew: false
