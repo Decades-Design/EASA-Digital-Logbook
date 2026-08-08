@@ -18,33 +18,3 @@ typedef PilotFunctionTimeRule =
       Flight flight,
       FlightDuration blockTime,
     );
-
-/// Looks up a [PilotFunctionTimeRule] by the id a [JurisdictionProfile]
-/// names in its `pic_rule` key, e.g. `easa.pilot_function_time`.
-///
-/// A registry, not a hardcoded `switch` on jurisdiction id, because the
-/// engine that calls it ([JurisdictionProjection]) must never itself branch
-/// on which jurisdiction it is running — CLAUDE.md's acceptance test for
-/// this whole abstraction is that adding a new authority needs a YAML
-/// profile and at most one new primitive, never a change here.
-class PrimitiveRegistry {
-  const PrimitiveRegistry(this._pilotFunctionTimeRules);
-
-  final Map<String, PilotFunctionTimeRule> _pilotFunctionTimeRules;
-
-  /// Throws [ArgumentError] naming [ruleId] if nothing is registered under
-  /// it — a profile referencing a primitive that was never wired up is a
-  /// configuration bug, not a state to silently paper over with a zeroed
-  /// result.
-  PilotFunctionTimeRule pilotFunctionTime(String ruleId) {
-    final rule = _pilotFunctionTimeRules[ruleId];
-    if (rule == null) {
-      throw ArgumentError.value(
-        ruleId,
-        'ruleId',
-        'no pilot-function-time primitive is registered under this id',
-      );
-    }
-    return rule;
-  }
-}

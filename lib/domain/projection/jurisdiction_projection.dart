@@ -1,8 +1,10 @@
+import '../jurisdiction/jurisdiction_profile.dart';
 import '../jurisdiction/jurisdiction_registry.dart';
+import '../model/aerodrome_directory.dart';
 import '../model/aircraft.dart';
 import '../model/flight.dart';
 import '../model/flight_duration.dart';
-import '../primitives/pilot_function_time.dart';
+import '../primitives/primitive_registry.dart';
 import 'derived_quantity.dart';
 import 'projection.dart';
 import 'projection_result.dart';
@@ -21,36 +23,58 @@ class JurisdictionProjection implements Projection {
   JurisdictionProjection({
     required this.registry,
     required this.primitives,
+    required this.aerodromes,
     required this.jurisdictionId,
   });
 
   final JurisdictionRegistry registry;
   final PrimitiveRegistry primitives;
+  final AerodromeDirectory aerodromes;
   final String jurisdictionId;
 
   @override
   ProjectionResult project(Flight flight, Aircraft aircraft) {
     final profile = registry.resolve(jurisdictionId);
+    final quantities = <String, DerivedQuantity>{
+      ..._pilotFunctionTime(profile, flight),
+      ..._nightTime(profile, flight),
+    };
+    return ProjectionResult(
+      jurisdictionId: jurisdictionId,
+      quantities: quantities,
+    );
+  }
+
+  /// `pic_rule` quantities, or nothing if the profile hasn't set one yet —
+  /// not an error. #23-26 will add cross-country/instrument rule keys the
+  /// same way; a profile with none of them set yet is incomplete, not
+  /// broken.
+  Map<String, DerivedQuantity> _pilotFunctionTime(
+    ResolvedJurisdictionProfile profile,
+    Flight flight,
+  ) {
     final ruleId = profile['pic_rule'];
     if (ruleId == null) {
-      // No pilot-function-time rule configured for this jurisdiction yet —
-      // an empty result, not an error. #20-26 will add night/cross-country/
-      // instrument rule keys the same way; a profile with none of them set
-      // yet is incomplete, not broken.
-      return ProjectionResult(
-        jurisdictionId: jurisdictionId,
-        quantities: const {},
-      );
+      return const {};
     }
-
     final rule = primitives.pilotFunctionTime(ruleId);
     final blockTime = FlightDuration(
       flight.onBlocks.difference(flight.offBlocks).inMinutes,
     );
-    return ProjectionResult(
-      jurisdictionId: jurisdictionId,
-      quantities: rule(flight, blockTime),
-    );
+    return rule(flight, blockTime);
+  }
+
+  /// `night_rule` quantities, or nothing if the profile hasn't set one yet.
+  Map<String, DerivedQuantity> _nightTime(
+    ResolvedJurisdictionProfile profile,
+    Flight flight,
+  ) {
+    final ruleId = profile['night_rule'];
+    if (ruleId == null) {
+      return const {};
+    }
+    final rule = primitives.nightTime(ruleId);
+    return rule(flight, aerodromes);
   }
 
   @override
