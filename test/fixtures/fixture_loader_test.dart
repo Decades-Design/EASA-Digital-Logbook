@@ -51,9 +51,10 @@ void main() {
       final fixture = loadFixture('flights', 'faa_easa_divergence');
 
       expect(fixture, isA<YamlMap>());
-      expect(fixture['sole_manipulator'], isTrue);
-      expect(fixture['command_authority'], isFalse);
-      expect(fixture['instructor_aboard'], isTrue);
+      final capacity = fixture['capacity'] as YamlMap;
+      expect(capacity['sole_manipulator'], isTrue);
+      expect(capacity['command_authority'], isFalse);
+      expect(capacity['instructor'], isNotNull);
     });
 
     test('throws a clear error for a missing fixture', () {

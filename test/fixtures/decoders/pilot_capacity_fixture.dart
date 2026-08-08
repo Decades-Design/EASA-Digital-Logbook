@@ -14,37 +14,43 @@ import 'fixture_fields.dart';
 /// test concern; the domain model knows nothing about how fixtures are spelt.
 PilotCapacity pilotCapacityFromFixture(String name) {
   final yaml = loadFixture('capacities', name);
+  return pilotCapacityFromYaml(yaml, name);
+}
 
+/// As [pilotCapacityFromFixture], but decodes an already-loaded [YamlMap] —
+/// the shape `flight_fixture.dart` needs for the nested `capacity:` block
+/// inside a flight fixture, rather than a whole file of its own.
+PilotCapacity pilotCapacityFromYaml(YamlMap yaml, String fixture) {
   return PilotCapacity(
-    commandAuthority: requiredBool(yaml, 'command_authority', name),
-    soleManipulator: requiredBool(yaml, 'sole_manipulator', name),
-    soleOccupant: requiredBool(yaml, 'sole_occupant', name),
-    multiPilotOperation: requiredBool(yaml, 'multi_pilot_operation', name),
+    commandAuthority: requiredBool(yaml, 'command_authority', fixture),
+    soleManipulator: requiredBool(yaml, 'sole_manipulator', fixture),
+    soleOccupant: requiredBool(yaml, 'sole_occupant', fixture),
+    multiPilotOperation: requiredBool(yaml, 'multi_pilot_operation', fixture),
     additionalCrewRequiredByRule: requiredBool(
       yaml,
       'additional_crew_required_by_rule',
-      name,
+      fixture,
     ),
-    soloEndorsementHeld: optionalBool(yaml, 'solo_endorsement_held', name),
+    soloEndorsementHeld: optionalBool(yaml, 'solo_endorsement_held', fixture),
     endorsingInstructorName: optionalString(
       yaml,
       'endorsing_instructor_name',
-      name,
+      fixture,
     ),
-    actingAsInstructor: requiredBool(yaml, 'acting_as_instructor', name),
-    actingAsExaminer: requiredBool(yaml, 'acting_as_examiner', name),
-    picusClaimed: requiredBool(yaml, 'picus_claimed', name),
+    actingAsInstructor: requiredBool(yaml, 'acting_as_instructor', fixture),
+    actingAsExaminer: requiredBool(yaml, 'acting_as_examiner', fixture),
+    picusClaimed: requiredBool(yaml, 'picus_claimed', fixture),
     picInterventionNotRequired: requiredBool(
       yaml,
       'pic_intervention_not_required',
-      name,
+      fixture,
     ),
-    manipulationTime: _duration(yaml, 'manipulation_time', name),
-    instructor: _instructor(optionalMap(yaml, 'instructor', name), name),
-    otherPilotRole: _otherPilotRole(yaml, name),
+    manipulationTime: _duration(yaml, 'manipulation_time', fixture),
+    instructor: _instructor(optionalMap(yaml, 'instructor', fixture), fixture),
+    otherPilotRole: _otherPilotRole(yaml, fixture),
     countersignature: _countersignature(
-      optionalMap(yaml, 'countersignature', name),
-      name,
+      optionalMap(yaml, 'countersignature', fixture),
+      fixture,
     ),
   );
 }
