@@ -1,0 +1,38 @@
+# A multi-crew type-rated jet. Drives AMC1 FCL.050 column 5 multi-pilot time,
+# and is the aircraft §61.51(f) SIC time and §61.51(e)(1)(iii) acting-PIC
+# logging both require.
+#
+# Derived FAA categories (computed, NOT stored):
+#   §61.31(e)  complex              = false — the rule is written for
+#                                     propeller aeroplanes; a type rating
+#                                     covers the ground it exists to cover
+#   §61.31(f)  high-performance     = unknown (horsepower absent, and the
+#                                     concept does not apply to a turbofan).
+#                                     NOT false: see isHighPerformance
+#   §61.129(j) technically advanced = false
+#   EASA rating                     = type rating A320, not a class rating
+
+registration: "G-EZAB"
+manufacturer: "Airbus"
+model: "A320-214"
+icao_type_designator: "A320"
+
+category: "aeroplane"
+engine_type: "turbofan"
+engine_count: 2
+operating_surface: "land"
+
+requires_type_rating: true
+type_rating_designator: "A320"
+requires_multi_crew: true
+
+# horsepower omitted deliberately — a turbofan has none, and the FAA
+# high-performance question is therefore unanswerable rather than answerable
+# as false.
+
+equipment:
+  - "retractable_undercarriage"
+  - "flaps"
+  - "pressurised"
+  - "electronic_flight_instrument_system"
+  - "integrated_autopilot"

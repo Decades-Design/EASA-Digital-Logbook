@@ -6,6 +6,7 @@ import 'package:easa_digital_log/domain/model/instructor_presence.dart';
 import 'package:easa_digital_log/domain/model/pilot_capacity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../fixtures/decoders/fixture_fields.dart';
 import '../../fixtures/decoders/pilot_capacity_fixture.dart';
 
 /// Every capacity scenario, by fixture name.
