@@ -22,14 +22,22 @@
 /// result; see the "rounding at the display boundary" test for a worked
 /// example that is off by over a hundred hours across ten thousand flights.
 ///
-/// **The round-trip is asymmetric.** `parseDecimalHours` followed by
-/// `toDecimalHours` is guaranteed to reproduce the original string, and
-/// import fidelity depends on exactly that direction. The reverse is not
-/// guaranteed: at one decimal place of display, only whole-minute values
-/// that are multiples of 6 minutes (i.e. exact tenths of an hour) round-trip
-/// through `toDecimalHours` back to the same minute count via
-/// `parseDecimalHours`. `FlightDuration(83).toDecimalHours()` is `'1.4'`,
-/// but `FlightDuration.parseDecimalHours('1.4')` is 84 minutes, not 83.
+/// **Neither round-trip is total, and the limits differ.**
+///
+/// `parseDecimalHours` then `toDecimalHours` reproduces the original string
+/// only for input already written to one decimal place. `'1.4'` survives;
+/// `'2'` comes back as `'2.0'`, `'0.05'` as `'0.1'`, and `'1.025'` as `'1.0'`.
+/// An importer reading a vendor CSV at higher precision therefore loses the
+/// extra digits at the *display* step, not at the parse step — the minutes
+/// themselves are exact.
+///
+/// `toDecimalHours` then `parseDecimalHours` returns the same minute count
+/// only for multiples of 6 minutes (exact tenths of an hour).
+/// `FlightDuration(83).toDecimalHours()` is `'1.4'`, and
+/// `FlightDuration.parseDecimalHours('1.4')` is 84 minutes, not 83.
+///
+/// Neither limitation loses stored data, because decimal hours are never a
+/// storage format here — only a display and interchange one.
 class FlightDuration implements Comparable<FlightDuration> {
   const FlightDuration(this.inMinutes);
 

@@ -26,14 +26,15 @@
 # the flight, not of this pilot's capacity, and belongs to Flight (issue #11)
 # — see docs/entry-form.md §6.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-safety-pilot"
 
 command_authority: true       # the hooded pilot was acting PIC under §91.3
 sole_manipulator: true        # §61.51(e)(1)(i)
 sole_occupant: false          # §91.109(c) puts someone in the other seat
-multi_pilot_operation: false  # required by §91.109(c), not by type certificate
+multi_pilot_operation: false  # not multi-pilot TIME — see additional_crew_required_by_rule
+additional_crew_required_by_rule: true  # §91.109(c) — the whole point of this fixture
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false

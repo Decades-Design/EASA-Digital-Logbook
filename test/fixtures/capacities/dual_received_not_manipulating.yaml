@@ -17,7 +17,7 @@
 # flight is dual. SPIC and dual are mutually exclusive under FCL.010 and
 # cannot be recorded concurrently (docs/jurisdiction-matrix.md §4).
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-dual-received-not-manipulating"
 
@@ -25,12 +25,13 @@ command_authority: false
 sole_manipulator: false       # the instructor was flying
 sole_occupant: false
 multi_pilot_operation: false
+additional_crew_required_by_rule: false
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false
 pic_intervention_not_required: false
 
-# `manipulation_minutes` is deliberately absent. With `sole_manipulator:
+# `manipulation_time` is deliberately absent. With `sole_manipulator:
 # false` its absence means "did not manipulate at all"; a value would mean a
 # partial takeover, loggable under §61.51(e)(1)(i). See the field dartdoc on
 # PilotCapacity.manipulationTime for the four-way reading.

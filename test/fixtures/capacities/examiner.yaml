@@ -12,13 +12,14 @@
 #                      content, not layout (docs/jurisdiction-matrix.md §2),
 #                      and has no examiner remarks requirement.
 #
-# Distinguished from flight_instructor.yaml by `acting_as_examiner` alone.
+# Distinguished from flight_instructor.yaml by acting_as_examiner AND
+# acting_as_instructor — the two flip together, they are not one fact.
 # The two are separate flags rather than one enum because they produce
 # different mandatory remarks under EASA and because an examiner is not an
 # instructor: an examiner conducting a test is not giving instruction, so the
 # candidate logs no dual time for it.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-examiner"
 
@@ -26,6 +27,7 @@ command_authority: true
 sole_manipulator: false       # the candidate flew
 sole_occupant: false
 multi_pilot_operation: false
+additional_crew_required_by_rule: false
 acting_as_instructor: false   # conducting a test, not instructing
 acting_as_examiner: true      # AMC1 FCL.050 column 12 remarks become mandatory
 picus_claimed: false

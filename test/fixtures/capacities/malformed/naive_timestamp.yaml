@@ -10,6 +10,7 @@ command_authority: true
 sole_manipulator: true
 sole_occupant: false
 multi_pilot_operation: false
+additional_crew_required_by_rule: false
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false

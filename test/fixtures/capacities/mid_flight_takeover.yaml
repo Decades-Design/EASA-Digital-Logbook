@@ -31,6 +31,7 @@ command_authority: true       # held for the whole flight, both halves
 sole_manipulator: false       # NOT throughout — see manipulation_time
 sole_occupant: false
 multi_pilot_operation: false  # single-pilot aeroplane; the other pilot is spare
+additional_crew_required_by_rule: false
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false

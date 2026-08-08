@@ -16,6 +16,7 @@ import '../../fixtures/decoders/pilot_capacity_fixture.dart';
 const List<String> capacityScenarios = <String>[
   'pic_sole_occupant',
   'pic_with_passengers',
+  'student_solo',
   'sole_manipulator_receiving_instruction',
   'dual_received_not_manipulating',
   'spic',
@@ -44,10 +45,14 @@ void main() {
     });
 
     test('no two scenarios are indistinguishable', () {
-      // The load-bearing test. Drop any discriminator from PilotCapacity and
-      // two scenarios collapse onto each other, turning this red. It proves
-      // the model actually captures every case issue #13 requires it to tell
-      // apart, without needing the projections that will interpret them.
+      // Proves the fixture set contains no accidental duplicates — two
+      // scenarios that decode identically would give #18 and #19 a case they
+      // cannot tell apart.
+      //
+      // This is NOT proof that every field is load-bearing. It was once
+      // commented as if it were, and a review showed 7 of 12 fields could be
+      // deleted from the model without turning it red. That job belongs to
+      // 'every discriminator is exercised in both directions' below.
       final decoded = <PilotCapacity, String>{};
 
       for (final name in capacityScenarios) {
@@ -62,6 +67,59 @@ void main() {
       }
 
       expect(decoded, hasLength(capacityScenarios.length));
+    });
+
+    test('every discriminator is exercised in both directions', () {
+      // The real load-bearing test. A field that is false in all 16 fixtures
+      // could be deleted from the model and nothing would notice — it is
+      // untested surface that #18 and #19 will nonetheless branch on.
+      //
+      // Every boolean must appear both true and false somewhere; every
+      // optional field must be present somewhere. Adding a field to
+      // PilotCapacity without a fixture that exercises it turns this red.
+      final capacities = capacityScenarios
+          .map(pilotCapacityFromFixture)
+          .toList();
+
+      final booleans = <String, bool Function(PilotCapacity)>{
+        'commandAuthority': (c) => c.commandAuthority,
+        'soleManipulator': (c) => c.soleManipulator,
+        'soleOccupant': (c) => c.soleOccupant,
+        'multiPilotOperation': (c) => c.multiPilotOperation,
+        'additionalCrewRequiredByRule': (c) => c.additionalCrewRequiredByRule,
+        'actingAsInstructor': (c) => c.actingAsInstructor,
+        'actingAsExaminer': (c) => c.actingAsExaminer,
+        'picusClaimed': (c) => c.picusClaimed,
+        'picInterventionNotRequired': (c) => c.picInterventionNotRequired,
+      };
+
+      booleans.forEach((field, read) {
+        expect(
+          capacities.map(read).toSet(),
+          <bool>{true, false},
+          reason: '$field never varies across the fixtures',
+        );
+      });
+
+      final optionals = <String, Object? Function(PilotCapacity)>{
+        'manipulationTime': (c) => c.manipulationTime,
+        'instructor': (c) => c.instructor,
+        'otherPilotRole': (c) => c.otherPilotRole,
+        'countersignature': (c) => c.countersignature,
+        'soloEndorsementHeld': (c) => c.soloEndorsementHeld,
+        'endorsingInstructorName': (c) => c.endorsingInstructorName,
+        'instructor.influencedFlight': (c) => c.instructor?.influencedFlight,
+        'instructor.credentialExpiry': (c) => c.instructor?.credentialExpiry,
+        'countersignature.signedAt': (c) => c.countersignature?.signedAt,
+      };
+
+      optionals.forEach((field, read) {
+        expect(
+          capacities.map(read).any((value) => value != null),
+          isTrue,
+          reason: '$field is null in every fixture — nothing exercises it',
+        );
+      });
     });
 
     test('every enum value is exercised by at least one scenario', () {
@@ -105,22 +163,31 @@ void main() {
       expect(capacity.instructor!.influencedFlight, isTrue);
     });
 
-    test('SPIC differs from dual on exactly one fact', () {
-      // FCL.010: SPIC requires the instructor to only observe. If they
-      // influenced the flight it is dual, and the two cannot be recorded
-      // concurrently. That single boolean is the whole distinction.
+    test('SPIC needs both command and a non-influencing instructor', () {
+      // FCL.010 SPIC requires TWO things: the pilot acting as PIC, and the
+      // instructor only observing. Implementing it as "instructor aboard and
+      // not influencing" is wrong for any flight where the pilot did not hold
+      // command — which is why both halves are asserted here.
       final spic = pilotCapacityFromFixture('spic');
       final dual = pilotCapacityFromFixture(
         'sole_manipulator_receiving_instruction',
       );
 
+      expect(spic.commandAuthority, isTrue);
       expect(spic.instructor!.influencedFlight, isFalse);
+
+      expect(dual.commandAuthority, isFalse);
       expect(dual.instructor!.influencedFlight, isTrue);
 
-      // And SPIC holds command, which dual does not — the other half of why
-      // EASA reaches opposite answers on two otherwise similar flights.
-      expect(spic.commandAuthority, isTrue);
-      expect(dual.commandAuthority, isFalse);
+      // Both facts differ, so neither alone distinguishes the two.
+      expect(
+        spic.copyWith(
+          commandAuthority: dual.commandAuthority,
+          instructor: dual.instructor,
+        ),
+        isNot(dual),
+        reason: 'other facts differ too — do not treat these as a minimal pair',
+      );
     });
 
     test('PICUS creditability turns only on the countersignature', () {

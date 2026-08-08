@@ -16,7 +16,7 @@
 # sector. That is the point: PICUS is an assertion the pilot makes, not
 # something derivable from where they sat.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-co-pilot-sic"
 
@@ -24,6 +24,7 @@ command_authority: false
 sole_manipulator: false       # the captain flew this sector
 sole_occupant: false
 multi_pilot_operation: true   # §61.51(f); AMC1 FCL.050 column 6
+additional_crew_required_by_rule: true  # multi-crew operation
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false

@@ -1,0 +1,41 @@
+# Student pilot flying solo under a §61.87 endorsement.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   FAA §61.51(e)(4):  PIC = full block time, but ONLY because all three
+#                      conditions hold together — sole occupant, holding a
+#                      §61.87 solo endorsement, and undergoing training for a
+#                      certificate or rating. Drop any one and the claim fails.
+#   FAA §61.51(d):     solo = full block time (sole occupant).
+#   EASA FCL.010:      PIC = full block time. A student's solo time is logged
+#                      as PIC (docs/jurisdiction-matrix.md §4), by a different
+#                      route from the FAA's and with no endorsement condition.
+#
+# This is the fixture that makes solo_endorsement_held load-bearing. The
+# endorsement is per-flight and time-limited, so it cannot be recovered from
+# the licence record afterwards — docs/entry-form.md §4A asks for it at entry
+# time for exactly that reason. Without it, every student solo flight logged
+# before the field existed loses its §61.51(e)(4) basis permanently.
+#
+# Contrast spic.yaml: also a student acting as PIC, but with an instructor
+# aboard. There the EASA route is SPIC and the FAA has no analogue at all.
+#
+# Raw facts only. See CLAUDE.md rule 1.
+
+id: "capacity-student-solo"
+
+command_authority: true       # FCL.010 — the student commands a solo flight
+sole_manipulator: true
+sole_occupant: true           # §61.51(d) and §61.51(e)(4)(i) both require it
+multi_pilot_operation: false
+additional_crew_required_by_rule: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+solo_endorsement_held: true             # §61.87
+endorsing_instructor_name: "R. Mallory"
+
+# No instructor block: nobody was aboard. The endorsing instructor signed
+# beforehand and is recorded above, which is a different fact from an
+# instructor being present during the flight.

@@ -14,9 +14,9 @@
 # Identical in every raw fact to picus_pending.yaml except the
 # countersignature. That pair is the whole reason PICUS is not stored as a
 # role: the same flight is creditable or not creditable depending on
-# something that happens after it lands. See ADR-0008 and CLAUDE.md rule 1.
+# something that happens after it lands. See the PilotCapacity class dartdoc and CLAUDE.md rule 1.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-picus-countersigned"
 
@@ -24,6 +24,7 @@ command_authority: false      # FCL.010 — the supervising PIC held command
 sole_manipulator: true        # pilot flying for this sector
 sole_occupant: false
 multi_pilot_operation: true   # AMC1 FCL.050 column 6; PICUS is a co-pilot case
+additional_crew_required_by_rule: true  # multi-crew operation
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: true                    # the pilot's assertion — a raw fact

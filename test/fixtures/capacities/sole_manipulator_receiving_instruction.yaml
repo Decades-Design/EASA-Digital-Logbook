@@ -18,7 +18,7 @@
 # same sole manipulation — and the opposite EASA answer, because there the
 # instructor only observed and the pilot held command.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-sole-manipulator-receiving-instruction"
 
@@ -26,13 +26,14 @@ command_authority: false      # EASA PIC requires it; the instructor held it
 sole_manipulator: true        # FAA §61.51(e)(1)(i) PIC turns on this
 sole_occupant: false
 multi_pilot_operation: false
+additional_crew_required_by_rule: false
 acting_as_instructor: false   # this pilot is receiving, not giving
 acting_as_examiner: false
 picus_claimed: false
 pic_intervention_not_required: false
 
 instructor:
-  capacity: "FI"                    # FI | FE. See ADR-0008 on safety pilots
+  capacity: "FI"                    # FI | FE. see the InstructorPresence dartdoc
   influenced_flight: true           # so this is dual instruction, not SPIC
   name: "R. Mallory"
   credential_number: "GBR.FI.4471"  # AMC1 FCL.050; §61.51(h)(2)(ii)

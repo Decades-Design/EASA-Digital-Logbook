@@ -14,7 +14,7 @@
 # `instructor` says somebody else did. Both flights can be logged from both
 # seats and both sets of numbers are correct.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-flight-instructor"
 
@@ -23,6 +23,7 @@ command_authority: true       # FCL.010; §61.51(e)(3) requires being rated to
 sole_manipulator: false       # the student flew
 sole_occupant: false
 multi_pilot_operation: false  # a single-pilot aeroplane with two aboard
+additional_crew_required_by_rule: false
 acting_as_instructor: true    # AMC1 FCL.050 column 11; §61.51(e)(3)
 acting_as_examiner: false
 picus_claimed: false

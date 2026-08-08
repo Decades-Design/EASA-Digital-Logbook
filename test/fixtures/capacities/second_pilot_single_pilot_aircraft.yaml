@@ -22,7 +22,7 @@
 # records nothing, and it is what the projections read. `not_required_crew`
 # is for the mirror case: this pilot in command, another pilot riding along.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-second-pilot-single-pilot-aircraft"
 
@@ -30,6 +30,7 @@ command_authority: false      # the other pilot was in command
 sole_manipulator: false       # and was flying
 sole_occupant: false
 multi_pilot_operation: false  # single-pilot aeroplane, single-pilot operation
+additional_crew_required_by_rule: false
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false

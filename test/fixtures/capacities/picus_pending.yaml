@@ -16,9 +16,9 @@
 # "PICUS" cannot be a stored role: this fixture becomes the other one when a
 # signature arrives, without a single fact about the flight changing. A
 # stored role would have to be rewritten — and CLAUDE.md rule 4 makes an
-# exported entry immutable, so it could not be. See ADR-0008.
+# exported entry immutable, so it could not be. See the PilotCapacity class dartdoc.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-picus-pending"
 
@@ -26,6 +26,7 @@ command_authority: false
 sole_manipulator: true
 sole_occupant: false
 multi_pilot_operation: true
+additional_crew_required_by_rule: true  # multi-crew operation
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: true

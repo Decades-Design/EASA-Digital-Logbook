@@ -52,14 +52,28 @@ abstract class PilotCapacity with _$PilotCapacity {
     /// which is why no headcount is stored anywhere.
     required bool soleOccupant,
 
-    /// Whether the flight was a multi-pilot operation. `AMC1 FCL.050` splits
-    /// single-pilot (column 5) from multi-pilot (column 6) time, so an EASA
-    /// logbook cannot be printed without it; `§61.51(f)` gates SIC time on it.
+    /// Whether the flight was a multi-pilot *operation* in the logbook sense.
+    /// `AMC1 FCL.050` splits single-pilot (column 5) from multi-pilot
+    /// (column 6) time, so an EASA logbook cannot be printed without it.
     ///
-    /// Distinct from the aircraft's type-certificate attribute: an operation
-    /// can require two pilots by regulation in a single-pilot aircraft
-    /// (`docs/entry-form.md` §4C).
+    /// Deliberately **not** the same question as
+    /// [additionalCrewRequiredByRule]. A light aeroplane flown under a hood
+    /// with a `§91.109(c)` safety pilot legally requires two pilots and is
+    /// still not multi-pilot time. One boolean cannot answer both, and
+    /// collapsing them loses whichever answer the reader did not ask for.
     required bool multiPilotOperation,
+
+    /// Whether the rules this flight was conducted under obliged a second
+    /// pilot to be aboard, independently of the aircraft's type certificate.
+    ///
+    /// `§61.51(f)` gates SIC time on an aircraft that requires more than one
+    /// pilot "by the regulations under which the flight is being conducted",
+    /// and `§61.51(e)(1)(iii)` says the same for acting-PIC logging.
+    /// `§91.109(c)` (safety pilot) and `§135.99(c)` are the common cases.
+    ///
+    /// A per-flight fact, so it cannot be recovered from `Aircraft` (#12),
+    /// which only knows what the type certificate requires.
+    required bool additionalCrewRequiredByRule,
 
     /// Whether this pilot was the authorised instructor. `AMC1 FCL.050`
     /// column 11 records instructor time as its own function; `§61.51(e)(3)`
@@ -102,6 +116,21 @@ abstract class PilotCapacity with _$PilotCapacity {
     ///   it knows the block time this must not exceed.
     FlightDuration? manipulationTime,
 
+    /// Whether a `§61.87` solo endorsement was held for this flight; null when
+    /// the pilot was not a student flying solo, which is the ordinary case.
+    ///
+    /// `§61.51(e)(4)` lets a student log PIC only while sole occupant, holding
+    /// the endorsement, and undergoing training for a certificate or rating.
+    /// The endorsement is per-flight and time-limited, so the licence record
+    /// cannot answer it retrospectively — `docs/entry-form.md` §4A asks at
+    /// entry time for exactly this reason. Read together with
+    /// [endorsingInstructorName].
+    bool? soloEndorsementHeld,
+
+    /// Who gave the `§61.87` endorsement. Null unless [soloEndorsementHeld] is
+    /// set. Provenance for a claim nobody can reconstruct later.
+    String? endorsingInstructorName,
+
     /// The instructor or examiner aboard; null asserts nobody was instructing.
     /// `FCL.010` and `§61.51(h)(1)` both require a *properly authorised*
     /// instructor before the time counts as instruction.
@@ -129,9 +158,14 @@ abstract class PilotCapacity with _$PilotCapacity {
 /// describes the *other* pilot.
 enum OtherPilotRole {
   /// Required to be there by the type certificate or the operating rules.
-  /// The EASA co-pilot case (`AMC1 FCL.050` column 11, multi-pilot only) and
-  /// the FAA SIC case (`§61.51(f)`). Required crew are not passengers for
-  /// `FCL.060(b)(1)` or `§61.57(a)`.
+  ///
+  /// Covers both the EASA co-pilot / FAA SIC case (`AMC1 FCL.050` column 11,
+  /// `§61.51(f)`) *and* the case where the other pilot is the single required
+  /// pilot of a single-pilot aircraft — a projection must therefore read
+  /// [PilotCapacity.multiPilotOperation] alongside this value rather than
+  /// treating it as meaning "a second crewmember was aboard".
+  ///
+  /// Required crew are not passengers for `FCL.060(b)(1)` or `§61.57(a)`.
   requiredCrew,
 
   /// Aboard and qualified, but not required.

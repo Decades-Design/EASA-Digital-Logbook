@@ -8,7 +8,7 @@
 # The only scenario in this set where FAA solo time is loggable at all:
 # §61.51(d) allows it only when the pilot is the sole occupant.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-pic-sole-occupant"
 
@@ -16,6 +16,7 @@ command_authority: true       # FCL.010 — designated in command
 sole_manipulator: true        # §61.51(e)(1)(i)
 sole_occupant: true           # §61.51(d) — the discriminator for solo
 multi_pilot_operation: false
+additional_crew_required_by_rule: false
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false

@@ -37,17 +37,23 @@ display values instead produces a materially different, and wrong, result — se
 the display boundary" test in `test/domain/model/flight_duration_test.dart`, where doing so
 overstates a 10,000-flight total by more than 150 hours.
 
-Because rounding is one-directional, the round-trip guarantee is asymmetric. `parseDecimalHours`
-followed by `toDecimalHours` reproduces the original string exactly, and import fidelity from a
-decimal-hours source depends on exactly that direction holding. The reverse does not hold:
-`toHoursMinutes`/minute values do not generally survive a trip through `toDecimalHours` and back
-through `parseDecimalHours`, because only minute counts that are exact multiples of 6 (i.e.
-exact tenths of an hour) round to the same tenth they came from — `FlightDuration(83)` (`1:23`)
-renders as `'1.4'`, and `FlightDuration.parseDecimalHours('1.4')` is 84 minutes, not 83.
+Because rounding is one-directional, neither decimal round-trip is total, and the two fail
+differently.
 
-Both `toHoursMinutes()`/`parseHoursMinutes()` and `toDecimalHours()`/`parseDecimalHours()` exist
-side by side, rather than picking one, because `AMC1 FCL.050` column 7 permits either format and
-this app must round-trip both EASA-style and FAA-style input without loss.
+`parseDecimalHours` followed by `toDecimalHours` reproduces the original string only when that
+string was already written to one decimal place. `'1.4'` survives; `'2'` returns as `'2.0'`,
+`'0.05'` as `'0.1'`, and `'1.025'` as `'1.0'`. The parse itself is exact — `'1.025'` is 62
+minutes and stays 62 minutes — so what a higher-precision vendor CSV loses is display digits,
+not stored time.
+
+`toDecimalHours` followed by `parseDecimalHours` returns the original minute count only for
+multiples of 6 minutes (exact tenths of an hour). `FlightDuration(83)` (`1:23`) renders as
+`'1.4'`, and `FlightDuration.parseDecimalHours('1.4')` is 84 minutes, not 83.
+
+Neither limitation loses stored data, because decimal hours are never a storage format here.
+`toHoursMinutes()`/`parseHoursMinutes()` and `toDecimalHours()`/`parseDecimalHours()` both exist,
+rather than one being picked, because `AMC1 FCL.050` column 7 permits either and both EASA-style
+and FAA-style input must be readable.
 
 ## Alternatives considered
 

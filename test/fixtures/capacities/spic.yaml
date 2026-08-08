@@ -13,13 +13,16 @@
 #                     FAA projection reads §61.51(e)(1)(i) instead: sole
 #                     manipulator, if the student is rated for the aircraft.
 #
-# The single fact separating this from dual_received_not_manipulating.yaml and
-# from sole_manipulator_receiving_instruction.yaml is
-# `instructor.influenced_flight`. FCL.010 requires that the instructor only
+# FCL.010 SPIC needs BOTH: the pilot acting as PIC, and the instructor only
+# observing. Against sole_manipulator_receiving_instruction.yaml two facts
+# differ (command_authority and instructor.influenced_flight); against
+# dual_received_not_manipulating.yaml three do (add sole_manipulator). Do not
+# implement SPIC as "instructor aboard and not influencing" — that is wrong
+# for any flight where the pilot did not hold command. FCL.010 requires that the instructor only
 # observes and does not influence or control the flight; if they did, the
 # flight is dual and cannot also be SPIC.
 #
-# Raw facts only. See CLAUDE.md rule 1, ADR-0001 and ADR-0008.
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
 
 id: "capacity-spic"
 
@@ -27,6 +30,7 @@ command_authority: true       # FCL.010 — the student acted as PIC
 sole_manipulator: true
 sole_occupant: false          # the instructor was aboard
 multi_pilot_operation: false
+additional_crew_required_by_rule: false
 acting_as_instructor: false
 acting_as_examiner: false
 picus_claimed: false          # PICUS is a co-pilot concept; this is SPIC

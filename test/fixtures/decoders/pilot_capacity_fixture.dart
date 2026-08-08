@@ -38,6 +38,17 @@ PilotCapacity pilotCapacityFromFixture(String name) {
     soleManipulator: _bool(yaml, 'sole_manipulator', name),
     soleOccupant: _bool(yaml, 'sole_occupant', name),
     multiPilotOperation: _bool(yaml, 'multi_pilot_operation', name),
+    additionalCrewRequiredByRule: _bool(
+      yaml,
+      'additional_crew_required_by_rule',
+      name,
+    ),
+    soloEndorsementHeld: _optionalBool(yaml, 'solo_endorsement_held', name),
+    endorsingInstructorName: _optionalString(
+      yaml,
+      'endorsing_instructor_name',
+      name,
+    ),
     actingAsInstructor: _bool(yaml, 'acting_as_instructor', name),
     actingAsExaminer: _bool(yaml, 'acting_as_examiner', name),
     picusClaimed: _bool(yaml, 'picus_claimed', name),
@@ -148,6 +159,21 @@ OtherPilotRole? _otherPilotRole(YamlMap yaml, String fixture) {
 
 bool _bool(YamlMap yaml, String key, String fixture) {
   final value = yaml[key];
+  if (value is bool) {
+    return value;
+  }
+  throw FixtureFieldException(
+    fixture,
+    key,
+    'a boolean, got ${_describe(value)}',
+  );
+}
+
+bool? _optionalBool(YamlMap yaml, String key, String fixture) {
+  final value = yaml[key];
+  if (value == null) {
+    return null;
+  }
   if (value is bool) {
     return value;
   }
