@@ -79,6 +79,25 @@ void main() {
         findBannedTypes('lib/domain/model/utc_instant_helper.dart', source),
         hasLength(2),
       );
+      // A directory prefix that happens to end in the right characters is
+      // not allowlisted either — a character-level suffix match would treat
+      // this as the wrapper file since it ends with the same characters.
+      expect(
+        findBannedTypes('xlib/domain/model/utc_instant.dart', source),
+        hasLength(2),
+      );
+      // Nor is a nested path that repeats the allowlisted path as a
+      // trailing *segment* sequence — this rules out a path-boundary check
+      // on trailing segments alone, since the trailing four segments here
+      // are still exactly `lib/domain/model/utc_instant.dart`, immediately
+      // preceded by a `/`.
+      expect(
+        findBannedTypes(
+          'lib/domain/foo/lib/domain/model/utc_instant.dart',
+          source,
+        ),
+        hasLength(2),
+      );
     });
 
     test('reports every occurrence with its own line number', () {
@@ -88,6 +107,31 @@ void main() {
 
       expect(violations, hasLength(3));
       expect(violations.map((v) => v.line), <int>[1, 1, 2]);
+    });
+
+    test('known gap: a real DateTime is not reported when a comment '
+        'delimiter is opened inside a string literal above it', () {
+      // This pins accepted, NOT desired, behaviour — the same fail-open gap
+      // `check_layering_test.dart` pins for the sibling guard, inherited
+      // here because both guards share `stripComments`. `stripComments` has
+      // no notion of string literals, so the `/*` inside the string literal
+      // `'/*'` is read as a real block-comment opener, and everything up to
+      // the next `*/` — including the genuine, undeclared `DateTime` below
+      // it — is stripped before the identifier scan ever runs. The
+      // violation is real and reaches lib/domain/, but the guard reports the
+      // file as clean.
+      //
+      // If this test ever goes red because the hole was closed, that is
+      // good news, but update this test deliberately rather than deleting
+      // it — it exists to make a future fix visible, not to block one. See
+      // the fail-open discussion on findBannedTypes.
+      const source = '''
+const String trap = '/*';
+final DateTime when = DateTime.now(); // never reported
+/* a totally unrelated, later, legitimate block comment */
+''';
+
+      expect(findBannedTypes(path, source), isEmpty);
     });
   });
 }

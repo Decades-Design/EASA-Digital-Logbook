@@ -57,6 +57,16 @@ build if `lib/domain/` names `DateTime` anywhere, matched on a word boundary aft
 comments, sharing the comment-stripping regex (`tool/dart_source.dart`) with
 `tool/check_layering.dart` from ADR-0001. Its allowlist is exactly the two files that must
 legitimately touch `DateTime` — `lib/domain/model/utc_instant.dart` (the wrapper) and
-`lib/domain/model/wall_clock.dart` (its display companion) — compared by exact normalised path
-suffix, not substring, so a lookalike file name is never accidentally allowlisted. The guard
-runs in CI immediately after the layering check.
+`lib/domain/model/wall_clock.dart` (its display companion) — compared by exact equality against
+the normalised path, not a suffix of any kind. A suffix match, character-level or
+segment-boundary, admits a bypass a review caught: both a directory prefix that merely ends in
+the right characters (`xlib/domain/model/utc_instant.dart`) and a nested path that repeats the
+allowlisted path as a trailing segment sequence
+(`lib/domain/foo/lib/domain/model/utc_instant.dart`) would pass a suffix check, since in the
+second case the trailing segments are still preceded by a path separator that a
+boundary-only rule cannot distinguish from the real file's root. Exact equality closes both.
+The guard also inherits `stripComments`' own accepted fail-open gap (a `/*` opened inside a
+string literal swallows a real, later `DateTime` — see the dartdoc on `findBannedTypes` and the
+identical, older gap on `findViolations` in `check_layering.dart`); a file is never to be assumed
+free of a raw `DateTime` merely because this guard passed. The guard runs in CI immediately
+after the layering check.

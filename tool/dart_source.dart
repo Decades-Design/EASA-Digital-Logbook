@@ -11,7 +11,8 @@ library;
 /// left to right at each position, so `// toggle: /*` is consumed as a line
 /// comment (its `/*` never opens a block) and `/* a // b */` is consumed as a
 /// block comment. Stripping one kind before the other — in *either* order —
-/// lets the loser swallow real code.
+/// lets the loser swallow real code: block-first turns a `/*` inside a `//`
+/// comment into an opener that deletes every directive up to the next `*/`.
 final RegExp _comment = RegExp(r'//[^\n]*|/\*[\s\S]*?\*/');
 
 /// Replaces comments with blanks, preserving line breaks so violation line
