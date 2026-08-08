@@ -1,0 +1,44 @@
+# The counterintuitive one. A qualified pilot sitting in the right-hand seat
+# of a single-pilot aeroplane, another pilot in command and flying, nothing
+# about the operation requiring a second pilot.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA:  NOTHING. No PIC, no co-pilot, no dual, no time at all. Co-pilot
+#          time exists only in multi-pilot operations
+#          (docs/jurisdiction-matrix.md §4), and this pilot held no command.
+#   FAA §61.51(f): SIC = 0 as well — SIC requires an aircraft that requires
+#          more than one pilot by type certificate, or under the rules the
+#          flight is operated under. Neither applies.
+#   FAA §61.51(e)(1)(i): PIC = 0 — not the sole manipulator.
+#
+# docs/entry-form.md §4C requires the entry form to warn about this case
+# inline rather than let the pilot discover it in the totals.
+#
+# NOTE ON `other_pilot_role`. The value describes the OTHER pilot, who was in
+# command of a single-pilot aeroplane and therefore *was* the required crew.
+# It is `required_crew`, not `not_required_crew`. The fact that *this* pilot
+# was surplus is carried by `multi_pilot_operation: false` together with
+# `command_authority: false` — that combination is the one under which EASA
+# records nothing, and it is what the projections read. `not_required_crew`
+# is for the mirror case: this pilot in command, another pilot riding along.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
+
+id: "capacity-second-pilot-single-pilot-aircraft"
+
+command_authority: false      # the other pilot was in command
+sole_manipulator: false       # and was flying
+sole_occupant: false
+multi_pilot_operation: false  # single-pilot aeroplane, single-pilot operation
+additional_crew_required_by_rule: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+other_pilot_role: "required_crew"   # see the note above — the OTHER pilot
+
+# No countersignature, and no instructor: nobody was instructing and there is
+# nothing to certify. Whether this pilot counts as a passenger under EASA is
+# recorded as unresolved in docs/entry-form.md §4; the role is stored and the
+# question is deliberately not forced.

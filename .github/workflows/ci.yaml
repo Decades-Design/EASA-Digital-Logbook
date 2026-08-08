@@ -40,5 +40,8 @@ jobs:
       - name: Check domain layering
         run: dart run tool/check_layering.dart
 
+      - name: Check domain types
+        run: dart run tool/check_domain_types.dart
+
       - name: Test
         run: flutter test

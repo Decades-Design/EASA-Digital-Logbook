@@ -8,6 +8,8 @@ library;
 
 import 'dart:io';
 
+import 'dart_source.dart';
+
 /// Import/export URI prefixes that `lib/domain/` may not depend on.
 ///
 /// Extend this list rather than adding special cases below.
@@ -64,16 +66,6 @@ class Violation {
   String toString() => '$filePath:$line  imports $uri';
 }
 
-/// Matches a line comment or a block comment — whichever opens first.
-///
-/// The single alternation is load-bearing. The engine tries the alternatives
-/// left to right at each position, so `// toggle: /*` is consumed as a line
-/// comment (its `/*` never opens a block) and `/* a // b */` is consumed as a
-/// block comment. Stripping one kind before the other — in *either* order —
-/// lets the loser swallow real code: block-first turns a `/*` inside a `//`
-/// comment into an opener that deletes every directive up to the next `*/`.
-final RegExp _comment = RegExp(r'//[^\n]*|/\*[\s\S]*?\*/');
-
 /// Matches a whole `import`/`export` directive, from the keyword at the start
 /// of a line through to its terminating `;`.
 ///
@@ -87,13 +79,6 @@ final RegExp _directive = RegExp(
 
 /// Matches one string literal, raw or plain, single- or double-quoted.
 final RegExp _quoted = RegExp(r'''r?'([^']*)'|r?"([^"]*)"''');
-
-/// Replaces comments with blanks, preserving line breaks so violation line
-/// numbers still point at the real line.
-String _stripComments(String source) => source.replaceAllMapped(
-  _comment,
-  (match) => '\n' * '\n'.allMatches(match.group(0)!).length,
-);
 
 /// Returns every URI a directive [span] names.
 ///
@@ -172,7 +157,7 @@ bool _escapesDomain(String uri, String filePath) {
 ///   is a known false positive, not desired behaviour, but it over-reports:
 ///   it breaks the build, a human looks, and no real violation slips
 ///   through.
-/// - **Fails open (unsafe, accepted gap).** [_stripComments] has no notion
+/// - **Fails open (unsafe, accepted gap).** [stripComments] has no notion
 ///   of string literals, so a comment delimiter opened *inside a string
 ///   literal that sits above an import* is read as a real delimiter, and
 ///   the "comment" it opens can swallow a genuine banned import before the
@@ -202,7 +187,7 @@ bool _escapesDomain(String uri, String filePath) {
 /// doesn't overstate what slips past every check, not because it needs its
 /// own defence here.
 List<Violation> findViolations(String filePath, String source) {
-  final stripped = _stripComments(source);
+  final stripped = stripComments(source);
   final violations = <Violation>[];
 
   for (final directive in _directive.allMatches(stripped)) {

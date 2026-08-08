@@ -1,0 +1,43 @@
+# Giving instruction. This pilot is the authorised flight instructor, holds
+# command, and the student is flying.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA AMC1 FCL.050: instructor time = full block time, and the same time
+#                      entered as PIC (column 11 records both functions).
+#   FAA  §61.51(e)(3): PIC = full block time for all flight time while
+#                      serving as the authorised instructor, if rated to act
+#                      as PIC of that aircraft. Not because of §61.51(e)(1)(i)
+#                      — the student is the sole manipulator here.
+#
+# The mirror image of sole_manipulator_receiving_instruction.yaml, from the
+# other seat: `acting_as_instructor` says *this* pilot instructed, whereas
+# `instructor` says somebody else did. Both flights can be logged from both
+# seats and both sets of numbers are correct.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
+
+id: "capacity-flight-instructor"
+
+command_authority: true       # FCL.010; §61.51(e)(3) requires being rated to
+                              # act as PIC of the aircraft
+sole_manipulator: false       # the student flew
+sole_occupant: false
+multi_pilot_operation: false  # a single-pilot aeroplane with two aboard
+additional_crew_required_by_rule: false
+acting_as_instructor: true    # AMC1 FCL.050 column 11; §61.51(e)(3)
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+# `instructor` stays absent. It names an instructor *other than* this pilot;
+# there was none. The person receiving the instruction is not modelled here
+# either — crew identity is a Flight concern (issue #11), alongside AMC1
+# FCL.050 column 8, "name(s) of PIC".
+#
+# `other_pilot_role` is likewise absent: the student is receiving instruction,
+# not occupying a required-crew station, and is not a safety pilot. Recording
+# them as `not_required_crew` would assert something about their function that
+# the enum does not mean.
+#
+# No countersignature: the instructor signs the *student's* logbook
+# (AMC1 FCL.050(b)(1)(ii), §61.51(h)(2)), not their own.

@@ -1,0 +1,43 @@
+# Skill test — the pilot being tested, with a flight examiner aboard.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:  PIC = 0 for this pilot. The EXAMINER holds command on a
+#                  test flight, so the candidate does not. Two simultaneous
+#                  PICs is impossible under EASA
+#                  (docs/jurisdiction-matrix.md §4), and examiner.yaml is this
+#                  same flight from the examiner's own logbook. What the
+#                  candidate logs instead is #18's to determine; the raw facts
+#                  are the deliverable here.
+#   EASA:          dual = 0. A skill test is an assessment, not instruction,
+#                  and FCL.010 dual time requires instruction being given.
+#   AMC1 FCL.050:  the details of the skill test are a MANDATORY remark. That
+#                  obligation is what makes an examiner aboard different from
+#                  an instructor aboard, and why InstructorCapacity has two
+#                  values rather than one.
+#   FAA §61.51(e)(1)(i): PIC = full block time. The FAA sole-manipulator basis
+#                  is independent of who holds command — which is exactly the
+#                  divergence this model exists to preserve. The candidate logs
+#                  no EASA PIC and full FAA PIC for the same hour.
+#
+# Raw facts only. See CLAUDE.md rule 1.
+
+id: "capacity-skill-test-with-examiner"
+
+command_authority: false      # FCL.010 — the examiner commands a test flight
+sole_manipulator: true        # the candidate flies; §61.51(e)(1)(i)
+sole_occupant: false          # the examiner was aboard
+multi_pilot_operation: false
+additional_crew_required_by_rule: false
+acting_as_instructor: false
+acting_as_examiner: false     # this pilot is being tested, not testing
+picus_claimed: false
+pic_intervention_not_required: false
+
+instructor:
+  capacity: "FE"              # flight examiner, NOT an instructor
+  influenced_flight: false    # an examiner assesses; they do not instruct
+  name: "P. Okonjo"
+  credential_number: "GBR.FE.1180"
+
+# No countersignature block: AMC1 FCL.050 requires the skill test details as a
+# remark, not a countersignature. Null means none is required.

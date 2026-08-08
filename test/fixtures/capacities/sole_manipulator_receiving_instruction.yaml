@@ -1,0 +1,51 @@
+# THE CANONICAL FAA/EASA DIVERGENCE.
+# Rated private pilot flying the aircraft, instructor aboard giving
+# instruction and holding command.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   FAA  §61.51(e)(1)(i): PIC = full block time (sole manipulator, rated).
+#   FAA  §61.51(h):       training received = full block time.
+#   EASA FCL.010:         PIC = 0 — no general sole-manipulator concept.
+#   EASA FCL.010:         dual = full block time.
+#
+# Both pilots log PIC for the same hour under the FAA and that is correct;
+# under EASA it is impossible. See docs/jurisdiction-matrix.md §4.
+#
+# The discriminators below are deliberately identical to the ones in
+# test/fixtures/flights/faa_easa_divergence.yaml, so the capacity fixture and
+# the flight fixture cannot drift apart and start describing two different
+# flights. Compare, in particular, spic.yaml: same pilot, same instructor,
+# same sole manipulation — and the opposite EASA answer, because there the
+# instructor only observed and the pilot held command.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
+
+id: "capacity-sole-manipulator-receiving-instruction"
+
+command_authority: false      # EASA PIC requires it; the instructor held it
+sole_manipulator: true        # FAA §61.51(e)(1)(i) PIC turns on this
+sole_occupant: false
+multi_pilot_operation: false
+additional_crew_required_by_rule: false
+acting_as_instructor: false   # this pilot is receiving, not giving
+acting_as_examiner: false
+picus_claimed: false
+pic_intervention_not_required: false
+
+instructor:
+  capacity: "FI"                    # FI | FE. see the InstructorPresence dartdoc
+  influenced_flight: true           # so this is dual instruction, not SPIC
+  name: "R. Mallory"
+  credential_number: "GBR.FI.4471"  # AMC1 FCL.050; §61.51(h)(2)(ii)
+  credential_expiry: "2027-05-31T23:59:59Z"   # §61.51(h)(2)(ii)
+
+# AMC1 FCL.050(b)(1)(ii): each flight of instruction received is certified by
+# the instructor responsible for the flight. §61.51(h)(2) sets the FAA
+# endorsement content. This is instructor certification of instruction given,
+# not a PICUS countersignature — no PICUS is claimed here.
+countersignature:
+  status: "signed"
+  signatory_name: "R. Mallory"
+  signatory_credential_number: "GBR.FI.4471"
+  signatory_credential_expiry: "2027-05-31T23:59:59Z"
+  signed_at: "2026-03-14T11:05:00Z"

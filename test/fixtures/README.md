@@ -10,6 +10,13 @@ typed per-model decoders on top of this loader; it does not replace it.
 - `flights/` — raw-fact flight entries, one YAML file per flight. Every field
   is a fact the pilot could attest to at the time of flight — never a
   derived quantity. See "Rule 1" below.
+- `capacities/` — `PilotCapacity` scenarios, one YAML file per operating
+  arrangement, decoded by `decoders/pilot_capacity_fixture.dart`. Together they
+  cover every case issue #13 requires the model to tell apart, and issues #18
+  and #19 assert real PIC and dual values against them. Each file's expected
+  projection outcomes live in its header comment, never as stored keys.
+  `capacities/malformed/` holds fixtures that are deliberately broken, to prove
+  the decoder fails loudly instead of substituting a default.
 - `aircraft/` — aircraft definitions (registration, type, category/class,
   FSTD qualification level where relevant).
 - `importers/` — real vendor CSV samples (ForeFlight `logbook_template.csv`,

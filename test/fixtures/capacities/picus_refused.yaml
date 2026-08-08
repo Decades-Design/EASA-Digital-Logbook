@@ -1,0 +1,35 @@
+# PICUS claimed, and the supervising PIC declined to countersign it.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   AMC1 FCL.050:  not creditable as PIC, and terminally so. #18 must give a
+#                  different reason from picus_pending.yaml — "the signatory
+#                  declined" is not "waiting for a signature", and the pilot
+#                  can act on one but not the other.
+#   FCL.010:       the entry stands as the pilot recorded it. The app reports;
+#                  it does not adjudicate (docs/entry-form.md §4D).
+#   FAA:           no analogue. PICUS is inert under the FAA projection.
+#
+# Identical to picus_pending.yaml but for the status, deliberately: the two
+# differ only in what the signatory did.
+#
+# Raw facts only. See CLAUDE.md rule 1.
+
+id: "capacity-picus-refused"
+
+command_authority: false
+sole_manipulator: true
+sole_occupant: false
+multi_pilot_operation: true
+additional_crew_required_by_rule: true  # multi-crew operation
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: true
+pic_intervention_not_required: true
+
+other_pilot_role: "required_crew"
+
+countersignature:
+  status: "refused"
+  signatory_name: "K. Almqvist"
+  signatory_credential_number: "SWE.ATPL.90233"
+  # No signed_at: nothing was signed.

@@ -1,0 +1,38 @@
+# Conducting a skill test. This pilot is the flight examiner and holds
+# command; the candidate is flying.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA AMC1 FCL.050: PIC = full block time, and the details of the skill
+#                      test are a MANDATORY entry in the remarks and
+#                      endorsements column (column 12) — see
+#                      docs/jurisdiction-matrix.md §7. An export that omits
+#                      them is non-compliant, so the fact has to be stored
+#                      even though no number is computed from it.
+#   FAA:               no equivalent logbook obligation. The FAA prescribes
+#                      content, not layout (docs/jurisdiction-matrix.md §2),
+#                      and has no examiner remarks requirement.
+#
+# Distinguished from flight_instructor.yaml by acting_as_examiner AND
+# acting_as_instructor — the two flip together, they are not one fact.
+# The two are separate flags rather than one enum because they produce
+# different mandatory remarks under EASA and because an examiner is not an
+# instructor: an examiner conducting a test is not giving instruction, so the
+# candidate logs no dual time for it.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
+
+id: "capacity-examiner"
+
+command_authority: true
+sole_manipulator: false       # the candidate flew
+sole_occupant: false
+multi_pilot_operation: false
+additional_crew_required_by_rule: false
+acting_as_instructor: false   # conducting a test, not instructing
+acting_as_examiner: true      # AMC1 FCL.050 column 12 remarks become mandatory
+picus_claimed: false
+pic_intervention_not_required: false
+
+# No `instructor`: this pilot is the examiner, and there was no other
+# instructor or examiner aboard. No countersignature in this pilot's own
+# logbook — the examiner signs the candidate's.

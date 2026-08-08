@@ -1,0 +1,54 @@
+# SPIC — student pilot-in-command. A student flying the aircraft as pilot in
+# command with an instructor aboard who only observed.
+#
+# Expected projections (asserted by issues #18 and #19 — NOT stored here):
+#   EASA FCL.010:     SPIC, logged in the PIC column, pending countersignature.
+#   AMC1 FCL.050:     not creditable until countersigned — the projection must
+#                     say so with a reason, never return a silent 0 and never
+#                     a silent full value.
+#   EASA FCL.010:     dual = 0. SPIC and dual are mutually exclusive.
+#   FAA:              no analogue. §61.87 solo is a different situation
+#                     (§61.51(d) needs sole occupancy, and the instructor is
+#                     aboard), and §61.51(e)(4) student PIC needs it too. The
+#                     FAA projection reads §61.51(e)(1)(i) instead: sole
+#                     manipulator, if the student is rated for the aircraft.
+#
+# FCL.010 SPIC needs BOTH: the pilot acting as PIC, and the instructor only
+# observing. Against sole_manipulator_receiving_instruction.yaml two facts
+# differ (command_authority and instructor.influenced_flight); against
+# dual_received_not_manipulating.yaml three do (add sole_manipulator). Do not
+# implement SPIC as "instructor aboard and not influencing" — that is wrong
+# for any flight where the pilot did not hold command. FCL.010 requires that the instructor only
+# observes and does not influence or control the flight; if they did, the
+# flight is dual and cannot also be SPIC.
+#
+# Raw facts only. See CLAUDE.md rule 1, ADR-0001, and the class dartdoc on PilotCapacity.
+
+id: "capacity-spic"
+
+command_authority: true       # FCL.010 — the student acted as PIC
+sole_manipulator: true
+sole_occupant: false          # the instructor was aboard
+multi_pilot_operation: false
+additional_crew_required_by_rule: false
+acting_as_instructor: false
+acting_as_examiner: false
+picus_claimed: false          # PICUS is a co-pilot concept; this is SPIC
+pic_intervention_not_required: false
+
+instructor:
+  capacity: "FI"
+  influenced_flight: false    # THE SPIC discriminator — FCL.010
+  name: "R. Mallory"
+  credential_number: "GBR.FI.4471"
+  # No credential_expiry: EASA does not require one, and docs/entry-form.md
+  # §4B hides the field when no FAA licence is held.
+
+# AMC1 FCL.050 requires the name, signature and licence number of the PIC or
+# FI for an SPIC entry. Deferred here — docs/entry-form.md §4B queues these
+# under "awaiting countersignature".
+countersignature:
+  status: "pending"
+  signatory_name: "R. Mallory"
+  signatory_credential_number: "GBR.FI.4471"
+  # signed_at stays absent: a pending signature has no signing time.

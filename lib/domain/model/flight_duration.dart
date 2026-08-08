@@ -1,0 +1,202 @@
+/// A logbook duration, stored as whole minutes.
+///
+/// Logbook time is kept in integer minutes rather than fractional hours so
+/// that summing thousands of flights is exact. A `double hours` field
+/// accumulates floating-point error across a full career's worth of entries,
+/// and that error surfaces as an intermittent, unexplainable mismatch far
+/// away from its cause — for example a multi-page PDF export whose running
+/// totals no longer reconcile. Integer minutes make the arithmetic exact;
+/// decimal hours and `HH:MM` are display formats only, never a storage or
+/// accumulation representation.
+///
+/// **Decimal display policy.** [toDecimalHours] renders to one decimal place
+/// (tenths of an hour), rounding half away from zero: an exact `.05`
+/// boundary rounds outward (up in magnitude), not to even and not toward
+/// zero. This is a deliberate, singular policy applied in one place —
+/// formatting — never duplicated at call sites.
+///
+/// **Rounding happens only at the display or export boundary.** Totals are
+/// always produced by summing stored integer minutes ([sum], `operator +`)
+/// and only the final total is ever rendered to decimal. Rounding each
+/// addend before summing produces a materially different — and wrong —
+/// result; see the "rounding at the display boundary" test for a worked
+/// example that is off by over a hundred hours across ten thousand flights.
+///
+/// **Neither round-trip is total, and the limits differ.**
+///
+/// `parseDecimalHours` then `toDecimalHours` reproduces the original string
+/// only for input already written to one decimal place. `'1.4'` survives;
+/// `'2'` comes back as `'2.0'`, `'0.05'` as `'0.1'`, and `'1.025'` as `'1.0'`.
+/// An importer reading a vendor CSV at higher precision therefore loses the
+/// extra digits at the *display* step, not at the parse step — the minutes
+/// themselves are exact.
+///
+/// `toDecimalHours` then `parseDecimalHours` returns the same minute count
+/// only for multiples of 6 minutes (exact tenths of an hour).
+/// `FlightDuration(83).toDecimalHours()` is `'1.4'`, and
+/// `FlightDuration.parseDecimalHours('1.4')` is 84 minutes, not 83.
+///
+/// Neither limitation loses stored data, because decimal hours are never a
+/// storage format here — only a display and interchange one.
+class FlightDuration implements Comparable<FlightDuration> {
+  const FlightDuration(this.inMinutes);
+
+  /// The zero duration.
+  static const FlightDuration zero = FlightDuration(0);
+
+  /// The duration in whole minutes. May be negative — see `operator -`.
+  final int inMinutes;
+
+  /// Pattern for `HH:MM` input: one or more digits, a colon, exactly two
+  /// digits. No leading sign is accepted.
+  static final RegExp _hoursMinutesPattern = RegExp(r'^(\d+):(\d{2})$');
+
+  /// Pattern for decimal-hours input: an integer part, with an optional
+  /// fractional part of at most 9 digits. No leading sign is accepted and
+  /// the fractional part, if present, must not be empty.
+  static final RegExp _decimalHoursPattern = RegExp(r'^(\d+)(?:\.(\d{1,9}))?$');
+
+  /// Parses an `HH:MM` string, e.g. `'1:23'` or `'01:23'`.
+  ///
+  /// Hours may be unpadded on input; minutes must be exactly two digits and
+  /// less than 60. Throws [FormatException] naming [source] if the string is
+  /// malformed.
+  factory FlightDuration.parseHoursMinutes(String source) {
+    final match = _hoursMinutesPattern.firstMatch(source);
+    if (match == null) {
+      throw FormatException('Not a valid HH:MM duration', source);
+    }
+
+    final hours = int.parse(match.group(1)!);
+    final minutes = int.parse(match.group(2)!);
+    if (minutes > 59) {
+      throw FormatException('Minutes must be 00-59', source);
+    }
+
+    return FlightDuration(hours * 60 + minutes);
+  }
+
+  /// Parses a decimal-hours string, e.g. `'1.4'` or `'2'`.
+  ///
+  /// Parsing is done with integer arithmetic on the digit string — never by
+  /// routing through `double.parse(x) * 60`. Most decimal strings happen to
+  /// convert exactly that way (`double.parse('1.4') * 60 == 84.0`), but not
+  /// all of them do: `double.parse('1.025') * 60 == 61.499999999999994`,
+  /// which rounds down to 61 minutes even though the correct half-away-
+  /// from-zero result, computed on the digit string, is 62. The double
+  /// intermediate is exact almost everywhere and silently wrong exactly at
+  /// some rounding boundaries, which is what makes it unsafe: see the
+  /// `'1.025'` and `'4.225'` cases in the "parses decimal hours with integer
+  /// arithmetic, not doubles" test. At most 9 fractional digits are
+  /// accepted; this bounds `fractionDigits * 60` (used below) well within
+  /// integer range and rejects nonsensical precision. Throws
+  /// [FormatException] naming [source] if the string is malformed.
+  factory FlightDuration.parseDecimalHours(String source) {
+    final match = _decimalHoursPattern.firstMatch(source);
+    if (match == null) {
+      throw FormatException('Not a valid decimal-hours duration', source);
+    }
+
+    final whole = int.parse(match.group(1)!);
+    final fraction = match.group(2);
+
+    if (fraction == null) {
+      return FlightDuration(whole * 60);
+    }
+
+    final fractionDigits = int.parse(fraction);
+    var scale = 1;
+    for (var i = 0; i < fraction.length; i++) {
+      scale *= 10;
+    }
+
+    // '1.45' -> whole = 1, fractionDigits = 45, scale = 100
+    // minutes = 60 + (45 * 60 + 50) ~/ 100 = 60 + 27 = 87
+    final minutes = whole * 60 + (fractionDigits * 60 + scale ~/ 2) ~/ scale;
+    return FlightDuration(minutes);
+  }
+
+  /// Sums [durations] using exact integer-minute arithmetic. Returns [zero]
+  /// for an empty iterable.
+  static FlightDuration sum(Iterable<FlightDuration> durations) {
+    var total = 0;
+    for (final duration in durations) {
+      total += duration.inMinutes;
+    }
+    return FlightDuration(total);
+  }
+
+  /// Formats as `HH:MM`, hours padded to at least two digits, minutes padded
+  /// to exactly two digits.
+  ///
+  /// A negative duration is formatted as a sign followed by the magnitude:
+  /// `FlightDuration(-83).toHoursMinutes() == '-01:23'`. Dart's `~/`
+  /// truncates toward zero and `%` returns a non-negative result against a
+  /// positive divisor, so naively applying `inMinutes ~/ 60` and
+  /// `inMinutes % 60` to a negative value does not reconstitute the original
+  /// magnitude (e.g. it turns -83 into "-1:37") and for magnitudes under 60
+  /// minutes it drops the sign entirely, returning a plausible-looking
+  /// positive value. Both are silently wrong, not merely unspecified, which
+  /// is worse than either raising or being undefined for a value type
+  /// backing a legal record — so the sign is factored out and the remainder
+  /// is formatted from the non-negative magnitude instead.
+  String toHoursMinutes() {
+    final sign = inMinutes < 0 ? '-' : '';
+    final magnitude = inMinutes.abs();
+    final hours = magnitude ~/ 60;
+    final minutes = magnitude % 60;
+    final hoursText = hours.toString().padLeft(2, '0');
+    final minutesText = minutes.toString().padLeft(2, '0');
+    return '$sign$hoursText:$minutesText';
+  }
+
+  /// Formats to decimal hours at one decimal place (tenths), rounding half
+  /// away from zero. Computed with integer arithmetic only — never `double`.
+  ///
+  /// A negative duration is formatted as a sign followed by the rounded
+  /// magnitude, kept symmetric with the positive case:
+  /// `FlightDuration(-87).toDecimalHours() == '-1.5'`, the same magnitude
+  /// text as `FlightDuration(87).toDecimalHours()`. Rounding is applied to
+  /// the magnitude, not to the signed value, so the half-away-from-zero
+  /// policy rounds outward in both directions instead of, say, rounding a
+  /// negative boundary toward zero by accident.
+  String toDecimalHours() {
+    final sign = inMinutes < 0 ? '-' : '';
+    final magnitude = inMinutes.abs();
+    final tenths = (magnitude * 10 + 30) ~/ 60;
+    return '$sign${tenths ~/ 10}.${tenths % 10}';
+  }
+
+  /// Whether this duration is negative.
+  bool get isNegative => inMinutes < 0;
+
+  FlightDuration operator +(FlightDuration other) =>
+      FlightDuration(inMinutes + other.inMinutes);
+
+  /// Subtracts [other]. The result may be negative; a negative result is
+  /// reported via [isNegative], never thrown. Rejecting a negative *flight*
+  /// duration is `Flight`'s validation concern, not this value type's.
+  FlightDuration operator -(FlightDuration other) =>
+      FlightDuration(inMinutes - other.inMinutes);
+
+  bool operator <(FlightDuration other) => inMinutes < other.inMinutes;
+
+  bool operator <=(FlightDuration other) => inMinutes <= other.inMinutes;
+
+  bool operator >(FlightDuration other) => inMinutes > other.inMinutes;
+
+  bool operator >=(FlightDuration other) => inMinutes >= other.inMinutes;
+
+  @override
+  int compareTo(FlightDuration other) => inMinutes.compareTo(other.inMinutes);
+
+  @override
+  bool operator ==(Object other) =>
+      other is FlightDuration && other.inMinutes == inMinutes;
+
+  @override
+  int get hashCode => inMinutes.hashCode;
+
+  @override
+  String toString() => 'FlightDuration($inMinutes minutes)';
+}
