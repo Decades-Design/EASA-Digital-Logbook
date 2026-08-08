@@ -71,10 +71,17 @@ class FlightDuration implements Comparable<FlightDuration> {
   /// Parses a decimal-hours string, e.g. `'1.4'` or `'2'`.
   ///
   /// Parsing is done with integer arithmetic on the digit string — never by
-  /// routing through `double.parse(x) * 60`, which is not exact (e.g.
-  /// `double.parse('1.4') * 60 == 84.00000000000001`). At most 9 fractional
-  /// digits are accepted; this bounds `fractionDigits * 60` (used below)
-  /// well within integer range and rejects nonsensical precision. Throws
+  /// routing through `double.parse(x) * 60`. Most decimal strings happen to
+  /// convert exactly that way (`double.parse('1.4') * 60 == 84.0`), but not
+  /// all of them do: `double.parse('1.025') * 60 == 61.499999999999994`,
+  /// which rounds down to 61 minutes even though the correct half-away-
+  /// from-zero result, computed on the digit string, is 62. The double
+  /// intermediate is exact almost everywhere and silently wrong exactly at
+  /// some rounding boundaries, which is what makes it unsafe: see the
+  /// `'1.025'` and `'4.225'` cases in the "parses decimal hours with integer
+  /// arithmetic, not doubles" test. At most 9 fractional digits are
+  /// accepted; this bounds `fractionDigits * 60` (used below) well within
+  /// integer range and rejects nonsensical precision. Throws
   /// [FormatException] naming [source] if the string is malformed.
   factory FlightDuration.parseDecimalHours(String source) {
     final match = _decimalHoursPattern.firstMatch(source);
@@ -112,21 +119,44 @@ class FlightDuration implements Comparable<FlightDuration> {
   }
 
   /// Formats as `HH:MM`, hours padded to at least two digits, minutes padded
-  /// to exactly two digits. Negative durations are not specially handled by
-  /// this formatter; see [isNegative].
+  /// to exactly two digits.
+  ///
+  /// A negative duration is formatted as a sign followed by the magnitude:
+  /// `FlightDuration(-83).toHoursMinutes() == '-01:23'`. Dart's `~/`
+  /// truncates toward zero and `%` returns a non-negative result against a
+  /// positive divisor, so naively applying `inMinutes ~/ 60` and
+  /// `inMinutes % 60` to a negative value does not reconstitute the original
+  /// magnitude (e.g. it turns -83 into "-1:37") and for magnitudes under 60
+  /// minutes it drops the sign entirely, returning a plausible-looking
+  /// positive value. Both are silently wrong, not merely unspecified, which
+  /// is worse than either raising or being undefined for a value type
+  /// backing a legal record — so the sign is factored out and the remainder
+  /// is formatted from the non-negative magnitude instead.
   String toHoursMinutes() {
-    final hours = inMinutes ~/ 60;
-    final minutes = inMinutes % 60;
+    final sign = inMinutes < 0 ? '-' : '';
+    final magnitude = inMinutes.abs();
+    final hours = magnitude ~/ 60;
+    final minutes = magnitude % 60;
     final hoursText = hours.toString().padLeft(2, '0');
     final minutesText = minutes.toString().padLeft(2, '0');
-    return '$hoursText:$minutesText';
+    return '$sign$hoursText:$minutesText';
   }
 
   /// Formats to decimal hours at one decimal place (tenths), rounding half
   /// away from zero. Computed with integer arithmetic only — never `double`.
+  ///
+  /// A negative duration is formatted as a sign followed by the rounded
+  /// magnitude, kept symmetric with the positive case:
+  /// `FlightDuration(-87).toDecimalHours() == '-1.5'`, the same magnitude
+  /// text as `FlightDuration(87).toDecimalHours()`. Rounding is applied to
+  /// the magnitude, not to the signed value, so the half-away-from-zero
+  /// policy rounds outward in both directions instead of, say, rounding a
+  /// negative boundary toward zero by accident.
   String toDecimalHours() {
-    final tenths = (inMinutes * 10 + 30) ~/ 60;
-    return '${tenths ~/ 10}.${tenths % 10}';
+    final sign = inMinutes < 0 ? '-' : '';
+    final magnitude = inMinutes.abs();
+    final tenths = (magnitude * 10 + 30) ~/ 60;
+    return '$sign${tenths ~/ 10}.${tenths % 10}';
   }
 
   /// Whether this duration is negative.

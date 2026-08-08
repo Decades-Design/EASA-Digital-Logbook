@@ -76,14 +76,23 @@ void main() {
     });
 
     test('parses decimal hours with integer arithmetic, not doubles', () {
-      // double.parse('1.4') * 60 == 84.00000000000001. If the implementation
-      // routes through a double, one of these will be off by a minute.
+      // '1.4', '1.45', '0.05', '0.1', '2' and '100.0' all happen to convert
+      // exactly via double (double.parse('1.4') * 60 == 84.0, verified in
+      // this runtime), so they alone do not prove the implementation avoids
+      // double. '1.025' and '4.225' are genuine divergences, found by brute
+      // force: double.parse('1.025') * 60 == 61.499999999999994, which
+      // (...).round() takes DOWN to 61, while the correct half-away-from-
+      // zero result computed on the digit string is 62 (61.5 exactly ->
+      // rounds outward). A parser routed through double silently returns 61
+      // here; that is the bug this test exists to catch.
       expect(FlightDuration.parseDecimalHours('1.4').inMinutes, 84);
       expect(FlightDuration.parseDecimalHours('1.45').inMinutes, 87);
       expect(FlightDuration.parseDecimalHours('0.05').inMinutes, 3);
       expect(FlightDuration.parseDecimalHours('0.1').inMinutes, 6);
       expect(FlightDuration.parseDecimalHours('2').inMinutes, 120);
       expect(FlightDuration.parseDecimalHours('100.0').inMinutes, 6000);
+      expect(FlightDuration.parseDecimalHours('1.025').inMinutes, 62);
+      expect(FlightDuration.parseDecimalHours('4.225').inMinutes, 254);
     });
 
     test('formats decimal hours to tenths, half away from zero', () {
@@ -106,6 +115,63 @@ void main() {
         );
       });
     });
+
+    test(
+      'formats negative durations with a sign and the correct magnitude',
+      () {
+        // Naively applying `~/` and `%` to a negative inMinutes does not
+        // reconstitute the original value (Dart's `~/` truncates toward zero,
+        // `%` returns a non-negative result), and for magnitudes under 60
+        // minutes it drops the sign entirely -- FlightDuration(-1) must not
+        // format as anything that looks like a positive duration.
+        const hoursMinutesCases = <int, String>{
+          -1: '-00:01',
+          -83: '-01:23',
+          -87: '-01:27',
+          -6000: '-100:00',
+        };
+
+        hoursMinutesCases.forEach((minutes, expected) {
+          expect(
+            FlightDuration(minutes).toHoursMinutes(),
+            expected,
+            reason: '$minutes minutes',
+          );
+        });
+
+        const decimalHoursCases = <int, String>{
+          -1: '-0.0',
+          -83: '-1.4',
+          -87: '-1.5', // -1.45 h exactly -> half away from zero, outward
+          -6000: '-100.0',
+        };
+
+        decimalHoursCases.forEach((minutes, expected) {
+          expect(
+            FlightDuration(minutes).toDecimalHours(),
+            expected,
+            reason: '$minutes minutes',
+          );
+        });
+
+        // Symmetry: the negative of a duration formats as '-' plus exactly the
+        // positive formatting, for both formatters.
+        for (final minutes in <int>[1, 83, 87, 6000]) {
+          final positive = FlightDuration(minutes);
+          final negative = FlightDuration(-minutes);
+          expect(
+            negative.toHoursMinutes(),
+            '-${positive.toHoursMinutes()}',
+            reason: '$minutes minutes (HH:MM symmetry)',
+          );
+          expect(
+            negative.toDecimalHours(),
+            '-${positive.toDecimalHours()}',
+            reason: '$minutes minutes (decimal symmetry)',
+          );
+        }
+      },
+    );
 
     test('formats and parses HH:MM', () {
       const cases = <int, String>{
