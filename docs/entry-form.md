@@ -360,7 +360,48 @@ Requirements:
 
 ---
 
-## 9. Speed
+## 9. FSTD sessions are a different form
+
+Everything above assumes an aircraft. A simulator session is not a flight with some fields
+greyed out — it is a different entry that happens to live in the same logbook.
+
+`AMC1 FCL.050` column 11 makes this explicit: an FSTD session has **its own date column**,
+separate from column 1, and its total sits outside total time of flight (column 6). See
+`docs/amc1-fcl050-layout.md`. Under `§61.51(b)(1)(ii)` the FAA records the *location of the
+lesson* where a flight would carry departure and arrival.
+
+**Fields that do not appear:** route, aircraft registration, off/on blocks, landings, night
+time, cross-country. A session has no take-offs and no landings in any logbook sense, and
+`FCL.060` recency generally cannot be satisfied in a device below the level that represents the
+class or type.
+
+**Fields the flight form does not have:**
+
+| Field | Why |
+|---|---|
+| Device qualification level | FFS A–D, FTD 1–2, ATD/BATD/AATD. Determines what the session is creditable toward, and differs between EASA and FAA. CLAUDE.md rule 2: "FSTD qualification level, not just sim: yes" |
+| Device identity / approval number | Which specific device. Unbackfillable — nobody reconstructs this years later |
+| Device operator and location | `§61.51(b)(1)(ii)` records the location of the lesson |
+| Represented aircraft type | An FFS represents a specific type; credit follows the type it represents, not the device |
+| Session type | Training, proficiency check, skill test, IPC |
+
+**Time semantics differ.** A session has a single total, entered directly — there is no
+equivalent of block time derived from off and on blocks, and no air time. Whatever the pilot
+enters is the figure.
+
+**Instructor presence is near-universal**, so the four-way crew selector in §4 does not apply.
+A session has an instructor or examiner and, in a multi-crew device, another pilot occupying
+the other seat. Whether that reuses `PilotCapacity` or needs its own type is open — some fields
+carry over (instructor aboard, dual versus PIC-equivalent), and others are meaningless in a box
+that never leaves the ground (sole occupant, sole manipulator). Settle it when issue #28 lands,
+not before: guessing produces either a model that lies or a duplicate one.
+
+**The one hard rule, regardless:** FSTD time never contributes to aircraft flight time totals,
+in any jurisdiction. That is issue #28's load-bearing test.
+
+---
+
+## 10. Speed
 
 The interaction that matters most is **repeat last flight**, with the route optionally reversed.
 Training and circuit flying are highly repetitive, and for a large share of entries the correct
