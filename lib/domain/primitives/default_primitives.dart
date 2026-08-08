@@ -1,6 +1,7 @@
 import 'easa_cross_country_time.dart';
 import 'easa_night_time.dart';
 import 'easa_pilot_function_time.dart';
+import 'faa_cross_country_time.dart';
 import 'faa_night_time.dart';
 import 'faa_pilot_function_time.dart';
 import 'primitive_registry.dart';
@@ -22,5 +23,8 @@ final PrimitiveRegistry defaultPrimitives = PrimitiveRegistry(
     'easa.night_time': easaNightTime,
     'faa.night_time': faaNightTime,
   },
-  crossCountryRules: {'easa.cross_country_time': easaCrossCountryTime},
+  crossCountryRules: {
+    'easa.cross_country_time': easaCrossCountryTime,
+    'faa.cross_country_time': faaCrossCountryTime,
+  },
 );
