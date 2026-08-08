@@ -1,6 +1,7 @@
 // flutter_test re-exports test/group/expect from package:test_api, so plain
 // Dart tests need no separate package:test dependency.
 import 'package:easa_digital_log/domain/model/aircraft.dart';
+import 'package:easa_digital_log/domain/model/mass.dart';
 import 'package:easa_digital_log/domain/primitives/faa_aircraft_categories.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,7 @@ const List<String> aircraftFixtures = <String>[
   'n456bd',
   'g_seaplane',
   'g_multicrew',
+  'n700cm',
   'g_tailwheel_tmg',
 ];
 
@@ -59,7 +61,18 @@ void main() {
         ]),
       );
       expect(all.map((a) => a.requiresMultiCrew).toSet(), <bool>{true, false});
-      expect(all.map((a) => a.requiresTypeRating).toSet(), <bool>{true, false});
+      expect(
+        all.any((a) => a.typeRatingDesignator != null),
+        isTrue,
+        reason: 'nothing exercises the type-rated path',
+      );
+      expect(
+        all.map((a) => a.maximumTakeoffMass?.unit).toSet(),
+        containsAll(<MassUnit>[MassUnit.kilograms, MassUnit.pounds]),
+        reason:
+            'both certificated units must appear, or the unit-preserving '
+            'comparison is never exercised',
+      );
       expect(
         all.any((a) => a.horsepower == null),
         isTrue,
@@ -164,6 +177,173 @@ void main() {
         isTrue,
       );
       expect(isTechnicallyAdvanced(jet), isFalse);
+    });
+  });
+
+  group('§61.31(a) FAA type rating', () {
+    test('a light jet is caught by propulsion, not weight', () {
+      // The Citation Mustang: 8,645 lb, well under the 12,500 lb limb, and
+      // still type-rated. Its engines are turbofans, so a narrow reading of
+      // "turbojet-powered" would let every light jet through.
+      final mustang = aircraftFromFixture('n700cm');
+
+      expect(
+        mustang.maximumTakeoffMass!.exceeds(faaTypeRatingMassThreshold),
+        isFalse,
+      );
+      expect(requiresFaaTypeRating(mustang), isTrue);
+    });
+
+    test('weight alone catches a heavy propeller aeroplane', () {
+      final light = aircraftFromFixture('g_abcd');
+      expect(requiresFaaTypeRating(light), isFalse);
+
+      expect(
+        requiresFaaTypeRating(
+          light.copyWith(maximumTakeoffMass: const Mass.pounds(12501)),
+        ),
+        isTrue,
+      );
+    });
+
+    test('is exactly 12,500 lb, not 12,500 or more', () {
+      // "more than 12,500 pounds". 12,500 lb is a very common certification
+      // limit precisely because it is the threshold, so an off-by-one here
+      // would be hit often.
+      final base = aircraftFromFixture('g_abcd');
+
+      expect(
+        requiresFaaTypeRating(
+          base.copyWith(maximumTakeoffMass: const Mass.pounds(12500)),
+        ),
+        isFalse,
+      );
+    });
+
+    test('comparing across units does not lose the boundary', () {
+      // 12,500 lb is 5669.904625 kg. Storing kilograms and converting back is
+      // what would misclassify an aeroplane sitting exactly on the line —
+      // this is the reason Mass keeps the certificated unit.
+      final base = aircraftFromFixture('g_abcd');
+
+      expect(
+        requiresFaaTypeRating(
+          base.copyWith(maximumTakeoffMass: const Mass.kilograms(5669)),
+        ),
+        isFalse,
+      );
+      expect(
+        requiresFaaTypeRating(
+          base.copyWith(maximumTakeoffMass: const Mass.kilograms(5670)),
+        ),
+        isTrue,
+      );
+    });
+
+    test('answers null when neither limb can be evaluated', () {
+      final base = aircraftFromFixture('g_abcd');
+      expect(
+        requiresFaaTypeRating(base.copyWith(maximumTakeoffMass: null)),
+        isNull,
+      );
+    });
+  });
+
+  group('§61.31(g) high altitude', () {
+    test('takes the lower of service ceiling and max operating altitude', () {
+      // The A320: 39,800 ft service ceiling, 39,100 ft max operating. The rule
+      // compares the lower, so an airframe capable of 30,000 ft but limited to
+      // 24,000 ft in operation needs no endorsement.
+      final jet = aircraftFromFixture('g_multicrew');
+
+      expect(jet.serviceCeilingFeet, 39800);
+      expect(jet.maximumOperatingAltitudeFeet, 39100);
+      expect(requiresHighAltitudeEndorsement(jet), isTrue);
+
+      final limited = jet.copyWith(maximumOperatingAltitudeFeet: 24000);
+      expect(requiresHighAltitudeEndorsement(limited), isFalse);
+    });
+
+    test('is above 25,000 ft, not at it', () {
+      final base = aircraftFromFixture('g_abcd');
+
+      expect(
+        requiresHighAltitudeEndorsement(
+          base.copyWith(serviceCeilingFeet: 25000),
+        ),
+        isFalse,
+      );
+      expect(
+        requiresHighAltitudeEndorsement(
+          base.copyWith(serviceCeilingFeet: 25001),
+        ),
+        isTrue,
+      );
+    });
+
+    test('is not the same question as being pressurised', () {
+      // Plenty of pressurised aeroplanes sit below the threshold. If the
+      // primitive consulted the pressurised flag this would go red.
+      final base = aircraftFromFixture('g_abcd').copyWith(
+        serviceCeilingFeet: 20000,
+        equipment: <AircraftEquipment>{
+          AircraftEquipment.flaps,
+          AircraftEquipment.pressurised,
+        },
+      );
+
+      expect(requiresHighAltitudeEndorsement(base), isFalse);
+    });
+
+    test('answers null when no altitude is recorded', () {
+      final base = aircraftFromFixture('g_abcd');
+      expect(
+        requiresHighAltitudeEndorsement(
+          base.copyWith(
+            serviceCeilingFeet: null,
+            maximumOperatingAltitudeFeet: null,
+          ),
+        ),
+        isNull,
+      );
+    });
+  });
+
+  group('Mass', () {
+    test('compares exactly across units', () {
+      // The international pound is exactly 0.45359237 kg, so this is not an
+      // approximation.
+      expect(
+        const Mass.pounds(12500).exceeds(const Mass.kilograms(5669)),
+        isTrue,
+      );
+      expect(
+        const Mass.pounds(12500).exceeds(const Mass.kilograms(5670)),
+        isFalse,
+      );
+      expect(
+        const Mass.kilograms(1000).exceeds(const Mass.pounds(2204)),
+        isTrue,
+      );
+      expect(
+        const Mass.kilograms(1000).exceeds(const Mass.pounds(2205)),
+        isFalse,
+      );
+    });
+
+    test('equality is by mass, not by unit', () {
+      expect(const Mass.kilograms(1000) == const Mass.kilograms(1000), isTrue);
+      expect(const Mass.kilograms(1000) == const Mass.pounds(1000), isFalse);
+      // The duplicate is the point: the set must collapse it. Built from a
+      // list rather than a set literal, because `equal_elements_in_set`
+      // rightly objects to a literal whose elements are visibly equal.
+      const duplicates = <Mass>[Mass.kilograms(1000), Mass.kilograms(1000)];
+      expect(duplicates.toSet(), hasLength(1));
+    });
+
+    test('keeps the certificated unit in its printed form', () {
+      expect(const Mass.pounds(12500).toString(), '12500 lb');
+      expect(const Mass.kilograms(5670).toString(), '5670 kg');
     });
   });
 

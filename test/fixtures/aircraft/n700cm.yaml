@@ -1,0 +1,38 @@
+# A very light jet. The fixture that proves the type-rating weight limb is not
+# the only one: at 8,645 lb this is comfortably UNDER 12,500 lb and still needs
+# a type rating, because it is turbojet-powered.
+#
+# docs/ratings-and-endorsements.md §5 calls this out as the example that
+# surprises people. Its engines are turbofans, which is exactly why
+# requiresFaaTypeRating treats turbofan and turbojet alike — reading the limb
+# narrowly would let every light jet through.
+#
+# Derived FAA categories (computed, NOT stored):
+#   §61.31(a)  type rating          = TRUE on propulsion alone, despite weight
+#   §61.31(g)  high-altitude        = true (41,000 ft, above 25,000)
+#   §61.31(e)  complex              = false — the rule is for propeller types
+#   §61.31(f)  high-performance     = unknown (no horsepower on a turbofan)
+#   §61.129(j) technically advanced = false
+
+registration: "N700CM"
+manufacturer: "Cessna"
+model: "510 Citation Mustang"
+icao_type_designator: "C510"
+
+category: "aeroplane"
+engine_type: "turbofan"
+engine_count: 2
+operating_surface: "land"
+
+type_rating_designator: "C510"
+requires_multi_crew: false        # single-pilot certified, and still type-rated
+
+maximum_takeoff_mass_lb: 8645     # UNDER the 12,500 lb limb
+service_ceiling_feet: 41000
+
+equipment:
+  - "retractable_undercarriage"
+  - "flaps"
+  - "pressurised"
+  - "electronic_flight_instrument_system"
+  - "integrated_autopilot"

@@ -11,6 +11,16 @@
 library;
 
 import '../model/aircraft.dart';
+import '../model/mass.dart';
+
+/// The FAA type-rating mass threshold: `§61.31(a)` reads "more than 12,500
+/// pounds". Expressed in pounds because that is the unit the rule uses, and
+/// 12,500 lb is a common certification limit chosen precisely because it is
+/// the threshold — see [Mass].
+const Mass faaTypeRatingMassThreshold = Mass.pounds(12500);
+
+/// `§61.31(g)`: above 25,000 ft MSL.
+const int highAltitudeThresholdFeet = 25000;
 
 /// Whether the aircraft is **complex** under `§61.31(e)`.
 ///
@@ -55,6 +65,60 @@ bool? isHighPerformance(Aircraft aircraft) {
     return null;
   }
   return horsepower > 200;
+}
+
+/// Whether a **high-altitude endorsement** is required under `§61.31(g)`.
+///
+/// The rule compares the service ceiling *or* the maximum operating altitude,
+/// **whichever is lower**, against 25,000 ft MSL. Taking the lower of the two
+/// is the whole point: an aeroplane whose airframe could reach 30,000 ft but
+/// which is limited to 24,000 ft in operation needs no endorsement.
+///
+/// Returns null when neither altitude is recorded — the question is then
+/// unanswerable, and answering false would clear an aeroplane that may well
+/// need the endorsement. Note this is **not** the same as being pressurised:
+/// plenty of pressurised aeroplanes sit below the threshold, which is why
+/// [AircraftEquipment.pressurised] is not consulted here.
+bool? requiresHighAltitudeEndorsement(Aircraft aircraft) {
+  final ceilings = <int>[
+    if (aircraft.serviceCeilingFeet != null) aircraft.serviceCeilingFeet!,
+    if (aircraft.maximumOperatingAltitudeFeet != null)
+      aircraft.maximumOperatingAltitudeFeet!,
+  ];
+  if (ceilings.isEmpty) {
+    return null;
+  }
+  return ceilings.reduce((a, b) => a < b ? a : b) > highAltitudeThresholdFeet;
+}
+
+/// Whether a **type rating** is required under FAA rules.
+///
+/// `§61.31(a)`: aeroplanes of more than 12,500 lb maximum certificated takeoff
+/// weight, and turbojet-powered aeroplanes regardless of weight.
+///
+/// Returns null when the mass is unknown and the aircraft is not turbojet —
+/// the weight limb cannot then be evaluated. A turbojet answers true
+/// regardless of mass, so an unknown mass does not make it unanswerable.
+///
+/// Does **not** cover the third limb, "other aircraft specified by the
+/// Administrator through aircraft type certificate procedures". That is a
+/// lookup rather than a calculation, and lands on
+/// [Aircraft.typeRatingDesignator] like the EASA rating-list case.
+bool? requiresFaaTypeRating(Aircraft aircraft) {
+  // "Turbojet-powered" covers turbofans. `docs/ratings-and-endorsements.md` §5
+  // gives the Citation Mustang as the example that surprises people — it needs
+  // a type rating at 8,645 lb, well under the weight limb, and its engines are
+  // turbofans. Reading the limb narrowly would let every light jet through.
+  if (aircraft.engineType == EngineType.turbojet ||
+      aircraft.engineType == EngineType.turbofan) {
+    return true;
+  }
+
+  final mass = aircraft.maximumTakeoffMass;
+  if (mass == null) {
+    return null;
+  }
+  return mass.exceeds(faaTypeRatingMassThreshold);
 }
 
 /// Whether the aircraft is **technically advanced** under `§61.129(j)`.

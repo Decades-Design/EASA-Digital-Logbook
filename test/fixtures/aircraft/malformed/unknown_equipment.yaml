@@ -14,7 +14,6 @@ engine_type: "piston"
 engine_count: 1
 operating_surface: "land"
 
-requires_type_rating: false
 requires_multi_crew: false
 
 equipment:

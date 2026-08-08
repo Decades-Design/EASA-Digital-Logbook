@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'mass.dart';
+
 part 'aircraft.freezed.dart';
 
 /// An aircraft the logbook holder has flown.
@@ -43,16 +45,17 @@ abstract class Aircraft with _$Aircraft {
 
     required OperatingSurface operatingSurface,
 
-    /// Whether the aircraft needs a type rating rather than a class rating.
+    /// The type rating designator where one applies, e.g. `A320`. Null means
+    /// the aircraft is class-rated.
     ///
-    /// A licensing fact, not a physical one: EASA maintains the list, and it
-    /// cannot be derived from mass or engine count. Class ratings — SEP(land),
-    /// MEP(sea) and so on — *are* derivable, from [engineType],
-    /// [engineCount] and [operatingSurface].
-    required bool requiresTypeRating,
-
-    /// The type rating designator where one applies, e.g. `A320`. Null for a
-    /// class-rated aircraft.
+    /// This carries the fact; there is deliberately no `requiresTypeRating`
+    /// boolean beside it. The FAA half of the question *is* derivable — over
+    /// 12,500 lb, or turbojet-powered — and
+    /// `primitives/faa_aircraft_categories.dart` derives it. The EASA half
+    /// partly is not: "individually listed in the EASA Class and Type Rating
+    /// List" is a lookup, not a calculation, and this field is where that
+    /// lookup's answer lands. See `docs/ratings-and-endorsements.md` §5, which
+    /// lists `requiresTypeRating` among the values never to store.
     String? typeRatingDesignator,
 
     /// Whether the aircraft's certification requires more than one pilot.
@@ -69,6 +72,27 @@ abstract class Aircraft with _$Aircraft {
     /// 200 hp. Null where unknown or not meaningful; a null makes the
     /// high-performance question unanswerable rather than answerable as false.
     int? horsepower,
+
+    /// Maximum certificated takeoff mass, in the unit it was certificated in.
+    ///
+    /// Drives the FAA type-rating threshold of more than 12,500 lb and the
+    /// EASA thresholds expressed in kilograms. See [Mass] on why the unit is
+    /// stored rather than normalised: both authorities draw sharp lines in
+    /// their own units, and 12,500 lb is a common certification limit
+    /// precisely because it is the line.
+    Mass? maximumTakeoffMass,
+
+    /// Service ceiling in feet.
+    ///
+    /// `§61.31(g)` requires a high-altitude endorsement where the service
+    /// ceiling *or* maximum operating altitude, **whichever is lower**, is
+    /// above 25,000 ft. Both are stored because the rule compares the lower
+    /// of the two, and neither can stand in for the other.
+    int? serviceCeilingFeet,
+
+    /// Maximum operating altitude in feet. The other half of `§61.31(g)`; see
+    /// [serviceCeilingFeet].
+    int? maximumOperatingAltitudeFeet,
 
     /// Everything the aircraft carries that any authority's rules turn on.
     ///

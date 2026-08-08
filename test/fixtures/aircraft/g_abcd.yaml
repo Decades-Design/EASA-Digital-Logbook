@@ -17,10 +17,11 @@ engine_type: "piston"
 engine_count: 1
 operating_surface: "land"
 
-requires_type_rating: false
 requires_multi_crew: false
 
 horsepower: 110
+maximum_takeoff_mass_kg: 758      # well under every threshold
+service_ceiling_feet: 14700       # §61.31(g) needs above 25,000
 
 # Only flaps. GM1 FCL.700 differences training: none applicable.
 equipment:

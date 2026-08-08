@@ -21,10 +21,11 @@ engine_type: "piston"
 engine_count: 1
 operating_surface: "sea"
 
-requires_type_rating: false
 requires_multi_crew: false
 
 horsepower: 450
+maximum_takeoff_mass_lb: 5100
+service_ceiling_feet: 18000
 
 equipment:
   - "flaps"

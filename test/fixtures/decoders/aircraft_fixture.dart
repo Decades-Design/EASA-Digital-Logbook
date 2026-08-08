@@ -1,4 +1,5 @@
 import 'package:easa_digital_log/domain/model/aircraft.dart';
+import 'package:easa_digital_log/domain/model/mass.dart';
 import 'package:yaml/yaml.dart';
 
 import '../fixture_loader.dart';
@@ -63,10 +64,16 @@ Aircraft aircraftFromFixture(String name) {
     engineType: _enumValue(yaml, 'engine_type', name, _engineTypes),
     engineCount: _int(yaml, 'engine_count', name),
     operatingSurface: _enumValue(yaml, 'operating_surface', name, _surfaces),
-    requiresTypeRating: requiredBool(yaml, 'requires_type_rating', name),
     typeRatingDesignator: optionalString(yaml, 'type_rating_designator', name),
     requiresMultiCrew: requiredBool(yaml, 'requires_multi_crew', name),
     horsepower: _optionalInt(yaml, 'horsepower', name),
+    maximumTakeoffMass: _mass(yaml, name),
+    serviceCeilingFeet: _optionalInt(yaml, 'service_ceiling_feet', name),
+    maximumOperatingAltitudeFeet: _optionalInt(
+      yaml,
+      'maximum_operating_altitude_feet',
+      name,
+    ),
     equipment: _equipmentSet(yaml, name),
   );
 }
@@ -110,6 +117,29 @@ Set<AircraftEquipment> _equipmentSet(YamlMap yaml, String fixture) {
     }
   }
   return result;
+}
+
+/// Reads `maximum_takeoff_mass_kg` or `maximum_takeoff_mass_lb`, keeping the
+/// unit the fixture states. See [Mass] on why the unit is part of the fact.
+Mass? _mass(YamlMap yaml, String fixture) {
+  final kilograms = _optionalInt(yaml, 'maximum_takeoff_mass_kg', fixture);
+  final pounds = _optionalInt(yaml, 'maximum_takeoff_mass_lb', fixture);
+
+  if (kilograms != null && pounds != null) {
+    throw FixtureFieldException(
+      fixture,
+      'maximum_takeoff_mass_kg',
+      'only one of _kg and _lb — the certificated unit is the fact, and two '
+          'values can disagree',
+    );
+  }
+  if (kilograms != null) {
+    return Mass.kilograms(kilograms);
+  }
+  if (pounds != null) {
+    return Mass.pounds(pounds);
+  }
+  return null;
 }
 
 T _enumValue<T extends Object>(
