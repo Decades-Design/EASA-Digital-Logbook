@@ -1,0 +1,8 @@
+"id","ident","type","name","latitude_deg","longitude_deg","elevation_ft","continent","iso_country","iso_region","municipality","scheduled_service","icao_code","iata_code","gps_code","local_code","home_link","wikipedia_link","keywords"
+3622,"JFK","large_airport","John F Kennedy International Airport",40.639801,-73.7789,13,"NA","US","US-NY","New York","yes","KJFK","JFK","KJFK","JFK",,"https://en.wikipedia.org/wiki/John_F._Kennedy_International_Airport","New York, NYC, Idlewild"
+2434,"LHR","large_airport","London Heathrow Airport",51.4706,-0.461941,83,"EU","GB","GB-ENG","London","yes","EGLL","LHR","EGLL","LHR",,"https://en.wikipedia.org/wiki/Heathrow_Airport","Heathrow, LHR, London Airport"
+6523,"00A","heliport","Total RF Heliport",40.070985,-74.933689,11,"NA","US","US-PA","Bensalem","no",,,"K00A","00A",,,
+99999,"XYZ1","small_airport","Remote Island Strip",-8.5,159.2,5,"OC","SB","SB-CT","Remote Island","no",,"XYZ",,"XYZ1",,,"remote strip"
+88888,"ZZZZ","small_airport","No Elevation Field Airport",10.0,20.0,,"AS","XX","XX-01","Nowhere","no","ZZZZ",,"ZZZZ","ZZZZ",,,
+77777,"BAD1","small_airport","Bad Coordinates Airport",,,,"AF","YY","YY-01","Somewhere","no","BADX",,"BADX","BAD1",,,
+55555,"EWR","large_airport","Newark, Liberty International Airport",40.6925,-74.1687,18,"NA","US","US-NJ","Newark","yes","KEWR","EWR","KEWR","EWR",,"https://en.wikipedia.org/wiki/Newark_Liberty_International_Airport","Newark Airport"
