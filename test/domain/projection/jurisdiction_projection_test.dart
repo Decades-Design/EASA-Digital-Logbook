@@ -91,6 +91,7 @@ void main() {
     final primitives = PrimitiveRegistry(
       pilotFunctionTimeRules: {'test.fake_rule': _fakeRule},
       nightTimeRules: const {},
+      crossCountryRules: const {},
     );
     projection = JurisdictionProjection(
       registry: registry,
@@ -135,6 +136,7 @@ void main() {
           primitives: PrimitiveRegistry(
             pilotFunctionTimeRules: const {},
             nightTimeRules: const {},
+            crossCountryRules: const {},
           ),
           aerodromes: _emptyAerodromes(),
           jurisdictionId: 'test.no-rules',
@@ -164,6 +166,7 @@ void main() {
         primitives: PrimitiveRegistry(
           pilotFunctionTimeRules: {'test.fake_rule': _fakeRule},
           nightTimeRules: {'test.fake_night_rule': _fakeNightRule},
+          crossCountryRules: const {},
         ),
         aerodromes: _emptyAerodromes(),
         jurisdictionId: 'test.both-rules',
@@ -187,6 +190,7 @@ void main() {
         primitives: PrimitiveRegistry(
           pilotFunctionTimeRules: const {},
           nightTimeRules: const {},
+          crossCountryRules: const {},
         ),
         aerodromes: _emptyAerodromes(),
         jurisdictionId: 'test.broken',
@@ -231,6 +235,7 @@ void main() {
           primitives: PrimitiveRegistry(
             pilotFunctionTimeRules: {'test.pending_rule': pendingRule},
             nightTimeRules: const {},
+            crossCountryRules: const {},
           ),
           aerodromes: _emptyAerodromes(),
           jurisdictionId: 'test.pending',

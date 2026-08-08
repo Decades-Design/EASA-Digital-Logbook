@@ -1,3 +1,4 @@
+import 'cross_country_time.dart';
 import 'night_time.dart';
 import 'pilot_function_time.dart';
 
@@ -10,20 +11,22 @@ import 'pilot_function_time.dart';
 /// this whole abstraction is that adding a new authority needs a YAML
 /// profile and at most one new primitive per rule kind, never a change here.
 ///
-/// One map per rule *kind*, not one flat map keyed only by id: `pic_rule`
-/// and `night_rule` are different function shapes
-/// ([PilotFunctionTimeRule] vs. [NightTimeRule]), and a single `Map<String,
-/// Object>` would push the cast back onto every caller. Grows by one map and
-/// one lookup method per rule kind as #23-26 (cross-country, instrument)
-/// land.
+/// One map per rule *kind*, not one flat map keyed only by id: `pic_rule`,
+/// `night_rule` and `cross_country_rule` are different function shapes
+/// ([PilotFunctionTimeRule], [NightTimeRule], [CrossCountryRule]), and a
+/// single `Map<String, Object>` would push the cast back onto every caller.
+/// Grows by one map and one lookup method per rule kind as #25-26
+/// (instrument, multi-pilot time) land.
 class PrimitiveRegistry {
   const PrimitiveRegistry({
     required this.pilotFunctionTimeRules,
     required this.nightTimeRules,
+    required this.crossCountryRules,
   });
 
   final Map<String, PilotFunctionTimeRule> pilotFunctionTimeRules;
   final Map<String, NightTimeRule> nightTimeRules;
+  final Map<String, CrossCountryRule> crossCountryRules;
 
   /// Throws [ArgumentError] naming [ruleId] if nothing is registered under
   /// it — a profile referencing a primitive that was never wired up is a
@@ -49,6 +52,19 @@ class PrimitiveRegistry {
         ruleId,
         'ruleId',
         'no night-time primitive is registered under this id',
+      );
+    }
+    return rule;
+  }
+
+  /// As [pilotFunctionTime], for a profile's `cross_country_rule` key.
+  CrossCountryRule crossCountry(String ruleId) {
+    final rule = crossCountryRules[ruleId];
+    if (rule == null) {
+      throw ArgumentError.value(
+        ruleId,
+        'ruleId',
+        'no cross-country primitive is registered under this id',
       );
     }
     return rule;
