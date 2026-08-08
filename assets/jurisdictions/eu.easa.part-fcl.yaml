@@ -1,0 +1,7 @@
+# EASA Part-FCL. See docs/jurisdiction-matrix.md and docs/adr/0001-raw-facts-only.md.
+#
+# Root profile — nothing to extend yet. UK CAA Part-FCL will extend this
+# once it's modelled; see JurisdictionProfile's dartdoc for the mechanism.
+id: eu.easa.part-fcl
+
+pic_rule: easa.pilot_function_time
