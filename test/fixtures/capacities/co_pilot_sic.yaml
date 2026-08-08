@@ -2,8 +2,8 @@
 # PICUS claimed. The ordinary airline right-hand-seat sector.
 #
 # Expected projections (asserted by issues #18 and #19 — NOT stored here):
-#   EASA AMC1 FCL.050: co-pilot time = full block time (column 11 pilot
-#                      function time), recorded as multi-pilot time (column 6).
+#   EASA AMC1 FCL.050: co-pilot time = full block time (column 10 pilot
+#                      function time), recorded as multi-pilot time (column 5).
 #                      PIC = 0.
 #   FAA  §61.51(f):    SIC = full block time, provided the pilot is qualified
 #                      under §61.55 and the aircraft requires more than one
@@ -23,7 +23,7 @@ id: "capacity-co-pilot-sic"
 command_authority: false
 sole_manipulator: false       # the captain flew this sector
 sole_occupant: false
-multi_pilot_operation: true   # §61.51(f); AMC1 FCL.050 column 6
+multi_pilot_operation: true   # §61.51(f); AMC1 FCL.050 column 5
 additional_crew_required_by_rule: true  # multi-crew operation
 acting_as_instructor: false
 acting_as_examiner: false

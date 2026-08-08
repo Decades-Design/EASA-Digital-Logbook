@@ -53,8 +53,9 @@ abstract class PilotCapacity with _$PilotCapacity {
     required bool soleOccupant,
 
     /// Whether the flight was a multi-pilot *operation* in the logbook sense.
-    /// `AMC1 FCL.050` splits single-pilot (column 5) from multi-pilot
-    /// (column 6) time, so an EASA logbook cannot be printed without it.
+    /// `AMC1 FCL.050` column 5 holds single-pilot time (split SE/ME) and
+    /// multi-pilot time side by side as one group, so an EASA logbook cannot
+    /// be printed without this. See `docs/amc1-fcl050-layout.md`.
     ///
     /// Deliberately **not** the same question as
     /// [additionalCrewRequiredByRule]. A light aeroplane flown under a hood
@@ -76,7 +77,8 @@ abstract class PilotCapacity with _$PilotCapacity {
     required bool additionalCrewRequiredByRule,
 
     /// Whether this pilot was the authorised instructor. `AMC1 FCL.050`
-    /// column 11 records instructor time as its own function; `§61.51(e)(3)`
+    /// column 10 (pilot function time) records instructor time as its own
+    /// function; `§61.51(e)(3)`
     /// lets a CFI log PIC for instruction given when rated to act as PIC.
     ///
     /// The mirror of [instructor]: this flag says *this* pilot instructed,
@@ -159,7 +161,7 @@ abstract class PilotCapacity with _$PilotCapacity {
 enum OtherPilotRole {
   /// Required to be there by the type certificate or the operating rules.
   ///
-  /// Covers both the EASA co-pilot / FAA SIC case (`AMC1 FCL.050` column 11,
+  /// Covers both the EASA co-pilot / FAA SIC case (`AMC1 FCL.050` column 10,
   /// `§61.51(f)`) *and* the case where the other pilot is the single required
   /// pilot of a single-pilot aircraft — a projection must therefore read
   /// [PilotCapacity.multiPilotOperation] alongside this value rather than

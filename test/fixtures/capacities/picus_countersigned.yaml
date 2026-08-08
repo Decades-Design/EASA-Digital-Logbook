@@ -23,7 +23,7 @@ id: "capacity-picus-countersigned"
 command_authority: false      # FCL.010 — the supervising PIC held command
 sole_manipulator: true        # pilot flying for this sector
 sole_occupant: false
-multi_pilot_operation: true   # AMC1 FCL.050 column 6; PICUS is a co-pilot case
+multi_pilot_operation: true   # AMC1 FCL.050 column 5; PICUS is a co-pilot case
 additional_crew_required_by_rule: true  # multi-crew operation
 acting_as_instructor: false
 acting_as_examiner: false

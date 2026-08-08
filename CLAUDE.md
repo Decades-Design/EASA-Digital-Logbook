@@ -49,7 +49,12 @@ violating one of them.
 
 - `docs/jurisdiction-matrix.md` — how EASA, FAA and UK CAA differ, rule by rule. The
   authoritative source for which raw facts must exist. Read §4 and §9 before touching a model.
-- `docs/entry-form.md` — how the flight entry screen should behave and why.
+- `docs/amc1-fcl050-layout.md` — the printed EASA logbook sheet, transcribed from the template
+  EASA publishes. **Twelve** column groups. The authority for any "column N" citation: pilot
+  function time is 10, FSTD session 11, remarks 12. Single-pilot and multi-pilot time share
+  group 5, which is why counting them separately gives thirteen and is wrong.
+- `docs/entry-form.md` — how the flight entry screen should behave and why. §9 covers FSTD
+  sessions, which are a separate form rather than a flight with fields greyed out.
 - `docs/adr/` — existing decisions, kept as history. Add a new one only for a decision that is
   genuinely hard to reverse and cannot live in a code comment.
 

@@ -6,9 +6,14 @@ authorities this app must support. Written as a working reference for building t
 
 > **Status: working summary, not legal advice.** Every row here needs verification against the
 > current instrument before it becomes load-bearing in code. Regulations cited were checked in
-> August 2026; AMC1 FCL.050 is amended by ED Decision 2025/002/R and the UK diverged again in
-> October 2025. Treat this document as a map of *where to look*, not as the authority itself.
-> Where a row is marked ⚠️ the rule is genuinely ambiguous or authority-dependent.
+> August 2026; the UK diverged again in October 2025. Treat this document as a map of *where to
+> look*, not as the authority itself. Where a row is marked ⚠️ the rule is genuinely ambiguous
+> or authority-dependent.
+>
+> The one exception is the column layout in §2, which is transcribed from the sheet EASA
+> publishes and lives in [`docs/amc1-fcl050-layout.md`](amc1-fcl050-layout.md). ⚠️ That sheet is
+> marked **ED Decision 2020/005/R**, not the 2022/014/R or 2025/002/R this document previously
+> cited for it — confirm which decision governs before M6 hardens the printed layout.
 
 ---
 
@@ -36,23 +41,33 @@ authority, so acceptance practice varies by member state. Known example: Ireland
 
 ### EASA / UK — AMC1 FCL.050 column groups
 
+**Twelve** groups, not thirteen. Transcribed in full — including the front matter, page totals
+and certification block — in [`docs/amc1-fcl050-layout.md`](amc1-fcl050-layout.md), from the
+EASA-published template (ED Decision 2020/005/R). That file is the authority for every
+"column N" citation in this codebase; this table is a summary of it.
+
 | # | Column group | Subfields |
 |---|---|---|
 | 1 | Date | dd/mm/yy, date flight commences |
 | 2 | Departure | Place, time (UTC) |
 | 3 | Arrival | Place, time (UTC) |
 | 4 | Aircraft | Make, model, variant; registration |
-| 5 | Single-pilot time | SE / ME |
-| 6 | Multi-pilot time | — |
-| 7 | Total time of flight | Hours+minutes or decimal |
-| 8 | Name(s) of PIC | Or "SELF" |
-| 9 | Landings | Day / night, as pilot flying |
-| 10 | Operational condition time | Night / IFR |
-| 11 | Pilot function time | PIC / co-pilot / dual / instructor |
-| 12 | FSTD session | Date, type, total session time |
-| 13 | Remarks and endorsements | See §7 below |
+| 5 | Single-pilot time / multi-pilot time | SE / ME for single-pilot; multi-pilot undivided |
+| 6 | Total time of flight | Hours+minutes or decimal |
+| 7 | Name(s) of PIC | Or "SELF" |
+| 8 | Landings | Day / night, as pilot flying |
+| 9 | Operational condition time | Night / IFR |
+| 10 | Pilot function time | PIC / co-pilot / dual / instructor |
+| 11 | FSTD session | Date, type, total session time |
+| 12 | Remarks and endorsements | See §7 below |
 
-Places may be entered in full or as the three- or four-letter designator, and all times should be in UTC. Column 5 indicates SP or MP, and for SP whether SE or ME. Column 8 takes the number of landings as pilot flying by day or night. Column 10 takes flight time at night or under IFR.
+⚠️ **This table was wrong until 2026-08-08** and is corrected here against the published sheet.
+It previously listed thirteen groups, splitting single-pilot and multi-pilot time into 5 and 6.
+They are one group, so everything from 5 onward was numbered one too high. Any external note or
+older commit citing "column 11 pilot function time" or "column 13 remarks" is using the old,
+wrong numbering.
+
+Places may be entered in full or as the three- or four-letter designator, and all times should be in UTC. Column 5 indicates SP or MP, and for SP whether SE or ME. Column 8 takes the number of landings as pilot flying by day or night. Column 9 takes flight time at night or under IFR.
 
 ### FAA — §61.51(b)
 
@@ -72,9 +87,9 @@ single canonical model satisfies both, but the print/export layouts must be per 
 | **Night (logging)** | End of evening civil twilight to beginning of morning civil twilight | Same — §1.1 defines night by the sun's position, not a fixed clock time | **Aligned for logging** |
 | **Night (currency)** | Same civil-twilight window (FCL.060) | 1 hour after sunset to 1 hour before sunrise (§61.57(b)) | **Two different night windows under FAA alone.** A landing can be night-for-logging but not night-for-currency. |
 | **Cross-country** | Single definition: flight time navigating to a destination away from the departure aerodrome following a pre-planned route using standard navigation procedures — no minimum distance in the definition itself; specific distances sit in the individual experience requirements | At least four distinct definitions under §61.1(b)(3) depending on the certificate sought | **Largest divergence.** Store the route; never store an `isCrossCountry` boolean. |
-| **Instrument time** | Column 10 records **IFR time** — an operational condition | Only time operating the aircraft solely by reference to instruments under actual or simulated instrument conditions (§61.51(g)(1)) | An IFR flight entirely in VMC = full EASA IFR time, **zero** FAA instrument time. |
+| **Instrument time** | Column 9 records **IFR time** — an operational condition | Only time operating the aircraft solely by reference to instruments under actual or simulated instrument conditions (§61.51(g)(1)) | An IFR flight entirely in VMC = full EASA IFR time, **zero** FAA instrument time. |
 | **Simulated instrument** | Not separately columned | Separate condition (§61.51(b)(3)(iii)) | FAA needs actual/simulated split; EASA does not |
-| **FSTD time** | Column 11, separated from flight time | Logged, but not flight time | Aligned in principle |
+| **FSTD time** | Column 11, separated from flight time (group 6) | Logged, but not flight time | Aligned in principle |
 
 ### ⚠️ Cross-country, expanded
 
@@ -97,7 +112,7 @@ evaluated over the stored route.
 | **PIC (logging)** | Only where command authority is held, plus the specific cases below | Sole manipulator of the controls of an aircraft for which the pilot is rated; or sole occupant; or acting PIC of an aircraft requiring more than one pilot; or performing PIC duties under an approved supervised programme (§61.51(e)) | **The core divergence.** FAA separates *logging* PIC from *acting* PIC; EASA does not. |
 | **SPIC** | A student pilot acting as PIC on a flight with an instructor where the instructor only observes and does not influence or control the flight | **No analogue** | Closest FAA concept is §61.87 solo, which is a different situation. Logged in the PIC column, countersigned. |
 | **PICUS** | A co-pilot performing, under supervision of the PIC, the duties and functions of a PIC; logged as PIC provided the PIC's intervention in the interest of safety was not required, and countersigned by the PIC | **No analogue** | Up to 500 hours creditable toward the ATPL(A) PIC requirement under FCL.510(a)(2). |
-| **Co-pilot** | Column 11 co-pilot time; multi-pilot operations only | SIC — requires §61.55 qualification and a crewmember station in an aircraft requiring more than one pilot by type certificate, or equivalent under §135.99(c) | ⚠️ Second pilot in a single-pilot aeroplane logs **nothing** under EASA |
+| **Co-pilot** | Column 10 co-pilot time; multi-pilot operations only | SIC — requires §61.55 qualification and a crewmember station in an aircraft requiring more than one pilot by type certificate, or equivalent under §135.99(c) | ⚠️ Second pilot in a single-pilot aeroplane logs **nothing** under EASA |
 | **Dual instruction** | Flight time during which a person is receiving flight instruction from a properly authorised instructor | Training received from an authorised instructor | SPIC and dual are mutually exclusive under FCL.010 — they cannot be recorded concurrently. |
 | **Instructor** | Recorded as instructor time and also entered as PIC | A CFI may log PIC for all time serving as the authorised instructor if rated to act as PIC of that aircraft (§61.51(e)(3)) | Broadly aligned |
 | **Safety pilot** | No defined category ⚠️ | Name must be recorded when required by §91.109; logs PIC or SIC depending on the arrangement | FAA-only field. Store it anyway. |
@@ -205,13 +220,13 @@ any of these makes a jurisdiction's numbers unrecoverable for historical flights
 | Sole occupant (bool) | Both, solo | §61.51(d) |
 | Instructor aboard + capacity | Both | Dual vs SPIC vs nothing |
 | Instructor actually influenced the flight (bool) | EASA | SPIC requires that they did not |
-| Multi-pilot operation (bool) | EASA co-pilot, FAA SIC | Column 5/6, §61.51(f) |
+| Multi-pilot operation (bool) | EASA co-pilot, FAA SIC | Column 5, §61.51(f) |
 | Aircraft requires >1 pilot by TC (bool) | FAA | §61.51(e)(1)(iii), (f) |
 | Safety pilot identity | FAA | §61.51(b)(1)(v) |
 | Full route with waypoints | Cross-country, all profiles | Distance thresholds differ |
 | Take-offs and landings, split full-stop / touch-and-go **and** day / night | FAA night currency, EASA column 8 | Four counts, not one |
 | Timestamps precise enough to resolve civil twilight and sunset±1h | Both night definitions | Two windows |
-| IFR flight plan filed (bool) | EASA column 10 | Distinct from actual conditions |
+| IFR flight plan filed (bool) | EASA column 9 | Distinct from actual conditions |
 | Actual instrument time | FAA | §61.51(g)(1) |
 | Simulated instrument time | FAA | §61.51(b)(3)(iii) |
 | Approach count, type and location | FAA §61.57(c) only | §61.51(g)(3) requires type and location per approach. **No EASA equivalent** — AMC1 FCL.050 has no approach column and FCL.060's "approaches" wording is a recency condition, not a logging obligation |

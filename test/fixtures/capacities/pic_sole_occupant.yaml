@@ -1,7 +1,7 @@
 # Solo. The pilot alone in the aircraft, in command, flying it.
 #
 # Expected projections (asserted by issues #18 and #19 — NOT stored here):
-#   EASA FCL.010:     PIC = full block time. Column 11 pilot function = PIC.
+#   EASA FCL.010:     PIC = full block time. Column 10 pilot function = PIC.
 #   FAA  §61.51(e)(1)(i): PIC = full block time (sole manipulator, rated).
 #   FAA  §61.51(d):   solo = full block time (sole occupant).
 #
