@@ -1,3 +1,4 @@
+import 'package:easa_digital_log/domain/model/calendar_date.dart';
 import 'package:easa_digital_log/domain/model/countersignature.dart';
 import 'package:easa_digital_log/domain/model/flight_duration.dart';
 import 'package:easa_digital_log/domain/model/instructor_presence.dart';
@@ -80,7 +81,7 @@ InstructorPresence? _instructor(YamlMap? yaml, String fixture) {
     influencedFlight: requiredBool(yaml, 'influenced_flight', fixture),
     name: optionalString(yaml, 'name', fixture),
     credentialNumber: optionalString(yaml, 'credential_number', fixture),
-    credentialExpiry: _instant(yaml, 'credential_expiry', fixture),
+    credentialExpiry: _date(yaml, 'credential_expiry', fixture),
   );
 }
 
@@ -113,7 +114,7 @@ Countersignature? _countersignature(YamlMap? yaml, String fixture) {
       'signatory_credential_number',
       fixture,
     ),
-    signatoryCredentialExpiry: _instant(
+    signatoryCredentialExpiry: _date(
       yaml,
       'signatory_credential_expiry',
       fixture,
@@ -156,6 +157,24 @@ FlightDuration? _duration(YamlMap yaml, String key, String fixture) {
     return FlightDuration.parseHoursMinutes(value);
   } on FormatException {
     throw FixtureFieldException(fixture, key, 'a quoted "H:MM", got "$value"');
+  }
+}
+
+/// Credential expiry dates are quoted `YYYY-MM-DD`; [CalendarDate.parse]
+/// rejects anything else, so a malformed fixture value fails loudly.
+CalendarDate? _date(YamlMap yaml, String key, String fixture) {
+  final value = optionalString(yaml, key, fixture);
+  if (value == null) {
+    return null;
+  }
+  try {
+    return CalendarDate.parse(value);
+  } on FormatException {
+    throw FixtureFieldException(
+      fixture,
+      key,
+      'a quoted "YYYY-MM-DD", got "$value"',
+    );
   }
 }
 

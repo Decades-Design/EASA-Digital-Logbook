@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'utc_instant.dart';
+import 'calendar_date.dart';
 
 part 'instructor_presence.freezed.dart';
 
@@ -47,10 +47,7 @@ abstract class InstructorPresence with _$InstructorPresence {
     /// Certificate expiry. `§61.51(h)(2)(ii)` requires it on an FAA training
     /// endorsement; EASA has no equivalent, so it is routinely null on an
     /// EASA-only flight.
-    ///
-    /// A calendar date held as a [UtcInstant] until issue #29 adds a
-    /// calendar-date type — rule 3 forbids a naive local value meanwhile.
-    UtcInstant? credentialExpiry,
+    CalendarDate? credentialExpiry,
   }) = _InstructorPresence;
 }
 

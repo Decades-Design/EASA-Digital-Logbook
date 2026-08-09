@@ -60,5 +60,23 @@ void main() {
     test('formats as zero-padded ISO-8601 date', () {
       expect(const CalendarDate(2026, 1, 5).toString(), '2026-01-05');
     });
+
+    test('parses YYYY-MM-DD, round-tripping toString', () {
+      expect(CalendarDate.parse('2026-01-05'), const CalendarDate(2026, 1, 5));
+      expect(
+        CalendarDate.parse(const CalendarDate(2027, 12, 31).toString()),
+        const CalendarDate(2027, 12, 31),
+      );
+    });
+
+    test('rejects malformed input', () {
+      for (final bad in ['2026-1-5', '2026/01/05', '05-01-2026', '', 'abc']) {
+        expect(
+          () => CalendarDate.parse(bad),
+          throwsFormatException,
+          reason: bad,
+        );
+      }
+    });
   });
 }

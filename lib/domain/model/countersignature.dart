@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'calendar_date.dart';
 import 'utc_instant.dart';
 
 part 'countersignature.freezed.dart';
@@ -39,8 +40,8 @@ abstract class Countersignature with _$Countersignature {
     String? signatoryCredentialNumber,
 
     /// The signatory's certificate expiry. `§61.51(h)(2)(ii)`; normally null
-    /// on an EASA-only entry. Held as a [UtcInstant] pending issue #29.
-    UtcInstant? signatoryCredentialExpiry,
+    /// on an EASA-only entry.
+    CalendarDate? signatoryCredentialExpiry,
 
     /// When it was signed. Null until it actually is — a [pending] entry
     /// carrying a signing timestamp is a contradiction.
