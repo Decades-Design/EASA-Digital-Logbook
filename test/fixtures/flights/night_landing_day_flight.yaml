@@ -1,0 +1,65 @@
+# A landing logged as night for currency purposes, on a flight that never
+# left daylight by the civil-twilight definition both EASA and FAA compute
+# night flight time by. docs/jurisdiction-matrix.md line 88: night-for-
+# logging and night-for-currency are not the same test, and the raw landing
+# count this fixture carries is independent of the computed quantity —
+# neither the EASA nor the FAA night-time primitive reads Flight.landings
+# at all.
+#
+# The route identifier "EGXX" does not resolve through any real aerodrome
+# database; the divergence suite supplies its own AerodromeDirectory mapping
+# it to a validated position (see test/domain/model/solar_position_test.dart
+# for the London civil-twilight figures this date/time is chosen against).
+#
+# Expected projections (asserted in the M1 divergence suite, issue #30 —
+# NOT stored here):
+#   EASA FCL.010 'night': zero — 10:00Z-11:30Z on 2024-06-21 at this
+#                          position is wholly inside civil daylight.
+#   FAA  §1.1 'night':     zero, for the same reason. The two are aligned
+#                          for *logging* (jurisdiction-matrix.md §3); the
+#                          divergence this fixture proves is between the
+#                          raw, pilot-attested landing count and either
+#                          jurisdiction's computed quantity, not between
+#                          the jurisdictions themselves.
+#
+# Raw facts only. See CLAUDE.md rule 1 and ADR-0001.
+
+id: "night-landing-day-flight-001"
+
+aircraft_registration: "G-ABCD"
+
+route:
+  - "EGXX"
+  - "EGXX"
+
+pre_planned_navigation: false
+
+off_blocks: "2024-06-21T10:00:00Z"
+on_blocks: "2024-06-21T11:30:00Z"
+
+capacity:
+  command_authority: true
+  sole_manipulator: true
+  sole_occupant: true
+  multi_pilot_operation: false
+  additional_crew_required_by_rule: false
+  acting_as_instructor: false
+  acting_as_examiner: false
+  picus_claimed: false
+  pic_intervention_not_required: false
+
+carrying_passengers: false
+
+takeoffs:
+  day_full_stop: 1
+landings:
+  night_full_stop: 1
+
+ifr_flight_plan_filed: false
+actual_instrument_minutes: 0
+simulated_instrument_minutes: 0
+
+holding_procedures_count: 0
+tracking_performed: false
+
+remarks: "Landing logged as night for currency; flight itself was in full daylight."

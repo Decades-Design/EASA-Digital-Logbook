@@ -1,0 +1,52 @@
+# The canonical instrument-time divergence case: an IFR flight plan filed,
+# flown entirely in clear air. No actual or simulated instrument time is
+# recorded because none was flown.
+#
+# Expected projections (asserted in the M1 divergence suite, issue #30 —
+# NOT stored here):
+#   EASA AMC1 FCL.050 column 9: full block time as IFR — an operational
+#                                condition, independent of the weather.
+#   FAA  §61.51(g)(1):           zero actual instrument time. The FAA has
+#                                no "flew under an IFR flight plan" column.
+#
+# Raw facts only. See CLAUDE.md rule 1 and ADR-0001.
+
+id: "vmc-ifr-flight-001"
+
+off_blocks: "2026-05-04T09:00:00Z"
+on_blocks: "2026-05-04T10:30:00Z"
+
+aircraft_registration: "G-ABCD"
+
+route:
+  - "EGKA"
+  - "EGKA"
+
+pre_planned_navigation: true
+
+capacity:
+  command_authority: true
+  sole_manipulator: true
+  sole_occupant: true
+  multi_pilot_operation: false
+  additional_crew_required_by_rule: false
+  acting_as_instructor: false
+  acting_as_examiner: false
+  picus_claimed: false
+  pic_intervention_not_required: false
+
+carrying_passengers: false
+
+takeoffs:
+  day_full_stop: 1
+landings:
+  day_full_stop: 1
+
+ifr_flight_plan_filed: true
+actual_instrument_minutes: 0
+simulated_instrument_minutes: 0
+
+holding_procedures_count: 0
+tracking_performed: false
+
+remarks: "IFR flight plan filed and flown throughout; VMC the entire route."

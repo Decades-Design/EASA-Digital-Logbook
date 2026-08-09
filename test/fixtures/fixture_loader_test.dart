@@ -69,6 +69,40 @@ void main() {
         ),
       );
     });
+
+    // #101: package:yaml's own parse failure carries a line/column but never
+    // a file path, since loadYaml only ever sees a raw string — the fixture
+    // path must be attached by this loader, not left for the caller to
+    // rediscover by trial and error.
+    test('throws a clear, actionable error naming the file for malformed '
+        'YAML syntax', () {
+      expect(
+        () => loadFixture('malformed', 'invalid_syntax'),
+        throwsA(
+          isA<FixtureParseException>().having(
+            (e) => e.toString(),
+            'message',
+            contains('test/fixtures/malformed/invalid_syntax.yaml'),
+          ),
+        ),
+      );
+    });
+
+    test('rejects a fixture that parses to something other than a map', () {
+      expect(
+        () => loadFixture('malformed', 'not_a_map'),
+        throwsA(
+          isA<FixtureParseException>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(
+              contains('test/fixtures/malformed/not_a_map.yaml'),
+              contains('YamlList'),
+            ),
+          ),
+        ),
+      );
+    });
   });
 
   // CLAUDE.md rule 1 and ADR-0001: a fixture stores raw facts only. A stored

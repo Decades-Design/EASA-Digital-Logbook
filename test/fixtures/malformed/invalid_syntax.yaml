@@ -1,0 +1,7 @@
+# Deliberately broken: the flow sequence below is never closed. Proves
+# loadFixture() wraps package:yaml's bare parser error (line/column only,
+# no file path) with the fixture's own path — see FixtureParseException
+# in fixture_loader.dart.
+
+route: [EGKA, EGLL
+off_blocks: "2026-01-01T09:00:00Z"
