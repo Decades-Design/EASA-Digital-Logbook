@@ -48,6 +48,9 @@ FlightRow flightToRow(
     seriesGroupId: flight.seriesGroupId,
     airworthinessBasis: flight.airworthinessBasis?.name,
     remarks: flight.remarks,
+    alternativeComplianceEvents: flight.alternativeComplianceEvents
+        .map((event) => event.name)
+        .join(','),
     capacityCommandAuthority: capacity.commandAuthority,
     capacitySoleManipulator: capacity.soleManipulator,
     capacitySoleOccupant: capacity.soleOccupant,
@@ -219,6 +222,12 @@ domain.Flight flightFromRow(
     ],
     holdingProceduresCount: row.holdingProceduresCount,
     trackingPerformed: row.trackingPerformed,
+    alternativeComplianceEvents: row.alternativeComplianceEvents.isEmpty
+        ? const {}
+        : row.alternativeComplianceEvents
+              .split(',')
+              .map(domain.AlternativeComplianceEvent.values.byName)
+              .toSet(),
     seriesGroupId: row.seriesGroupId,
     airworthinessBasis: row.airworthinessBasis == null
         ? null

@@ -124,13 +124,23 @@ enum RequirementKind {
 /// A per-flight numeric fact [Requirement.flightEventCount] and
 /// [Requirement.flightEventHours] can sum across a flight set.
 ///
-/// Deliberately only the events already on `Flight` (M1) — `landings` and
-/// `takeoffs` read [Flight.landings]/[Flight.takeoffs] narrowed by
-/// [FlightCondition.dayNight] and [FlightCondition.landingType];
+/// `landings` and `takeoffs` read [Flight.landings]/[Flight.takeoffs]
+/// narrowed by [FlightCondition.dayNight] and [FlightCondition.landingType];
 /// `approaches` sums [Approach.count]; `holdingProcedures` reads
-/// [Flight.holdingProceduresCount]. Growing this enum when #121 lands
-/// (flight-review/IPC/proficiency-check markers) is the kind of one-name
+/// [Flight.holdingProceduresCount]; `trackingPerformed` reads
+/// [Flight.trackingPerformed] as a presence fact (0 or 1, not a count);
+/// the three alt-compliance values (#121) read
+/// [Flight.alternativeComplianceEvents] the same way — each is a growth of
+/// this enum with one more `_eventCount` dispatch case, the kind of
 /// addition CLAUDE.md's jurisdiction-primitive acceptance test describes,
-/// not "touching the evaluator" in the sense #42 warns against — the
-/// evaluator's dispatch does not change shape, it gains one more case.
-enum CountableFlightEvent { landings, takeoffs, approaches, holdingProcedures }
+/// not "touching the evaluator" in the sense #42 warns against.
+enum CountableFlightEvent {
+  landings,
+  takeoffs,
+  approaches,
+  holdingProcedures,
+  trackingPerformed,
+  faaFlightReview,
+  faaInstrumentProficiencyCheck,
+  easaClassRatingProficiencyCheck,
+}

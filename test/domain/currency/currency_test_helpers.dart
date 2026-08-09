@@ -18,6 +18,9 @@ Flight currencyTestFlight({
   CircuitCounts? takeoffs,
   List<Approach> approaches = const [],
   int holdingProceduresCount = 0,
+  bool trackingPerformed = false,
+  Set<AlternativeComplianceEvent> alternativeComplianceEvents = const {},
+  PilotCapacity? capacity,
   String aircraftRegistration = 'G-TEST',
 }) {
   final offBlocks = UtcInstant.utc(date.year, date.month, date.day, 10);
@@ -27,17 +30,19 @@ Flight currencyTestFlight({
     prePlannedNavigation: false,
     offBlocks: offBlocks,
     onBlocks: offBlocks.add(const Duration(hours: 1)),
-    capacity: const PilotCapacity(
-      commandAuthority: true,
-      soleManipulator: true,
-      soleOccupant: true,
-      multiPilotOperation: false,
-      additionalCrewRequiredByRule: false,
-      actingAsInstructor: false,
-      actingAsExaminer: false,
-      picusClaimed: false,
-      picInterventionNotRequired: false,
-    ),
+    capacity:
+        capacity ??
+        const PilotCapacity(
+          commandAuthority: true,
+          soleManipulator: true,
+          soleOccupant: true,
+          multiPilotOperation: false,
+          additionalCrewRequiredByRule: false,
+          actingAsInstructor: false,
+          actingAsExaminer: false,
+          picusClaimed: false,
+          picInterventionNotRequired: false,
+        ),
     carryingPassengers: false,
     takeoffs: takeoffs ?? const CircuitCounts(),
     landings: landings ?? const CircuitCounts(),
@@ -46,7 +51,8 @@ Flight currencyTestFlight({
     simulatedInstrumentTime: FlightDuration.zero,
     approaches: approaches,
     holdingProceduresCount: holdingProceduresCount,
-    trackingPerformed: false,
+    trackingPerformed: trackingPerformed,
+    alternativeComplianceEvents: alternativeComplianceEvents,
     remarks: '',
   );
 }

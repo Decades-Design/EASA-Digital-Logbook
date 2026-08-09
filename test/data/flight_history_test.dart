@@ -32,6 +32,7 @@ FlightRow _row({String remarks = 'current', int? tombstonedAt}) {
     seriesGroupId: null,
     airworthinessBasis: null,
     remarks: remarks,
+    alternativeComplianceEvents: '',
     capacityCommandAuthority: true,
     capacitySoleManipulator: true,
     capacitySoleOccupant: true,

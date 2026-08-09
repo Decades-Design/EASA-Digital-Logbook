@@ -42,6 +42,15 @@ class FlightsTable extends Table {
   TextColumn get airworthinessBasis => text().nullable()();
   TextColumn get remarks => text()();
 
+  /// #121: comma-joined [AlternativeComplianceEvent] names, e.g.
+  /// `'faaFlightReview,faaInstrumentProficiencyCheck'`. Empty string, not
+  /// null, when the set is empty — matches [Flight.remarks]'s "empty
+  /// string, not null, when there is nothing to say" convention, and the
+  /// set is small enough (three possible values) that a comma-joined
+  /// column is simpler than a child table.
+  TextColumn get alternativeComplianceEvents =>
+      text().withDefault(const Constant(''))();
+
   // Flattened PilotCapacity.
   BoolColumn get capacityCommandAuthority => boolean()();
   BoolColumn get capacitySoleManipulator => boolean()();

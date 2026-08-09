@@ -1,0 +1,49 @@
+# FCL.060(b)(3): carrying passengers at night requires that at least one of
+# the three take-offs and landings required by FCL.060(b)(1) was performed
+# at night, unless the pilot holds a valid instrument rating.
+#
+# Modelled as FCL.060(b)(1)'s own 3-landing requirement (duplicated here --
+# there is no cross-rule reference mechanism, and b(3) is meaningless
+# without b(1) already being satisfied by the *same* three landings) ANDed
+# with an alternative: at least one of those landings at night, OR holding
+# an IR. The IR alternative is a pilot prerequisite, not special-cased in
+# code -- it is an ordinary held_record_currently_valid branch of the
+# any_of, exactly like #40's "alternative means of compliance" wording
+# describes.
+#
+# The day/night split read for the night condition is
+# Flight.landings.night* -- the pilot-entered raw fact, the same one
+# #45/#48 read. EASA has one definition of night (FCL.010, civil
+# twilight), so this is also "the EASA night window" -- there is no second,
+# currency-specific window the way FAA's Sec.61.57(b) has.
+id: eu.easa.fcl060.b3_night_passenger_recency
+jurisdiction: eu.easa.part-fcl
+citation: "FCL.060(b)(3)"
+effective_from: 2011-11-08
+requirement:
+  kind: all_of
+  of:
+    - kind: flight_event_count
+      event: landings
+      count: 3
+      window:
+        kind: rolling_days
+        days: 90
+      conditions:
+        - kind: aircraft_match
+          level: same_type_or_class
+    - kind: any_of
+      of:
+        - kind: flight_event_count
+          event: landings
+          count: 1
+          window:
+            kind: rolling_days
+            days: 90
+          conditions:
+            - kind: day_night
+              value: night
+            - kind: aircraft_match
+              level: same_type_or_class
+        - kind: held_record_currently_valid
+          held_record_kind: rating.eu.easa.part-fcl.instrumentRating.IR
