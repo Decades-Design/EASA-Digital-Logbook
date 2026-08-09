@@ -84,6 +84,20 @@
           },
           "required": ["level"],
           "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "capacity" },
+            "value": { "enum": ["command_authority"] }
+          },
+          "required": ["value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "instructor_aboard" }
+          },
+          "additionalProperties": false
         }
       ]
     },

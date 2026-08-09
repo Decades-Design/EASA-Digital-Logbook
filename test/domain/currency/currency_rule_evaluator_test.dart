@@ -8,10 +8,41 @@ import 'package:easa_digital_log/domain/model/aircraft.dart';
 import 'package:easa_digital_log/domain/model/calendar_date.dart';
 import 'package:easa_digital_log/domain/model/flight.dart';
 import 'package:easa_digital_log/domain/model/flight_duration.dart';
+import 'package:easa_digital_log/domain/model/instructor_presence.dart';
+import 'package:easa_digital_log/domain/model/pilot_capacity.dart';
 import 'package:easa_digital_log/domain/repository/flight_read_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'currency_test_helpers.dart';
+
+const _picCapacity = PilotCapacity(
+  commandAuthority: true,
+  soleManipulator: true,
+  soleOccupant: true,
+  multiPilotOperation: false,
+  additionalCrewRequiredByRule: false,
+  actingAsInstructor: false,
+  actingAsExaminer: false,
+  picusClaimed: false,
+  picInterventionNotRequired: false,
+);
+
+const _dualCapacity = PilotCapacity(
+  commandAuthority: false,
+  soleManipulator: true,
+  soleOccupant: false,
+  multiPilotOperation: false,
+  additionalCrewRequiredByRule: false,
+  actingAsInstructor: false,
+  actingAsExaminer: false,
+  picusClaimed: false,
+  picInterventionNotRequired: false,
+  instructor: InstructorPresence(
+    capacity: InstructorCapacity.flightInstructor,
+    influencedFlight: false,
+    name: 'A. Instructor',
+  ),
+);
 
 Flight _flight({
   required CalendarDate date,
@@ -21,6 +52,7 @@ Flight _flight({
   int holdingProceduresCount = 0,
   bool trackingPerformed = false,
   Set<AlternativeComplianceEvent> alternativeComplianceEvents = const {},
+  PilotCapacity? capacity,
   String aircraftRegistration = 'G-TEST',
 }) => currencyTestFlight(
   date: date,
@@ -30,6 +62,7 @@ Flight _flight({
   holdingProceduresCount: holdingProceduresCount,
   trackingPerformed: trackingPerformed,
   alternativeComplianceEvents: alternativeComplianceEvents,
+  capacity: capacity,
   aircraftRegistration: aircraftRegistration,
 );
 
@@ -521,6 +554,94 @@ void main() {
           isTrue,
         );
       });
+    },
+  );
+
+  group(
+    'flightEventHours with capacity and instructorAboard conditions (#47)',
+    () {
+      test('capacity: commandAuthority only counts flights flown as PIC', () {
+        final requirement = Requirement.flightEventHours(
+          event: CountableFlightEvent.landings,
+          hours: const FlightDuration(60),
+          window: RuleWindow.rollingDays(365),
+          conditions: [
+            FlightCondition.capacity(CapacityRequirement.commandAuthority),
+          ],
+        );
+        final asOf = CalendarDate(2024, 6, 1);
+        final subject = EvaluationSubject(
+          flights: [
+            _record(
+              'pic',
+              _flight(
+                date: CalendarDate(2024, 5, 1),
+                landings: const CircuitCounts(dayFullStop: 1),
+                capacity: _picCapacity,
+              ),
+            ),
+            _record(
+              'dual',
+              _flight(
+                date: CalendarDate(2024, 5, 2),
+                landings: const CircuitCounts(dayFullStop: 1),
+                capacity: _dualCapacity,
+              ),
+            ),
+          ],
+        );
+
+        final result = evaluator.evaluateRequirement(
+          requirement,
+          subject,
+          asOf,
+        );
+
+        expect(result.satisfied, isTrue);
+        expect(result.contributingFlightIds, ['pic']);
+      });
+
+      test(
+        'instructorAboard only counts flights with an instructor present',
+        () {
+          final requirement = Requirement.flightEventHours(
+            event: CountableFlightEvent.landings,
+            hours: const FlightDuration(60),
+            window: RuleWindow.rollingDays(365),
+            conditions: [FlightCondition.instructorAboard()],
+          );
+          final asOf = CalendarDate(2024, 6, 1);
+          final subject = EvaluationSubject(
+            flights: [
+              _record(
+                'solo',
+                _flight(
+                  date: CalendarDate(2024, 5, 1),
+                  landings: const CircuitCounts(dayFullStop: 1),
+                  capacity: _picCapacity,
+                ),
+              ),
+              _record(
+                'with-instructor',
+                _flight(
+                  date: CalendarDate(2024, 5, 2),
+                  landings: const CircuitCounts(dayFullStop: 1),
+                  capacity: _dualCapacity,
+                ),
+              ),
+            ],
+          );
+
+          final result = evaluator.evaluateRequirement(
+            requirement,
+            subject,
+            asOf,
+          );
+
+          expect(result.satisfied, isTrue);
+          expect(result.contributingFlightIds, ['with-instructor']);
+        },
+      );
     },
   );
 
