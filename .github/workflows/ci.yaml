@@ -60,4 +60,11 @@ jobs:
         run: dart run tool/check_domain_types.dart
 
       - name: Test
-        run: flutter test
+        run: flutter test --coverage
+
+      # #7: lib/domain/ computes the numbers that go in a legal document and
+      # is held to a higher bar than the rest of the app — a blanket
+      # repo-wide threshold would be gamed by widget tests, so this is
+      # scoped to the one layer that matters.
+      - name: Check domain coverage
+        run: dart run tool/check_domain_coverage.dart coverage/lcov.info
