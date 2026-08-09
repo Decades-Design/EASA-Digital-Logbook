@@ -43,6 +43,7 @@ dev_dependencies:
   # — see the comment on the drift dependency for the full chain.
   drift_dev: ^2.34.0
   path: ^1.9.1
+  sqlite3: ^3.5.1
 
 flutter:
   uses-material-design: true
