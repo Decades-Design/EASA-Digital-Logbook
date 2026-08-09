@@ -88,6 +88,29 @@ requirement:
       ]);
     });
 
+    test('parses the class_or_type_if_required aircraft match level', () {
+      const yaml = '''
+id: x
+jurisdiction: us.faa.part61
+citation: "x"
+effective_from: 2011-11-08
+requirement:
+  kind: flight_event_count
+  event: landings
+  count: 3
+  window: { kind: rolling_days, days: 90 }
+  conditions:
+    - kind: aircraft_match
+      level: class_or_type_if_required
+''';
+
+      final rule = parseCurrencyRuleYaml(yaml);
+
+      expect(rule.requirement.conditions, [
+        FlightCondition.aircraftMatch(AircraftMatch.classOrTypeIfRequired),
+      ]);
+    });
+
     test(
       'parses a calendar-months window anchored to a held record expiry',
       () {

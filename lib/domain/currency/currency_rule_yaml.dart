@@ -201,6 +201,7 @@ const Map<String, AircraftMatch> _aircraftMatchValues = {
   'same_type': AircraftMatch.sameType,
   'same_class': AircraftMatch.sameClass,
   'same_type_or_class': AircraftMatch.sameTypeOrClass,
+  'class_or_type_if_required': AircraftMatch.classOrTypeIfRequired,
 };
 
 List<FlightCondition> _parseConditions(YamlMap yaml, String ruleId) {

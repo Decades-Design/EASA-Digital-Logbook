@@ -1,0 +1,40 @@
+# Sec.61.57(a): three takeoffs and three landings within the preceding 90
+# days, in an aircraft of the same category and class, and the same type if
+# a type rating is required for that aircraft.
+#
+# Takeoffs and landings are counted independently -- docs/entry-form.md 5:
+# "a pilot who took over in flight has zero take-offs and one landing" --
+# unlike EASA's FCL.060(b)(1), where a landing count alone stands in for the
+# regulation's "take-offs, approaches and landings" wording.
+#
+# The tailwheel full-stop variant is a separate rule --
+# 61_57_a2_tailwheel_takeoff_landing_currency.yaml -- rather than a
+# conditional inside this one: which rule applies depends on the aircraft
+# being asked about, and Aircraft.requiredQualifications already answers
+# that without teaching the currency engine anything about aircraft
+# qualifications.
+id: us.faa.61_57_a.takeoff_landing_currency
+jurisdiction: us.faa.part61
+citation: "§61.57(a)"
+effective_from: 1997-08-04
+requirement:
+  kind: all_of
+  of:
+    - kind: flight_event_count
+      event: takeoffs
+      count: 3
+      window:
+        kind: rolling_days
+        days: 90
+      conditions:
+        - kind: aircraft_match
+          level: class_or_type_if_required
+    - kind: flight_event_count
+      event: landings
+      count: 3
+      window:
+        kind: rolling_days
+        days: 90
+      conditions:
+        - kind: aircraft_match
+          level: class_or_type_if_required

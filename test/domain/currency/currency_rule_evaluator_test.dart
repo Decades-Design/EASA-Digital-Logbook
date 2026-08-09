@@ -8,17 +8,11 @@ import 'package:easa_digital_log/domain/model/aircraft.dart';
 import 'package:easa_digital_log/domain/model/calendar_date.dart';
 import 'package:easa_digital_log/domain/model/flight.dart';
 import 'package:easa_digital_log/domain/model/flight_duration.dart';
-import 'package:easa_digital_log/domain/model/pilot_capacity.dart';
-import 'package:easa_digital_log/domain/model/utc_instant.dart';
 import 'package:easa_digital_log/domain/repository/flight_read_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A flight with every field defaulted to something inert, overriding only
-/// what a given currency test cares about. Deliberately not a
-/// `test/fixtures/` YAML fixture: these are synthetic mechanism probes for
-/// the generic evaluator, not realistic scenarios worth a shared,
-/// named fixture -- #53's golden, hand-verified fixture logbook is where
-/// that investment belongs.
+import 'currency_test_helpers.dart';
+
 Flight _flight({
   required CalendarDate date,
   CircuitCounts? landings,
@@ -26,51 +20,17 @@ Flight _flight({
   List<Approach> approaches = const [],
   int holdingProceduresCount = 0,
   String aircraftRegistration = 'G-TEST',
-}) {
-  final offBlocks = UtcInstant.utc(date.year, date.month, date.day, 10);
-  return Flight(
-    aircraftRegistration: aircraftRegistration,
-    route: const ['EGXX'],
-    prePlannedNavigation: false,
-    offBlocks: offBlocks,
-    onBlocks: offBlocks.add(const Duration(hours: 1)),
-    capacity: const PilotCapacity(
-      commandAuthority: true,
-      soleManipulator: true,
-      soleOccupant: true,
-      multiPilotOperation: false,
-      additionalCrewRequiredByRule: false,
-      actingAsInstructor: false,
-      actingAsExaminer: false,
-      picusClaimed: false,
-      picInterventionNotRequired: false,
-    ),
-    carryingPassengers: false,
-    takeoffs: takeoffs ?? const CircuitCounts(),
-    landings: landings ?? const CircuitCounts(),
-    ifrFlightPlanFiled: false,
-    actualInstrumentTime: FlightDuration.zero,
-    simulatedInstrumentTime: FlightDuration.zero,
-    approaches: approaches,
-    holdingProceduresCount: holdingProceduresCount,
-    trackingPerformed: false,
-    remarks: '',
-  );
-}
-
-const _testAircraft = Aircraft(
-  registration: 'G-TEST',
-  manufacturer: 'Cessna',
-  model: '152',
-  category: AircraftCategory.aeroplane,
-  engineType: EngineType.piston,
-  engineCount: 1,
-  operatingSurface: OperatingSurface.land,
-  requiresMultiCrew: false,
+}) => currencyTestFlight(
+  date: date,
+  landings: landings,
+  takeoffs: takeoffs,
+  approaches: approaches,
+  holdingProceduresCount: holdingProceduresCount,
+  aircraftRegistration: aircraftRegistration,
 );
 
 FlightRecord _record(String id, Flight flight, {Aircraft? aircraft}) =>
-    FlightRecord(id: id, flight: flight, aircraft: aircraft ?? _testAircraft);
+    currencyTestRecord(id, flight, aircraft: aircraft);
 
 void main() {
   const evaluator = CurrencyRuleEvaluator();
@@ -356,6 +316,119 @@ void main() {
       expect(result.satisfied, isTrue);
       expect(result.contributingFlightIds, ['2']);
     });
+  });
+
+  group('flightEventCount with classOrTypeIfRequired aircraft match', () {
+    final requirement = Requirement.flightEventCount(
+      event: CountableFlightEvent.landings,
+      count: 1,
+      window: RuleWindow.rollingDays(90),
+      conditions: [
+        FlightCondition.aircraftMatch(AircraftMatch.classOrTypeIfRequired),
+      ],
+    );
+
+    test(
+      'requires the same type when the reference aircraft is type-rated',
+      () {
+        final subject = EvaluationSubject(
+          referenceAircraft: const Aircraft(
+            registration: 'G-REF',
+            manufacturer: 'Airbus',
+            model: 'A320',
+            icaoTypeDesignator: 'A320',
+            typeRatingDesignator: 'A320',
+            category: AircraftCategory.aeroplane,
+            engineType: EngineType.turbofan,
+            engineCount: 2,
+            operatingSurface: OperatingSurface.land,
+            requiresMultiCrew: true,
+          ),
+          flights: [
+            _record(
+              'same-class-diff-type',
+              _flight(
+                date: CalendarDate(2024, 5, 1),
+                landings: const CircuitCounts(dayFullStop: 1),
+              ),
+              aircraft: const Aircraft(
+                registration: 'G-OTHER',
+                manufacturer: 'Boeing',
+                model: '737',
+                icaoTypeDesignator: 'B737',
+                typeRatingDesignator: 'B737',
+                category: AircraftCategory.aeroplane,
+                engineType: EngineType.turbofan,
+                engineCount: 2,
+                operatingSurface: OperatingSurface.land,
+                requiresMultiCrew: true,
+              ),
+            ),
+          ],
+        );
+
+        expect(
+          evaluator
+              .evaluateRequirement(
+                requirement,
+                subject,
+                CalendarDate(2024, 6, 1),
+              )
+              .satisfied,
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'requires only the same class when the reference aircraft is class-rated',
+      () {
+        final subject = EvaluationSubject(
+          referenceAircraft: const Aircraft(
+            registration: 'G-REF',
+            manufacturer: 'Cessna',
+            model: '152',
+            icaoTypeDesignator: 'C152',
+            category: AircraftCategory.aeroplane,
+            engineType: EngineType.piston,
+            engineCount: 1,
+            operatingSurface: OperatingSurface.land,
+            requiresMultiCrew: false,
+          ),
+          flights: [
+            _record(
+              'same-class-diff-type-designator',
+              _flight(
+                date: CalendarDate(2024, 5, 1),
+                landings: const CircuitCounts(dayFullStop: 1),
+              ),
+              aircraft: const Aircraft(
+                registration: 'G-OTHER',
+                manufacturer: 'Piper',
+                model: 'Cherokee',
+                icaoTypeDesignator: 'PA28',
+                category: AircraftCategory.aeroplane,
+                engineType: EngineType.piston,
+                engineCount: 1,
+                operatingSurface: OperatingSurface.land,
+                requiresMultiCrew: false,
+              ),
+            ),
+          ],
+        );
+
+        expect(
+          evaluator
+              .evaluateRequirement(
+                requirement,
+                subject,
+                CalendarDate(2024, 6, 1),
+              )
+              .satisfied,
+          isTrue,
+        );
+      },
+    );
   });
 
   group('flightEventHours', () {

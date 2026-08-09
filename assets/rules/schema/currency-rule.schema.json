@@ -64,7 +64,14 @@
         {
           "properties": {
             "kind": { "const": "aircraft_match" },
-            "level": { "enum": ["same_type", "same_class", "same_type_or_class"] }
+            "level": {
+              "enum": [
+                "same_type",
+                "same_class",
+                "same_type_or_class",
+                "class_or_type_if_required"
+              ]
+            }
           },
           "required": ["level"],
           "additionalProperties": false
