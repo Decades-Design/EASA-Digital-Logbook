@@ -85,6 +85,66 @@ void main() {
     });
   });
 
+  group('isNearingExpiry', () {
+    test('true once within the lead time', () {
+      expect(
+        isNearingExpiry(
+          CalendarDate(2024, 9, 10),
+          CalendarDate(2024, 9, 1),
+          leadDays: 30,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false while still outside the lead time', () {
+      expect(
+        isNearingExpiry(
+          CalendarDate(2024, 12, 1),
+          CalendarDate(2024, 9, 1),
+          leadDays: 30,
+        ),
+        isFalse,
+      );
+    });
+
+    test('true exactly at the lead-time boundary', () {
+      expect(
+        isNearingExpiry(
+          CalendarDate(2024, 10, 1), // exactly 30 days after asOf
+          CalendarDate(2024, 9, 1),
+          leadDays: 30,
+        ),
+        isTrue,
+      );
+    });
+
+    test(
+      'false once already lapsed -- that is "not current", not "nearing"',
+      () {
+        expect(
+          isNearingExpiry(
+            CalendarDate(2024, 8, 1),
+            CalendarDate(2024, 9, 1),
+            leadDays: 30,
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'the lead time is a caller-supplied parameter, not a fixed default',
+      () {
+        final expiresOn = CalendarDate(2024, 9, 15);
+        final asOf = CalendarDate(2024, 9, 1);
+
+        expect(isNearingExpiry(expiresOn, asOf, leadDays: 7), isFalse);
+        expect(isNearingExpiry(expiresOn, asOf, leadDays: 14), isTrue);
+      },
+    );
+  });
+
   group('nextToExpire against the real evaluator', () {
     const evaluator = CurrencyRuleEvaluator();
     final rule = CurrencyRule(

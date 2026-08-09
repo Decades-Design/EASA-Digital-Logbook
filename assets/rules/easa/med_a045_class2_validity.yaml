@@ -1,0 +1,14 @@
+# MED.A.045: a Class 2 medical certificate must be currently valid to
+# exercise PPL privileges.
+#
+# Validity itself is computed by medical_certificate_validity.dart --
+# 60/24/12-month age bands, each of the first two additionally capped at a
+# fixed birthday (the "birthday-crossing" case: a certificate issued at 39
+# does not run the full 60 months, it is clawed back to the 42nd birthday).
+id: eu.easa.med_a045.class2_validity
+jurisdiction: eu.easa.part-fcl
+citation: "MED.A.045"
+effective_from: 2011-11-08
+requirement:
+  kind: held_record_currently_valid
+  held_record_kind: medical_certificate.easaClass2

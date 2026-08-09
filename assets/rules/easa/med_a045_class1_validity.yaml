@@ -1,0 +1,15 @@
+# MED.A.045: a Class 1 medical certificate must be currently valid to
+# exercise the privileges of a commercial or ATP licence.
+#
+# Validity itself is computed by medical_certificate_validity.dart, not
+# expressed here -- age-banding and the single-pilot-commercial 6-month
+# reduction are real logic, not data. This rule only asks the generic
+# question the engine already knows how to answer: is there a currently
+# valid held record of this kind.
+id: eu.easa.med_a045.class1_validity
+jurisdiction: eu.easa.part-fcl
+citation: "MED.A.045"
+effective_from: 2011-11-08
+requirement:
+  kind: held_record_currently_valid
+  held_record_kind: medical_certificate.easaClass1
