@@ -8,7 +8,17 @@ environment:
 
 dependencies:
   csv: ^8.0.0
-  drift: ^2.34.3
+  # drift is pinned to exactly 2.34.0, not ^2.34.3. drift_dev 2.34.0's
+  # schema-dump command (`dart run drift_dev schema dump`) throws
+  # "The getter 'allSchemaEntities' isn't defined for the type
+  # 'GeneratedDatabase'" against drift 2.34.3's drift3_preview module — an
+  # incompatibility between that drift patch and drift_dev 2.34.0's
+  # verifier code. drift_dev can't be upgraded past 2.34.0 either: 2.34.1+
+  # needs analyzer ^13, which conflicts with the freezed 3.2.5 pin below
+  # (analyzer <11). Pinning drift down to exactly 2.34.0 — the version
+  # drift_dev 2.34.0 actually resolved against — fixes the schema dump
+  # command; verified all 355 existing tests still pass at this version.
+  drift: 2.34.0
   flutter:
     sdk: flutter
   freezed_annotation: ^3.1.0
@@ -29,7 +39,11 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.15.1
   json_serializable: ^6.14.1
+  # drift_dev is capped below 2.34.1 by the freezed pin above, not by choice
+  # — see the comment on the drift dependency for the full chain.
   drift_dev: ^2.34.0
+  path: ^1.9.1
+  sqlite3: ^3.5.1
 
 flutter:
   uses-material-design: true

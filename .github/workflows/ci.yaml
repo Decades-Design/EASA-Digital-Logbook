@@ -68,3 +68,5 @@ jobs:
       # scoped to the one layer that matters.
       - name: Check domain coverage
         run: dart run tool/check_domain_coverage.dart coverage/lcov.info
+      - name: Check schema snapshot
+        run: dart run tool/check_schema_snapshot.dart
