@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+# #100: a rapid run of pushes to the same PR queues redundant full runs
+# otherwise — cancel a superseded one rather than let it finish.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     # ubuntu is sufficient: analysis and unit tests need no iOS/Android toolchain.
@@ -12,9 +18,12 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      # #100: SHA-pinned, not tag-pinned — a tag is mutable, and this check
+      # is a required status check on main. v4.4.0.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: subosito/flutter-action@v2
+      # #100: SHA-pinned, same reasoning. v2.23.0.
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         with:
           # Pinned deliberately, not `stable`. A silent SDK bump breaking the
           # build is a bad way to lose an evening. Matches the local puro env.
@@ -31,8 +40,15 @@ jobs:
       - name: Check formatting
         run: dart format --set-exit-if-changed .
 
+      # #100: --delete-conflicting-outputs was dropped — build_runner 2.15.1
+      # made conflict deletion the default and logged
+      # "These options have been removed and were ignored" on every run.
+      # Deferred rather than removed during M0, on the grounds that codegen
+      # wasn't doing anything real yet; M1 now regenerates a freezed model
+      # on nearly every commit, so the flag has had its chance to matter and
+      # hasn't needed to.
       - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: dart run build_runner build
 
       - name: Analyze
         run: flutter analyze --fatal-infos
@@ -44,4 +60,11 @@ jobs:
         run: dart run tool/check_domain_types.dart
 
       - name: Test
-        run: flutter test
+        run: flutter test --coverage
+
+      # #7: lib/domain/ computes the numbers that go in a legal document and
+      # is held to a higher bar than the rest of the app — a blanket
+      # repo-wide threshold would be gamed by widget tests, so this is
+      # scoped to the one layer that matters.
+      - name: Check domain coverage
+        run: dart run tool/check_domain_coverage.dart coverage/lcov.info

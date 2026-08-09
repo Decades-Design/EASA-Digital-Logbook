@@ -187,6 +187,11 @@ bool _escapesDomain(String uri, String filePath) {
 /// doesn't overstate what slips past every check, not because it needs its
 /// own defence here.
 List<Violation> findViolations(String filePath, String source) {
+  // #98: normalised once here so a violation printed on Windows (where
+  // Directory.listSync returns backslash-separated paths) reads identically
+  // to one printed in CI (Linux). Irrelevant to CI itself, relevant to the
+  // pre-commit hook (#10) a contributor might run locally on Windows.
+  filePath = filePath.replaceAll(r'\', '/');
   final stripped = stripComments(source);
   final violations = <Violation>[];
 

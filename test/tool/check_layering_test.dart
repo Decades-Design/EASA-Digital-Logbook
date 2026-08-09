@@ -59,6 +59,20 @@ import 'dart:ui';
       expect(violations.single.line, 3);
     });
 
+    // #98: Directory.listSync returns backslash-separated paths on Windows,
+    // so a violation reported there must still read with forward slashes —
+    // the same normalisation _escapesDomain already relies on internally.
+    test('normalises Windows-style path separators in the reported path', () {
+      const source = "import 'dart:io';\n";
+      final violations = findViolations(
+        r'lib\domain\primitives\thing.dart',
+        source,
+      );
+
+      expect(violations.single.filePath, 'lib/domain/primitives/thing.dart');
+      expect(violations.single.toString(), isNot(contains(r'\')));
+    });
+
     test(
       'strips a banned import written inside a multi-line block comment',
       () {
