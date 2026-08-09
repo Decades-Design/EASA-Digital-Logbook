@@ -56,10 +56,7 @@ Flight _flight({
 class _StubProjection implements Projection {
   @override
   ProjectionResult project(Flight flight, Aircraft aircraft) {
-    return const ProjectionResult(
-      jurisdictionId: 'test.stub',
-      quantities: {},
-    );
+    return const ProjectionResult(jurisdictionId: 'test.stub', quantities: {});
   }
 
   @override
@@ -109,7 +106,10 @@ void main() {
   tearDown(() => db.close());
 
   Future<String> commitFlight(Flight flight, {String? aircraft}) async {
-    final id = await writes.createDraft(flight, aircraftId: aircraft ?? aircraftId);
+    final id = await writes.createDraft(
+      flight,
+      aircraftId: aircraft ?? aircraftId,
+    );
     await writes.commit(id);
     return id;
   }
@@ -120,7 +120,9 @@ void main() {
     final tombstonedId = await commitFlight(_flight());
     await writes.tombstone(tombstonedId);
 
-    final result = await reads.watchFlights(projection: _StubProjection()).first;
+    final result = await reads
+        .watchFlights(projection: _StubProjection())
+        .first;
     final ids = result.map((p) => p.record.id).toSet();
 
     expect(ids, {activeId});
@@ -162,9 +164,7 @@ void main() {
   });
 
   test('filters by aerodrome via a route leg', () async {
-    final matchId = await commitFlight(
-      _flight(route: const ['EGKA', 'EGSU']),
-    );
+    final matchId = await commitFlight(_flight(route: const ['EGKA', 'EGSU']));
     await commitFlight(_flight(route: const ['EGKA', 'EGKB']));
 
     final result = await reads
@@ -246,16 +246,22 @@ void main() {
   });
 
   test('re-emits when a matching flight is committed', () async {
+    // Two separate writes happen after listening starts (createDraft, then
+    // commit) — Drift's per-write table invalidation is coarse, so this can
+    // produce an intermediate emission between them (still empty, since a
+    // draft doesn't match the filter) before the one that actually shows
+    // the committed flight. Assert on the first and last emission only,
+    // not on an exact count.
     final stream = reads.watchFlights(projection: _StubProjection());
-    final emissions = stream.take(2).toList();
+    final emissions = stream.take(3).toList();
     await Future<void>.delayed(Duration.zero);
 
     final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
     await writes.commit(id);
 
     final results = await emissions;
-    expect(results[0], isEmpty);
-    expect(results[1].map((p) => p.record.id), contains(id));
+    expect(results.first, isEmpty);
+    expect(results.last.map((p) => p.record.id), contains(id));
   });
 
   test('re-emits when a flight is tombstoned', () async {

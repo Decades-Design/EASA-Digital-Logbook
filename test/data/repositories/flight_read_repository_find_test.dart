@@ -50,10 +50,7 @@ Flight _flight() {
 class _StubProjection implements Projection {
   @override
   ProjectionResult project(Flight flight, Aircraft aircraft) {
-    return const ProjectionResult(
-      jurisdictionId: 'test.stub',
-      quantities: {},
-    );
+    return const ProjectionResult(jurisdictionId: 'test.stub', quantities: {});
   }
 
   @override

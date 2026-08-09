@@ -19,9 +19,10 @@ class DriftFlightReadRepository implements FlightReadRepository {
     String flightId, {
     required Projection projection,
   }) async {
-    final row = await (_db.select(_db.flightsTable)..where(
-      (t) => t.id.equals(flightId) & t.committedAt.isNotNull(),
-    )).getSingleOrNull();
+    final row =
+        await (_db.select(_db.flightsTable)
+              ..where((t) => t.id.equals(flightId) & t.committedAt.isNotNull()))
+            .getSingleOrNull();
     if (row == null) {
       return null;
     }
@@ -127,10 +128,21 @@ class DriftFlightReadRepository implements FlightReadRepository {
   ).millisecondsSinceEpoch;
 
   @override
+  Stream<List<FlightRecord>> watchDrafts() {
+    final statement = _db.select(_db.flightsTable)
+      ..where((t) => t.committedAt.isNull());
+
+    return statement.watch().asyncMap(
+      (rows) async => [for (final row in rows) await _recordFromRow(row)],
+    );
+  }
+
+  @override
   Future<FlightRecord?> findDraft(String flightId) async {
-    final row = await (_db.select(_db.flightsTable)..where(
-      (t) => t.id.equals(flightId) & t.committedAt.isNull(),
-    )).getSingleOrNull();
+    final row =
+        await (_db.select(_db.flightsTable)
+              ..where((t) => t.id.equals(flightId) & t.committedAt.isNull()))
+            .getSingleOrNull();
     if (row == null) {
       return null;
     }
