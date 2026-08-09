@@ -7,6 +7,8 @@ route:
   - "EGKA"
   - "EGKA"
 
+pre_planned_navigation: false
+
 off_blocks: "2026-03-14T09:05:00Z"
 on_blocks: "2026-03-14T10:51:00Z"
 

@@ -52,6 +52,7 @@ Aircraft _aircraft() => const Aircraft(
 Flight _flight({required bool commandAuthority}) => Flight(
   aircraftRegistration: 'G-TEST',
   route: const ['EGKA', 'EGKA'],
+  prePlannedNavigation: false,
   offBlocks: UtcInstant.utc(2026, 1, 1, 9, 0),
   onBlocks: UtcInstant.utc(2026, 1, 1, 10, 30),
   capacity: PilotCapacity(

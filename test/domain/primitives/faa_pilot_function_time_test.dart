@@ -15,6 +15,7 @@ const _block = FlightDuration(90); // 1:30, matching the EASA test's fixture
 Flight _flightWith(PilotCapacity capacity) => Flight(
   aircraftRegistration: 'N12345',
   route: const ['KJFK', 'KJFK'],
+  prePlannedNavigation: false,
   offBlocks: UtcInstant.utc(2026, 1, 1, 9, 0),
   onBlocks: UtcInstant.utc(2026, 1, 1, 10, 30),
   capacity: capacity,

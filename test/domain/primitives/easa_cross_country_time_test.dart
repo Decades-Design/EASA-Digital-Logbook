@@ -42,33 +42,35 @@ Aircraft _aircraft() => const Aircraft(
   requiresMultiCrew: false,
 );
 
-Flight _flight(List<String> route) => Flight(
-  aircraftRegistration: 'G-TEST',
-  route: route,
-  offBlocks: UtcInstant.utc(2026, 1, 1, 9, 0),
-  onBlocks: UtcInstant.utc(2026, 1, 1, 11, 0),
-  capacity: const PilotCapacity(
-    commandAuthority: true,
-    soleManipulator: true,
-    soleOccupant: true,
-    multiPilotOperation: false,
-    additionalCrewRequiredByRule: false,
-    actingAsInstructor: false,
-    actingAsExaminer: false,
-    picusClaimed: false,
-    picInterventionNotRequired: false,
-  ),
-  carryingPassengers: false,
-  takeoffs: const CircuitCounts(dayFullStop: 1),
-  landings: const CircuitCounts(dayFullStop: 1),
-  ifrFlightPlanFiled: false,
-  actualInstrumentTime: FlightDuration.zero,
-  simulatedInstrumentTime: FlightDuration.zero,
-  approaches: const [],
-  holdingProceduresCount: 0,
-  trackingPerformed: false,
-  remarks: '',
-);
+Flight _flight(List<String> route, {bool prePlannedNavigation = false}) =>
+    Flight(
+      aircraftRegistration: 'G-TEST',
+      route: route,
+      prePlannedNavigation: prePlannedNavigation,
+      offBlocks: UtcInstant.utc(2026, 1, 1, 9, 0),
+      onBlocks: UtcInstant.utc(2026, 1, 1, 11, 0),
+      capacity: const PilotCapacity(
+        commandAuthority: true,
+        soleManipulator: true,
+        soleOccupant: true,
+        multiPilotOperation: false,
+        additionalCrewRequiredByRule: false,
+        actingAsInstructor: false,
+        actingAsExaminer: false,
+        picusClaimed: false,
+        picInterventionNotRequired: false,
+      ),
+      carryingPassengers: false,
+      takeoffs: const CircuitCounts(dayFullStop: 1),
+      landings: const CircuitCounts(dayFullStop: 1),
+      ifrFlightPlanFiled: false,
+      actualInstrumentTime: FlightDuration.zero,
+      simulatedInstrumentTime: FlightDuration.zero,
+      approaches: const [],
+      holdingProceduresCount: 0,
+      trackingPerformed: false,
+      remarks: '',
+    );
 
 void main() {
   group(
@@ -88,6 +90,28 @@ void main() {
       });
     },
   );
+
+  group('easaCrossCountryTime — a solo navigation exercise that returns to '
+      'the departure aerodrome', () {
+    // FCL.010 does not require the arrival point to differ from
+    // departure — only that the flight followed a pre-planned route
+    // using standard navigation procedures. Route alone (DEP -> DEP,
+    // nowhere else landed at) can't distinguish this from local circuits,
+    // which is exactly why prePlannedNavigation exists as its own fact.
+    final flight = _flight(const ['DEP', 'DEP'], prePlannedNavigation: true);
+    final result = easaCrossCountryTime(flight, _aircraft(), _aerodromes);
+
+    test('is cross-country, even with no landing away from departure', () {
+      expect(result['crossCountry']?.value, const FlightDuration(120));
+      expect(result['crossCountry']?.creditable, isTrue);
+    });
+
+    test('still does not qualify for licence issue — AMC1 FCL.210 requires '
+        'actual landings at two other aerodromes, not just planned '
+        'navigation', () {
+      expect(result['qualifyingCrossCountry']?.value, FlightDuration.zero);
+    });
+  });
 
   group(
     'easaCrossCountryTime — a short navigation flight (one other aerodrome)',

@@ -42,6 +42,7 @@ Flight _flight({
 }) => Flight(
   aircraftRegistration: 'G-TEST',
   route: route,
+  prePlannedNavigation: false,
   offBlocks: offBlocks,
   onBlocks: onBlocks,
   takeoff: takeoff,

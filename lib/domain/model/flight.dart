@@ -55,6 +55,23 @@ abstract class Flight with _$Flight {
     /// distance thresholds evaluated against the same route.
     required List<String> route,
 
+    /// Whether the flight was flown to a destination away from departure
+    /// following a pre-planned route, using standard navigation procedures
+    /// (dead reckoning, pilotage, or a nav aid) — `FCL.010`'s cross-country
+    /// definition verbatim. This is *not* implied by [route]: `FCL.010`
+    /// does not require the flight to land anywhere other than where it
+    /// departed, so a solo navigation exercise that departs, flies a
+    /// planned route out to a distant point, and returns to land back at
+    /// the same aerodrome is cross-country under EASA even though [route]
+    /// alone (departure, stops, destination — nowhere landed at but
+    /// departure) is indistinguishable from a simple local flight.
+    /// Unbackfillable: nobody can reconstruct in five years whether a
+    /// given circuit-pattern-looking flight was actually flown as a
+    /// planned navigation exercise. The FAA has no equivalent concept —
+    /// `§61.1(b)(3)(i)` explicitly requires a landing away from departure,
+    /// so `faa_cross_country_time.dart` never reads this field.
+    required bool prePlannedNavigation,
+
     // ---- Times. All UTC — rule 3, ADR-0002.
     /// `AMC1 FCL.050(g)(1)`: first movement for the purpose of taking off.
     /// `§1.1`: movement under its own power for the purpose of flight. The

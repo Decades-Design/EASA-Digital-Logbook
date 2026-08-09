@@ -40,6 +40,7 @@ Flight flightFromFixture(String name) {
   return Flight(
     aircraftRegistration: requiredString(yaml, 'aircraft_registration', name),
     route: requiredStringList(yaml, 'route', name),
+    prePlannedNavigation: requiredBool(yaml, 'pre_planned_navigation', name),
     offBlocks: _instant(yaml, 'off_blocks', name)!,
     onBlocks: _instant(yaml, 'on_blocks', name)!,
     takeoff: _instant(yaml, 'takeoff', name),

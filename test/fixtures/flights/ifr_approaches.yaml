@@ -7,6 +7,8 @@ route:
   - "KJFK"
   - "KJFK"
 
+pre_planned_navigation: false
+
 off_blocks: "2026-04-02T14:00:00Z"
 on_blocks: "2026-04-02T15:30:00Z"
 

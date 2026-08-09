@@ -61,6 +61,7 @@ void main() {
       final flight = Flight(
         aircraftRegistration: 'G-ABCD',
         route: const ['EGKA', 'EGHR', 'EGKA'],
+        prePlannedNavigation: false,
         offBlocks: UtcInstant.utc(2026, 3, 14, 9, 5),
         onBlocks: UtcInstant.utc(2026, 3, 14, 10, 51),
         capacity: const PilotCapacity(

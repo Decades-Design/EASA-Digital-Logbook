@@ -28,6 +28,7 @@ AerodromeDirectory _aerodromes = AerodromeDirectory([
 Flight _flight(List<String> route) => Flight(
   aircraftRegistration: 'G-TEST',
   route: route,
+  prePlannedNavigation: false,
   offBlocks: UtcInstant.utc(2026, 1, 1, 9, 0),
   onBlocks: UtcInstant.utc(2026, 1, 1, 10, 30),
   capacity: const PilotCapacity(

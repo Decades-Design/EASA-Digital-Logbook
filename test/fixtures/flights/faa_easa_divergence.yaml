@@ -25,6 +25,11 @@ route:
   - "EGHR"
   - "EGKA"
 
+# Circuit training at EGHR, not a planned navigation exercise — FCL.010
+# cross-country is already satisfied here via the landing away from
+# departure (EGHR), not via this flag.
+pre_planned_navigation: false
+
 # The discriminators the divergence turns on — PilotCapacity (#13), embedded
 # as one block rather than flattened back onto Flight.
 capacity:

@@ -12,6 +12,13 @@ import 'cross_country_support.dart';
 /// a pre-planned route, using standard navigation procedures. This gives
 /// exactly one general quantity, `crossCountry`.
 ///
+/// The definition does not require the destination to differ from the
+/// departure — a solo navigation exercise that departs, flies a planned
+/// route out to a distant point, and lands back where it started is still
+/// cross-country. [Flight.route] alone can't express that (it records only
+/// where the aircraft landed), so this reads [Flight.prePlannedNavigation]
+/// as well as [landedAwayFromDeparture] — either one is sufficient.
+///
 /// [aircraft] is part of this primitive's signature ([CrossCountryRule])
 /// but is not read — EASA's cross-country definition and its one qualifying
 /// flight do not gate on aircraft category the way the FAA's do (#24).
@@ -43,16 +50,24 @@ Map<String, DerivedQuantity> easaCrossCountryTime(
 }
 
 DerivedQuantity _generalCrossCountry(Flight flight, FlightDuration blockTime) {
-  if (!landedAwayFromDeparture(flight)) {
-    return DerivedQuantity.zero(
-      "FCL.010 'cross-country': no landing away from the departure "
-      'aerodrome',
+  if (flight.prePlannedNavigation) {
+    return DerivedQuantity.creditable(
+      blockTime,
+      "FCL.010 'cross-country': flown to a destination away from the "
+      'departure aerodrome by a pre-planned route, using standard '
+      'navigation procedures',
     );
   }
-  return DerivedQuantity.creditable(
-    blockTime,
-    "FCL.010 'cross-country': navigated to a destination away from the "
-    'departure aerodrome by a pre-planned route',
+  if (landedAwayFromDeparture(flight)) {
+    return DerivedQuantity.creditable(
+      blockTime,
+      "FCL.010 'cross-country': included a landing away from the "
+      'departure aerodrome',
+    );
+  }
+  return DerivedQuantity.zero(
+    "FCL.010 'cross-country': no landing away from the departure "
+    'aerodrome, and not recorded as a planned navigation exercise',
   );
 }
 

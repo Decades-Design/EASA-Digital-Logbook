@@ -48,6 +48,7 @@ Aircraft _aircraft(AircraftCategory category) => Aircraft(
 Flight _flight(List<String> route) => Flight(
   aircraftRegistration: 'N12345',
   route: route,
+  prePlannedNavigation: false,
   offBlocks: UtcInstant.utc(2026, 1, 1, 9, 0),
   onBlocks: UtcInstant.utc(2026, 1, 1, 11, 0),
   capacity: const PilotCapacity(
