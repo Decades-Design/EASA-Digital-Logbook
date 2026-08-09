@@ -1,0 +1,12 @@
+#!/bin/sh
+# Opt-in pre-commit hook (#10). Git invokes this via its own bundled sh even
+# on Windows, so it shells out to PowerShell immediately -- `flutter`/`dart`
+# are puro shims that only resolve there, not under this sh (CLAUDE.md).
+# The real check logic lives in tool/pre_commit.ps1.
+#
+# Install: git config core.hooksPath tool/hooks
+# Uninstall: git config --unset core.hooksPath
+# See tool/hooks/README.md.
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$REPO_ROOT/tool/pre_commit.ps1"
