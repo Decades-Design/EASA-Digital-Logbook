@@ -40,6 +40,7 @@ class JurisdictionProjection implements Projection {
       ..._nightTime(profile, flight),
       ..._crossCountry(profile, flight, aircraft),
       ..._instrumentTime(profile, flight),
+      ..._multiPilotTime(profile, flight, aircraft),
     };
     return ProjectionResult(
       jurisdictionId: jurisdictionId,
@@ -109,6 +110,25 @@ class JurisdictionProjection implements Projection {
       flight.onBlocks.difference(flight.offBlocks).inMinutes,
     );
     return rule(flight, blockTime);
+  }
+
+  /// `multi_pilot_rule` quantities, or nothing if the profile hasn't set
+  /// one yet — the FAA profile never will, since `AMC1 FCL.050` column 5
+  /// has no FAA analogue.
+  Map<String, DerivedQuantity> _multiPilotTime(
+    ResolvedJurisdictionProfile profile,
+    Flight flight,
+    Aircraft aircraft,
+  ) {
+    final ruleId = profile['multi_pilot_rule'];
+    if (ruleId == null) {
+      return const {};
+    }
+    final rule = primitives.multiPilotTime(ruleId);
+    final blockTime = FlightDuration(
+      flight.onBlocks.difference(flight.offBlocks).inMinutes,
+    );
+    return rule(flight, aircraft, blockTime);
   }
 
   @override

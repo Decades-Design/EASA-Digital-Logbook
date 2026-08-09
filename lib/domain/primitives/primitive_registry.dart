@@ -1,5 +1,6 @@
 import 'cross_country_time.dart';
 import 'instrument_time.dart';
+import 'multi_pilot_time.dart';
 import 'night_time.dart';
 import 'pilot_function_time.dart';
 
@@ -16,20 +17,20 @@ import 'pilot_function_time.dart';
 /// `night_rule` and `cross_country_rule` are different function shapes
 /// ([PilotFunctionTimeRule], [NightTimeRule], [CrossCountryRule]), and a
 /// single `Map<String, Object>` would push the cast back onto every caller.
-/// Grows by one map and one lookup method per rule kind as #26 (multi-pilot
-/// time) lands.
 class PrimitiveRegistry {
   const PrimitiveRegistry({
     required this.pilotFunctionTimeRules,
     required this.nightTimeRules,
     required this.crossCountryRules,
     required this.instrumentTimeRules,
+    required this.multiPilotTimeRules,
   });
 
   final Map<String, PilotFunctionTimeRule> pilotFunctionTimeRules;
   final Map<String, NightTimeRule> nightTimeRules;
   final Map<String, CrossCountryRule> crossCountryRules;
   final Map<String, InstrumentTimeRule> instrumentTimeRules;
+  final Map<String, MultiPilotTimeRule> multiPilotTimeRules;
 
   /// Throws [ArgumentError] naming [ruleId] if nothing is registered under
   /// it — a profile referencing a primitive that was never wired up is a
@@ -81,6 +82,19 @@ class PrimitiveRegistry {
         ruleId,
         'ruleId',
         'no instrument-time primitive is registered under this id',
+      );
+    }
+    return rule;
+  }
+
+  /// As [pilotFunctionTime], for a profile's `multi_pilot_rule` key.
+  MultiPilotTimeRule multiPilotTime(String ruleId) {
+    final rule = multiPilotTimeRules[ruleId];
+    if (rule == null) {
+      throw ArgumentError.value(
+        ruleId,
+        'ruleId',
+        'no multi-pilot-time primitive is registered under this id',
       );
     }
     return rule;
