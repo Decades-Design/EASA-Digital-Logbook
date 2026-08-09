@@ -66,20 +66,23 @@ void main() {
 
   tearDown(() => db.close());
 
-  test('createDraft writes the flight and its route legs, uncommitted', () async {
-    final id = await flights.createDraft(_draft(), aircraftId: aircraftId);
+  test(
+    'createDraft writes the flight and its route legs, uncommitted',
+    () async {
+      final id = await flights.createDraft(_draft(), aircraftId: aircraftId);
 
-    final row = await (db.select(
-      db.flightsTable,
-    )..where((t) => t.id.equals(id))).getSingle();
-    expect(row.committedAt, isNull);
-    expect(row.tombstonedAt, isNull);
+      final row = await (db.select(
+        db.flightsTable,
+      )..where((t) => t.id.equals(id))).getSingle();
+      expect(row.committedAt, isNull);
+      expect(row.tombstonedAt, isNull);
 
-    final legs = await (db.select(
-      db.flightRouteLegsTable,
-    )..where((t) => t.flightId.equals(id))).get();
-    expect(legs.map((l) => l.identifier), ['EGKA', 'EGKB']);
-  });
+      final legs = await (db.select(
+        db.flightRouteLegsTable,
+      )..where((t) => t.flightId.equals(id))).get();
+      expect(legs.map((l) => l.identifier), ['EGKA', 'EGKB']);
+    },
+  );
 
   test('updateDraft overwrites the row and replaces route legs', () async {
     final id = await flights.createDraft(_draft(), aircraftId: aircraftId);
