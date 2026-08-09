@@ -19,7 +19,16 @@ typed per-model decoders on top of this loader; it does not replace it.
   `capacities/malformed/` holds fixtures that are deliberately broken, to prove
   the decoder fails loudly instead of substituting a default.
 - `aircraft/` — aircraft definitions (registration, type, category/class,
-  FSTD qualification level where relevant).
+  FSTD qualification level where relevant). `g_abcd.yaml` is the aircraft
+  behind `flights/faa_easa_divergence.yaml` and every other divergence-suite
+  scenario — a basic SEP trainer, set up and requiring nothing under both
+  authorities.
+- `malformed/` — fixtures that are deliberately broken at the
+  **`loadFixture()` level**: unparseable YAML syntax, or YAML that parses
+  fine but isn't shaped like a map. Distinct from a category's own
+  `<category>/malformed/` subdirectory (e.g. `aircraft/malformed/`), which
+  exercises a specific *decoder's* field-level validation on YAML that
+  `loadFixture()` itself accepts without complaint.
 - `importers/` — real vendor CSV samples (ForeFlight `logbook_template.csv`,
   Garmin Pilot logbook exports) used to test `io/` adapters against actual
   export shapes, not hand-rolled approximations of them.

@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:easa_digital_log/domain/jurisdiction/jurisdiction_profile.dart';
 import 'package:easa_digital_log/domain/jurisdiction/jurisdiction_registry.dart';
 import 'package:easa_digital_log/domain/model/aerodrome_directory.dart';
-import 'package:easa_digital_log/domain/model/aircraft.dart';
 import 'package:easa_digital_log/domain/model/flight.dart';
 import 'package:easa_digital_log/domain/model/flight_duration.dart';
 import 'package:easa_digital_log/domain/model/pilot_capacity.dart';
@@ -14,18 +13,8 @@ import 'package:easa_digital_log/domain/primitives/default_primitives.dart';
 import 'package:easa_digital_log/domain/projection/jurisdiction_projection.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../fixtures/decoders/aircraft_fixture.dart';
 import '../../fixtures/decoders/flight_fixture.dart';
-
-Aircraft _aircraft() => const Aircraft(
-  registration: 'G-ABCD',
-  manufacturer: 'Test',
-  model: 'Test',
-  category: AircraftCategory.aeroplane,
-  engineType: EngineType.piston,
-  engineCount: 1,
-  operatingSurface: OperatingSurface.land,
-  requiresMultiCrew: false,
-);
 
 /// Proves the actual shipped `assets/jurisdictions/eu.easa.part-fcl.yaml` —
 /// not a copy, not a synthetic fixture — parses, resolves, and dispatches
@@ -80,7 +69,7 @@ void main() {
         remarks: '',
       );
 
-      final result = projection.project(flight, _aircraft());
+      final result = projection.project(flight, aircraftFromFixture('g_abcd'));
       expect(result.jurisdictionId, 'eu.easa.part-fcl');
       expect(result['pic']?.value, const FlightDuration(90));
       expect(result['pic']?.creditable, isTrue);
@@ -100,7 +89,7 @@ void main() {
     );
 
     final flight = flightFromFixture('faa_easa_divergence');
-    final result = projection.project(flight, _aircraft());
+    final result = projection.project(flight, aircraftFromFixture('g_abcd'));
 
     expect(
       result['pic']?.value,

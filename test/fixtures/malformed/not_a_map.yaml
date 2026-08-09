@@ -1,0 +1,7 @@
+# Deliberately broken: this is well-formed YAML, but a top-level list
+# rather than a map, so it can never satisfy any fixture decoder's
+# `requiredString(yaml, key, ...)`-shaped API. Proves loadFixture() rejects
+# the shape rather than handing decoders a YamlList to fail on less clearly.
+
+- "G-ABCD"
+- "G-ABCE"
