@@ -39,7 +39,16 @@
     },
     "countableEvent": {
       "type": "string",
-      "enum": ["landings", "takeoffs", "approaches", "holding_procedures"]
+      "enum": [
+        "landings",
+        "takeoffs",
+        "approaches",
+        "holding_procedures",
+        "tracking_performed",
+        "faa_flight_review",
+        "faa_instrument_proficiency_check",
+        "easa_class_rating_proficiency_check"
+      ]
     },
     "condition": {
       "type": "object",

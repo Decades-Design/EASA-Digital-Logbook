@@ -1,0 +1,33 @@
+# Sec.61.56: a flight review within the preceding 24 calendar months, or a
+# qualifying alternative -- here, an instrument proficiency check, which
+# Sec.61.56(a)(1) accepts in place of a flight review.
+#
+# Calendar-month semantics, not 730 days: valid through the end of the 24th
+# month regardless of which day of the month the review fell on (#49's own
+# acceptance criterion, and RuleWindow.calendarMonths' whole reason for
+# existing as a distinct window kind from rolling_days).
+#
+# Scope: completion of an FAA WINGS pilot proficiency program phase is
+# also a qualifying alternative under Sec.61.56(a)(1), but is deliberately
+# not modelled here -- it is a multi-flight program completion tracked by
+# FAASTeam, not a fact any single Flight can carry the way a flight review
+# or an IPC can. No raw fact captures it anywhere in this app yet.
+id: us.faa.61_56.flight_review
+jurisdiction: us.faa.part61
+citation: "§61.56"
+effective_from: 1997-08-04
+requirement:
+  kind: any_of
+  of:
+    - kind: flight_event_count
+      event: faa_flight_review
+      count: 1
+      window:
+        kind: calendar_months
+        months: 24
+    - kind: flight_event_count
+      event: faa_instrument_proficiency_check
+      count: 1
+      window:
+        kind: calendar_months
+        months: 24

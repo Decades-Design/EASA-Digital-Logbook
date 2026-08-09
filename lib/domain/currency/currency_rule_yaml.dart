@@ -121,6 +121,12 @@ const Map<String, CountableFlightEvent> _events = {
   'takeoffs': CountableFlightEvent.takeoffs,
   'approaches': CountableFlightEvent.approaches,
   'holding_procedures': CountableFlightEvent.holdingProcedures,
+  'tracking_performed': CountableFlightEvent.trackingPerformed,
+  'faa_flight_review': CountableFlightEvent.faaFlightReview,
+  'faa_instrument_proficiency_check':
+      CountableFlightEvent.faaInstrumentProficiencyCheck,
+  'easa_class_rating_proficiency_check':
+      CountableFlightEvent.easaClassRatingProficiencyCheck,
 };
 
 CountableFlightEvent _requiredEvent(YamlMap yaml, String ruleId) {

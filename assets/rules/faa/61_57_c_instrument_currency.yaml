@@ -1,0 +1,62 @@
+# Sec.61.57(c): within the preceding 6 calendar months, six instrument
+# approaches, holding procedures, and intercepting and tracking a course
+# through the use of navigational electronic systems -- or an instrument
+# proficiency check.
+#
+# Pairs with 61_57_c_instrument_currency_grace_period.yaml, which is the
+# same requirement over a 12-month window instead of 6. Sec.61.57(c) is a
+# two-stage state, not a boolean: within 6 months, current; between 6 and
+# 12, "lapsed but in grace" -- the pilot can still self-cure by flying the
+# same six approaches etc, no IPC required; past 12 months, an IPC becomes
+# mandatory and self-cure is no longer available. Two separate rules over
+# two window sizes express this without any new engine mechanism: evaluate
+# both, and if the 6-month rule fails but the 12-month rule succeeds, the
+# pilot is in the grace window. If neither succeeds, an IPC is required.
+# Combining the two results into that three-state message is a caller
+# concern (a future currency dashboard), not this rule's.
+#
+# Holding is "at least one performed", not a specific count -- the
+# regulation does not give holding its own number the way it gives
+# approaches six. Intercepting and tracking is Flight.trackingPerformed, a
+# presence fact.
+#
+# Scope: approaches, holding and tracking performed in an FSTD (FFS/FTD/
+# ATD) also count toward this currency, per the regulation's own "aircraft,
+# full flight simulator, flight training device, or aviation training
+# device" wording -- deliberately not modelled here. FSTD sessions are a
+# separate domain model (fstd.dart) from Flight, and EvaluationSubject has
+# no path to consume them yet; wiring that in is a distinct piece of work
+# from adding this rule.
+id: us.faa.61_57_c.instrument_currency
+jurisdiction: us.faa.part61
+citation: "§61.57(c)"
+effective_from: 1997-08-04
+requirement:
+  kind: any_of
+  of:
+    - kind: all_of
+      of:
+        - kind: flight_event_count
+          event: approaches
+          count: 6
+          window:
+            kind: calendar_months
+            months: 6
+        - kind: flight_event_count
+          event: holding_procedures
+          count: 1
+          window:
+            kind: calendar_months
+            months: 6
+        - kind: flight_event_count
+          event: tracking_performed
+          count: 1
+          window:
+            kind: calendar_months
+            months: 6
+    - kind: flight_event_count
+      event: faa_instrument_proficiency_check
+      count: 1
+      window:
+        kind: calendar_months
+        months: 6

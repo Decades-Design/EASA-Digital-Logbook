@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -55,6 +55,18 @@ class AppDatabase extends _$AppDatabase {
       if (from < 3) {
         await m.createTable(heldAircraftQualificationsTable);
         await m.createTable(heldRatingsTable);
+      }
+      // #121: adds alternativeComplianceEvents to the existing flights
+      // table. Unlike the previous two steps, this alters a table that can
+      // already hold real rows (M2's dev seed data) rather than creating a
+      // new one — addColumn backfills the column's default ('', via the
+      // table definition's withDefault) on every existing row, so no
+      // explicit UPDATE is needed to keep old flights readable.
+      if (from < 4) {
+        await m.addColumn(
+          flightsTable,
+          flightsTable.alternativeComplianceEvents,
+        );
       }
     },
     beforeOpen: (details) async {

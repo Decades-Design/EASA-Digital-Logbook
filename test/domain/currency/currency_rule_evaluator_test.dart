@@ -19,6 +19,8 @@ Flight _flight({
   CircuitCounts? takeoffs,
   List<Approach> approaches = const [],
   int holdingProceduresCount = 0,
+  bool trackingPerformed = false,
+  Set<AlternativeComplianceEvent> alternativeComplianceEvents = const {},
   String aircraftRegistration = 'G-TEST',
 }) => currencyTestFlight(
   date: date,
@@ -26,6 +28,8 @@ Flight _flight({
   takeoffs: takeoffs,
   approaches: approaches,
   holdingProceduresCount: holdingProceduresCount,
+  trackingPerformed: trackingPerformed,
+  alternativeComplianceEvents: alternativeComplianceEvents,
   aircraftRegistration: aircraftRegistration,
 );
 
@@ -430,6 +434,95 @@ void main() {
       },
     );
   });
+
+  group(
+    'flightEventCount over alt-compliance events and tracking (#121, #50)',
+    () {
+      test('a flight review event counts as a presence check', () {
+        final requirement = Requirement.flightEventCount(
+          event: CountableFlightEvent.faaFlightReview,
+          count: 1,
+          window: RuleWindow.calendarMonths(24),
+        );
+        final subject = EvaluationSubject(
+          flights: [
+            _record(
+              '1',
+              _flight(
+                date: CalendarDate(2024, 1, 1),
+                alternativeComplianceEvents: const {
+                  AlternativeComplianceEvent.faaFlightReview,
+                },
+              ),
+            ),
+          ],
+        );
+
+        expect(
+          evaluator
+              .evaluateRequirement(
+                requirement,
+                subject,
+                CalendarDate(2024, 6, 1),
+              )
+              .satisfied,
+          isTrue,
+        );
+      });
+
+      test(
+        'an unrelated flight with no alt-compliance events does not count',
+        () {
+          final requirement = Requirement.flightEventCount(
+            event: CountableFlightEvent.faaInstrumentProficiencyCheck,
+            count: 1,
+            window: RuleWindow.calendarMonths(6),
+          );
+          final subject = EvaluationSubject(
+            flights: [_record('1', _flight(date: CalendarDate(2024, 1, 1)))],
+          );
+
+          expect(
+            evaluator
+                .evaluateRequirement(
+                  requirement,
+                  subject,
+                  CalendarDate(2024, 6, 1),
+                )
+                .satisfied,
+            isFalse,
+          );
+        },
+      );
+
+      test('trackingPerformed is read as a presence fact, not a count', () {
+        final requirement = Requirement.flightEventCount(
+          event: CountableFlightEvent.trackingPerformed,
+          count: 1,
+          window: RuleWindow.calendarMonths(6),
+        );
+        final subject = EvaluationSubject(
+          flights: [
+            _record(
+              '1',
+              _flight(date: CalendarDate(2024, 1, 1), trackingPerformed: true),
+            ),
+          ],
+        );
+
+        expect(
+          evaluator
+              .evaluateRequirement(
+                requirement,
+                subject,
+                CalendarDate(2024, 6, 1),
+              )
+              .satisfied,
+          isTrue,
+        );
+      });
+    },
+  );
 
   group('flightEventHours', () {
     test('sums flight duration, not count', () {

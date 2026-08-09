@@ -309,6 +309,26 @@ int _eventCount(
       return total;
     case CountableFlightEvent.holdingProcedures:
       return flight.holdingProceduresCount;
+    case CountableFlightEvent.trackingPerformed:
+      return flight.trackingPerformed ? 1 : 0;
+    case CountableFlightEvent.faaFlightReview:
+      return flight.alternativeComplianceEvents.contains(
+            AlternativeComplianceEvent.faaFlightReview,
+          )
+          ? 1
+          : 0;
+    case CountableFlightEvent.faaInstrumentProficiencyCheck:
+      return flight.alternativeComplianceEvents.contains(
+            AlternativeComplianceEvent.faaInstrumentProficiencyCheck,
+          )
+          ? 1
+          : 0;
+    case CountableFlightEvent.easaClassRatingProficiencyCheck:
+      return flight.alternativeComplianceEvents.contains(
+            AlternativeComplianceEvent.easaClassRatingProficiencyCheck,
+          )
+          ? 1
+          : 0;
   }
 }
 
@@ -404,6 +424,12 @@ String _eventLabel(CountableFlightEvent event) => switch (event) {
   CountableFlightEvent.takeoffs => 'takeoffs',
   CountableFlightEvent.approaches => 'approaches',
   CountableFlightEvent.holdingProcedures => 'holding procedures',
+  CountableFlightEvent.trackingPerformed => 'tracking tasks performed',
+  CountableFlightEvent.faaFlightReview => 'flight reviews',
+  CountableFlightEvent.faaInstrumentProficiencyCheck =>
+    'instrument proficiency checks',
+  CountableFlightEvent.easaClassRatingProficiencyCheck =>
+    'class rating proficiency checks',
 };
 
 /// [_eventLabel] qualified by [conditions]' day/night and landing-type

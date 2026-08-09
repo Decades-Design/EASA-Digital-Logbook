@@ -175,6 +175,24 @@ abstract class Flight with _$Flight {
     /// projection or export issue currently consumes it.
     String? seriesGroupId,
 
+    /// Which alternative-compliance events, if any, this flight constitutes
+    /// — a flight review, an instrument proficiency check, a class-rating
+    /// proficiency check. A set, not a single nullable value: one flight
+    /// can be flown specifically to serve more than one purpose at once —
+    /// an IPC that is also used to satisfy the flight review requirement
+    /// under `§61.56(a)`, for instance.
+    ///
+    /// Unbackfillable, the same way [seriesGroupId] is: nobody can
+    /// reconstruct in five years whether a given flight was flown *as* a
+    /// pilot's flight review — #121, discovered while sequencing M3's
+    /// currency rules, since #47/#49/#50 all need it and nothing previously
+    /// captured it. Examiner/instructor identity and countersignature for
+    /// these events are the existing [PilotCapacity.instructor] and
+    /// [PilotCapacity.countersignature] fields, not duplicated here — a
+    /// flight has one examiner, not one per event it happens to satisfy.
+    @Default(<AlternativeComplianceEvent>{})
+    Set<AlternativeComplianceEvent> alternativeComplianceEvents,
+
     /// `§61.51(j)`: which of the four categories of aircraft qualify for
     /// FAA-loggable flight time by registry and airworthiness basis. Null
     /// when not recorded — irrelevant to an EASA-only pilot, and the
@@ -303,4 +321,22 @@ enum AirworthinessBasis {
   /// `§61.51(j)(4)`: a public aircraft operation under 49 U.S.C.
   /// 40102(a)(41) and 40125.
   publicAircraftOperation,
+}
+
+/// An event a flight can constitute that substitutes for ordinary
+/// recency — #121. Exactly the events the currency rules built so far
+/// need; a new kind is a deliberate addition here, not something a rule
+/// author should be able to invent inline.
+enum AlternativeComplianceEvent {
+  /// `§61.56`: satisfies the biennial flight review requirement.
+  faaFlightReview,
+
+  /// `§61.57(c)`: an instrument proficiency check — also a qualifying
+  /// alternative to [faaFlightReview] under `§61.56(a)`.
+  faaInstrumentProficiencyCheck,
+
+  /// `FCL.740.A`: a class-rating proficiency check, the alternative to the
+  /// hours/landings/training-flight revalidation route for SEP, MEP and
+  /// TMG class ratings.
+  easaClassRatingProficiencyCheck,
 }
