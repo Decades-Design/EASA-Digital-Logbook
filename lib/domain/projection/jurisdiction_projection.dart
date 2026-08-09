@@ -39,6 +39,7 @@ class JurisdictionProjection implements Projection {
       ..._pilotFunctionTime(profile, flight),
       ..._nightTime(profile, flight),
       ..._crossCountry(profile, flight, aircraft),
+      ..._instrumentTime(profile, flight),
     };
     return ProjectionResult(
       jurisdictionId: jurisdictionId,
@@ -91,6 +92,23 @@ class JurisdictionProjection implements Projection {
     }
     final rule = primitives.crossCountry(ruleId);
     return rule(flight, aircraft, aerodromes);
+  }
+
+  /// `instrument_rule` quantities, or nothing if the profile hasn't set one
+  /// yet.
+  Map<String, DerivedQuantity> _instrumentTime(
+    ResolvedJurisdictionProfile profile,
+    Flight flight,
+  ) {
+    final ruleId = profile['instrument_rule'];
+    if (ruleId == null) {
+      return const {};
+    }
+    final rule = primitives.instrumentTime(ruleId);
+    final blockTime = FlightDuration(
+      flight.onBlocks.difference(flight.offBlocks).inMinutes,
+    );
+    return rule(flight, blockTime);
   }
 
   @override
