@@ -16,4 +16,10 @@ linter:
     - always_declare_return_types
     - prefer_final_locals
     - avoid_dynamic_calls
-    - require_trailing_commas
+    # require_trailing_commas is NOT enforced by this rule on the current
+    # analyzer — verified during the M0 whole-branch review: a multi-line
+    # invocation missing its trailing comma produces no lint. `dart format`
+    # already reformats that same code and exits non-zero, and runs before
+    # `flutter analyze` in CI, so the outcome is covered without this line.
+    # See issue #99. Left out rather than kept, since a rule that silently
+    # does nothing is more misleading here than its absence.
