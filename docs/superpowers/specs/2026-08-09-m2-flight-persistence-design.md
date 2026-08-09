@@ -54,6 +54,25 @@ and revision tables the flights schema itself needs.
   a foreign key. This keeps the data queryable (e.g. "every flight that touched EGKA," or the
   FAA `§61.57(c)` approach-count currency rule in M3) rather than locked inside a blob.
 
+### Identifiers
+
+All primary keys are **ULIDs** (26-character Crockford base32: 48-bit millisecond timestamp +
+80 bits of randomness), stored as `text`, generated client-side at row-creation time — not
+autoincrement integers.
+
+This app has no server round-trip today, but multi-device sync is a stated future goal (not
+being built now — see Non-goals), and an autoincrement integer cannot survive it: two phones
+each create a flight offline and both mint `id = 47`, and there is no way to reconcile that
+after the fact without renumbering and rewriting every foreign key that pointed at it. A
+client-generated, globally-unique ID sidesteps the collision entirely and costs nothing to add
+now, before any real data exists to migrate. ULID over a plain UUIDv4 because it sorts
+lexicographically by creation time — useful for revision ordering and index locality — without
+needing a server-assigned sequence.
+
+No new dependency: the generator is a small hand-written function in `lib/data/` (not
+`lib/domain/`, so it's free to call `DateTime.now()` — `check_domain_types.dart` only bans raw
+`DateTime` under `lib/domain/`), using `dart:math`'s `Random.secure()` for the random component.
+
 ### `flights`
 
 One row per flight, current state only — see "Lifecycle" below for how edits to a committed row
@@ -61,8 +80,8 @@ work.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | integer, PK, autoincrement | |
-| `aircraft_id` | integer, FK → `aircraft.id` | `Flight.aircraftRegistration` becomes a real foreign key here — the domain model's own comment already flags synthetic identity as "M2's concern" |
+| `id` | text, PK (ULID) | |
+| `aircraft_id` | text, FK → `aircraft.id` (ULID) | `Flight.aircraftRegistration` becomes a real foreign key here — the domain model's own comment already flags synthetic identity as "M2's concern" |
 | `pre_planned_navigation` | bool | |
 | `off_blocks` | integer (epoch ms, UTC) | |
 | `on_blocks` | integer (epoch ms, UTC) | |
@@ -96,12 +115,13 @@ no time-of-day component, exactly what a credential expiry is.
 
 ### `flight_route_legs`
 
-`id` (PK) · `flight_id` (FK) · `sequence` (integer, order in the route) · `identifier` (text)
+`id` (text PK, ULID) · `flight_id` (text FK) · `sequence` (integer, order in the route) ·
+`identifier` (text)
 
 ### `flight_approaches`
 
-`id` (PK) · `flight_id` (FK) · `type` (text) · `aerodrome_icao` (text) · `runway` (text) ·
-`count` (integer)
+`id` (text PK, ULID) · `flight_id` (text FK) · `type` (text) · `aerodrome_icao` (text) ·
+`runway` (text) · `count` (integer)
 
 ### `flight_revisions`
 
@@ -111,8 +131,8 @@ individual fields.
 
 | Column | Type | Notes |
 |---|---|---|
-| `id` | integer, PK | |
-| `flight_id` | integer, FK | |
+| `id` | text, PK (ULID) | |
+| `flight_id` | text, FK | |
 | `recorded_at` | integer (epoch ms) | |
 | `kind` | text: `edit` \| `tombstone` \| `restore` | so the revision viewer (#34) can distinguish these without inferring from which fields changed |
 | `reason` | text, nullable | free text |
@@ -127,7 +147,7 @@ order, applying each revision's old values back over the current ones.
 Plain reference data — no lifecycle, no revisions. `Aircraft`'s own dartdoc already establishes
 it as "a current, editable reference record," unlike a flight.
 
-`id` (PK) · `registration` (text, unique) · `manufacturer` · `model` ·
+`id` (text PK, ULID) · `registration` (text, unique) · `manufacturer` · `model` ·
 `icao_type_designator` (nullable) · `category` (text) · `engine_type` (text) · `engine_count`
 (integer) · `operating_surface` (text) · `requires_multi_crew` (bool) ·
 `type_rating_designator` (text, nullable)
@@ -142,16 +162,17 @@ authority") from **a present, empty set** ("set up, and requires nothing") —
 own: an aircraft set up with zero requirements would have no rows at all, indistinguishable from
 one never set up. Two tables:
 
-- `aircraft_qualification_jurisdictions`: `aircraft_id` (FK) · `jurisdiction_id` (text) — one row
-  per jurisdiction this aircraft has been configured for, present even if it requires nothing.
-- `aircraft_required_qualifications`: `aircraft_id` (FK) · `jurisdiction_id` (text) ·
+- `aircraft_qualification_jurisdictions`: `aircraft_id` (text FK) · `jurisdiction_id` (text) —
+  one row per jurisdiction this aircraft has been configured for, present even if it requires
+  nothing.
+- `aircraft_required_qualifications`: `aircraft_id` (text FK) · `jurisdiction_id` (text) ·
   `qualification` (text) — one row per actual requirement.
 
 ### `custom_aerodromes`
 
-`id` (PK) · `icao_code` (text, nullable) · `iata_code` (text, nullable) · `name` (text) ·
-`latitude` / `longitude` (real) · `elevation_ft` (integer, nullable) · `iso_country` (text,
-nullable). Plain reference data, same as `aircraft` — no lifecycle.
+`id` (text PK, ULID) · `icao_code` (text, nullable) · `iata_code` (text, nullable) · `name`
+(text) · `latitude` / `longitude` (real) · `elevation_ft` (integer, nullable) · `iso_country`
+(text, nullable). Plain reference data, same as `aircraft` — no lifecycle.
 
 ## Lifecycle
 
@@ -183,14 +204,14 @@ exposed outside a `FlightRepository` (interface in `lib/domain/`, implementation
 spec's repository surface:
 
 ```dart
-Future<int> createDraft(Flight flight, {required int aircraftId});
-Future<void> updateDraft(int flightId, Flight flight);
-Future<void> deleteDraft(int flightId);
+Future<String> createDraft(Flight flight, {required String aircraftId});
+Future<void> updateDraft(String flightId, Flight flight);
+Future<void> deleteDraft(String flightId);
 
-Future<void> commit(int flightId);
-Future<void> updateCommitted(int flightId, Flight flight, {String? reason});
-Future<void> tombstone(int flightId, {String? reason});
-Future<void> restore(int flightId, {String? reason});
+Future<void> commit(String flightId);
+Future<void> updateCommitted(String flightId, Flight flight, {String? reason});
+Future<void> tombstone(String flightId, {String? reason});
+Future<void> restore(String flightId, {String? reason});
 ```
 
 Read/query methods (by date range, by aircraft, jurisdiction-projected results, streaming
@@ -205,6 +226,8 @@ minimum:
 - A generated-schema sweep that fails if any column name matches a derived-quantity pattern
   (the same regex family `fixture_loader_test.dart` already uses for fixtures) — the enforcement
   mechanism #31 asks for.
+- The ID generator produces well-formed, unique ULIDs across a burst of rapid same-millisecond
+  creates (proves the random component actually carries enough entropy, not just the timestamp).
 - Draft create/edit/delete writes no revision.
 - Committing a draft sets `committed_at` and nothing else changes.
 - Editing a committed flight writes exactly one `edit` revision with the correct old values, and
@@ -222,3 +245,7 @@ minimum:
 - Read/query repository methods, jurisdiction-projected reads, reactive/streaming queries (#35).
 - Schema migrations — this is v1; nothing exists yet to migrate from (#36).
 - Backup/restore, encryption at rest, dev seed data (#37, #38, #39).
+- Multi-device sync itself — accounts, transport, conflict resolution, backend hosting. Not
+  being built now (CLAUDE.md: no cloud backend without being asked). ULID primary keys are the
+  one decision from this spec that sync would otherwise force a painful migration to fix later,
+  so it's made now while it's free; everything else about sync is a future spec.
