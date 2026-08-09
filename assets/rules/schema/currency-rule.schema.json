@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://easa-digital-log/schema/currency-rule.schema.json",
+  "title": "Currency rule",
+  "description": "One versioned currency rule under assets/rules/. See assets/rules/README.md (#54) for a field-by-field authoring guide, and lib/domain/currency/currency_rule_yaml.dart for the Dart parser this schema documents -- the parser is the actual enforcement (test/domain/currency/currency_rule_schema_test.dart checks the two agree on required fields).",
+  "type": "object",
+  "required": ["id", "jurisdiction", "citation", "effective_from", "requirement"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable across every version of this rule, e.g. easa.fcl060.passenger_recency."
+    },
+    "jurisdiction": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The jurisdiction profile id this rule belongs to, e.g. eu.easa.part-fcl."
+    },
+    "citation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The regulation this rule implements, e.g. FCL.060(b)(1)."
+    },
+    "effective_from": {
+      "$ref": "#/$defs/date",
+      "description": "The date this version takes effect."
+    },
+    "expires_on": {
+      "$ref": "#/$defs/date",
+      "description": "The date this version was superseded. Omit while still current -- never delete a superseded version, add expires_on to it instead."
+    },
+    "requirement": { "$ref": "#/$defs/requirement" }
+  },
+  "$defs": {
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "countableEvent": {
+      "type": "string",
+      "enum": ["landings", "takeoffs", "approaches", "holding_procedures"]
+    },
+    "condition": {
+      "type": "object",
+      "required": ["kind"],
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "day_night" },
+            "value": { "enum": ["day", "night"] }
+          },
+          "required": ["value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "landing_type" },
+            "value": { "enum": ["full_stop", "touch_and_go"] }
+          },
+          "required": ["value"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "aircraft_match" },
+            "level": { "enum": ["same_type", "same_class", "same_type_or_class"] }
+          },
+          "required": ["level"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "window": {
+      "type": "object",
+      "required": ["kind"],
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "rolling_days" },
+            "days": { "type": "integer", "exclusiveMinimum": 0 }
+          },
+          "required": ["days"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "calendar_months" },
+            "months": { "type": "integer", "exclusiveMinimum": 0 },
+            "anchor": { "enum": ["evaluation_date", "held_record_expiry"] },
+            "anchor_held_record_kind": { "type": "string", "minLength": 1 }
+          },
+          "required": ["months"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "requirement": {
+      "type": "object",
+      "required": ["kind"],
+      "oneOf": [
+        {
+          "properties": {
+            "kind": { "const": "flight_event_count" },
+            "event": { "$ref": "#/$defs/countableEvent" },
+            "count": { "type": "integer", "exclusiveMinimum": 0 },
+            "window": { "$ref": "#/$defs/window" },
+            "conditions": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          },
+          "required": ["event", "count", "window"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "flight_event_hours" },
+            "event": { "$ref": "#/$defs/countableEvent" },
+            "hours": { "type": "number", "exclusiveMinimum": 0 },
+            "window": { "$ref": "#/$defs/window" },
+            "conditions": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          },
+          "required": ["event", "hours", "window"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "held_record_currently_valid" },
+            "held_record_kind": { "type": "string", "minLength": 1 }
+          },
+          "required": ["held_record_kind"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "all_of" },
+            "of": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/requirement" }
+            }
+          },
+          "required": ["of"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "kind": { "const": "any_of" },
+            "of": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/requirement" }
+            }
+          },
+          "required": ["of"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
