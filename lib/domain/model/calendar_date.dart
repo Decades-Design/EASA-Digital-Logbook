@@ -40,6 +40,42 @@ class CalendarDate implements Comparable<CalendarDate> {
 
   static final RegExp _pattern = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
 
+  /// This date shifted by [days] days; negative moves backward.
+  ///
+  /// Pure integer calendar arithmetic (Fliegel & van Flandern's Julian day
+  /// number algorithm) rather than `DateTime`, which `lib/domain/` may not
+  /// name at all — rule 3, `tool/check_domain_types.dart`.
+  CalendarDate addDays(int days) {
+    final jdn = _toJulianDayNumber(year, month, day) + days;
+    return _fromJulianDayNumber(jdn);
+  }
+
+  static int _toJulianDayNumber(int y, int m, int d) {
+    final a = (14 - m) ~/ 12;
+    final y2 = y + 4800 - a;
+    final m2 = m + 12 * a - 3;
+    return d +
+        (153 * m2 + 2) ~/ 5 +
+        365 * y2 +
+        y2 ~/ 4 -
+        y2 ~/ 100 +
+        y2 ~/ 400 -
+        32045;
+  }
+
+  static CalendarDate _fromJulianDayNumber(int jdn) {
+    final a = jdn + 32044;
+    final b = (4 * a + 3) ~/ 146097;
+    final c = a - (146097 * b) ~/ 4;
+    final d = (4 * c + 3) ~/ 1461;
+    final e = c - (1461 * d) ~/ 4;
+    final m = (5 * e + 2) ~/ 153;
+    final day = e - (153 * m + 2) ~/ 5 + 1;
+    final month = m + 3 - 12 * (m ~/ 10);
+    final year = 100 * b + d - 4800 + (m ~/ 10);
+    return CalendarDate(year, month, day);
+  }
+
   @override
   int compareTo(CalendarDate other) {
     if (year != other.year) {

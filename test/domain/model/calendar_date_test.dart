@@ -15,6 +15,29 @@ void main() {
     });
   });
 
+  group('CalendarDate.addDays', () {
+    test('crosses a month boundary', () {
+      expect(
+        const CalendarDate(2024, 1, 28).addDays(5),
+        const CalendarDate(2024, 2, 2),
+      );
+    });
+
+    test('crosses a leap-year February 29', () {
+      expect(
+        const CalendarDate(2024, 2, 28).addDays(1),
+        const CalendarDate(2024, 2, 29),
+      );
+    });
+
+    test('negative days moves backward across a year boundary', () {
+      expect(
+        const CalendarDate(2024, 1, 3).addDays(-5),
+        const CalendarDate(2023, 12, 29),
+      );
+    });
+  });
+
   group('CalendarDate', () {
     test('orders, compares and de-duplicates by value', () {
       const a = CalendarDate(2026, 6, 15);

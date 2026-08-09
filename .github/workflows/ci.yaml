@@ -59,6 +59,9 @@ jobs:
       - name: Check domain types
         run: dart run tool/check_domain_types.dart
 
+      - name: Check currency rules
+        run: dart run tool/check_currency_rules.dart
+
       - name: Test
         run: flutter test --coverage
 

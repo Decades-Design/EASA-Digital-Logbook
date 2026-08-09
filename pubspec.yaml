@@ -38,6 +38,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.15.1
+  # Only used by test/domain/currency/currency_rule_schema_test.dart and
+  # tool/check_currency_rules.dart -- the app never validates against the
+  # published JSON Schema at runtime, see currency_rule_yaml.dart's dartdoc.
+  json_schema: ^5.2.2
   json_serializable: ^6.14.1
   # drift_dev is capped below 2.34.1 by the freezed pin above, not by choice
   # — see the comment on the drift dependency for the full chain.
@@ -50,3 +54,4 @@ flutter:
   assets:
     - assets/aerodromes/
     - assets/jurisdictions/
+    - assets/rules/
