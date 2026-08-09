@@ -210,6 +210,10 @@ const Map<String, AircraftMatch> _aircraftMatchValues = {
   'class_or_type_if_required': AircraftMatch.classOrTypeIfRequired,
 };
 
+const Map<String, CapacityRequirement> _capacityValues = {
+  'command_authority': CapacityRequirement.commandAuthority,
+};
+
 List<FlightCondition> _parseConditions(YamlMap yaml, String ruleId) {
   final conditions = yaml['conditions'];
   if (conditions == null) {
@@ -276,10 +280,28 @@ FlightCondition _parseCondition(Object? entry, String ruleId) {
         );
       }
       return FlightCondition.aircraftMatch(match);
+    case 'capacity':
+      final value = _requiredString(
+        entry,
+        'value',
+        ruleId,
+        context: 'condition',
+      );
+      final capacity = _capacityValues[value];
+      if (capacity == null) {
+        throw FormatException(
+          'Currency rule "$ruleId": condition "value" must be one of '
+          '${_capacityValues.keys.join(', ')}, got "$value"',
+        );
+      }
+      return FlightCondition.capacity(capacity);
+    case 'instructor_aboard':
+      return FlightCondition.instructorAboard();
     default:
       throw FormatException(
         'Currency rule "$ruleId": condition "kind" must be "day_night", '
-        '"landing_type" or "aircraft_match", got "$kindText"',
+        '"landing_type", "aircraft_match", "capacity" or '
+        '"instructor_aboard", got "$kindText"',
       );
   }
 }

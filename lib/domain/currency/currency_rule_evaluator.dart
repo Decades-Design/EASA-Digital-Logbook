@@ -2,6 +2,7 @@ import '../model/aircraft.dart';
 import '../model/calendar_date.dart';
 import '../model/flight.dart';
 import '../model/flight_duration.dart';
+import '../model/pilot_capacity.dart';
 import '../repository/flight_read_repository.dart';
 import 'currency_rule.dart';
 import 'evaluation_subject.dart';
@@ -65,7 +66,7 @@ class CurrencyRuleEvaluator {
 
     final occurrences = <_Occurrence<int>>[];
     for (final record in subject.flights) {
-      if (!_passesAircraftMatch(
+      if (!_passesFlightLevelConditions(
         record,
         requirement.conditions,
         subject.referenceAircraft,
@@ -122,7 +123,7 @@ class CurrencyRuleEvaluator {
 
     final occurrences = <_Occurrence<FlightDuration>>[];
     for (final record in subject.flights) {
-      if (!_passesAircraftMatch(
+      if (!_passesFlightLevelConditions(
         record,
         requirement.conditions,
         subject.referenceAircraft,
@@ -342,7 +343,9 @@ int _circuitCount(CircuitCounts counts, List<FlightCondition> conditions) {
       case ConditionKind.landingType:
         landingType = condition.landingType;
       case ConditionKind.aircraftMatch:
-        break; // Applied at the flight-filter level, not here.
+      case ConditionKind.capacity:
+      case ConditionKind.instructorAboard:
+        break; // Applied at the flight-level gate, not here.
     }
   }
 
@@ -361,37 +364,59 @@ int _circuitCount(CircuitCounts counts, List<FlightCondition> conditions) {
   return total;
 }
 
-/// Whether [record] passes every [ConditionKind.aircraftMatch] condition in
-/// [conditions] against [referenceAircraft].
+/// Whether [record] passes every flight-level gate condition in
+/// [conditions] — [ConditionKind.aircraftMatch] against [referenceAircraft],
+/// [ConditionKind.capacity] against `record.flight.capacity`, and
+/// [ConditionKind.instructorAboard]. [ConditionKind.dayNight]/
+/// [ConditionKind.landingType] are not gates: they select a [CircuitCounts]
+/// sub-field inside [_circuitCount] instead, since they narrow *how much*
+/// a qualifying flight contributes rather than *whether* it does.
 ///
 /// Throws [StateError] if an aircraft-match condition is present but
 /// [referenceAircraft] is null — a rule asking "same type as what?" with
 /// nothing supplied to compare against is a caller error, not a state to
 /// silently treat as passing or failing.
-bool _passesAircraftMatch(
+bool _passesFlightLevelConditions(
   FlightRecord record,
   List<FlightCondition> conditions,
   Aircraft? referenceAircraft,
 ) {
   for (final condition in conditions) {
-    if (condition.kind != ConditionKind.aircraftMatch) {
-      continue;
-    }
-    if (referenceAircraft == null) {
-      throw StateError(
-        'Requirement has an aircraftMatch condition but '
-        'EvaluationSubject.referenceAircraft is null',
-      );
-    }
-    if (!_aircraftMatches(
-      record.aircraft,
-      referenceAircraft,
-      condition.aircraftMatch!,
-    )) {
-      return false;
+    switch (condition.kind) {
+      case ConditionKind.aircraftMatch:
+        if (referenceAircraft == null) {
+          throw StateError(
+            'Requirement has an aircraftMatch condition but '
+            'EvaluationSubject.referenceAircraft is null',
+          );
+        }
+        if (!_aircraftMatches(
+          record.aircraft,
+          referenceAircraft,
+          condition.aircraftMatch!,
+        )) {
+          return false;
+        }
+      case ConditionKind.capacity:
+        if (!_passesCapacity(record.flight.capacity, condition.capacity!)) {
+          return false;
+        }
+      case ConditionKind.instructorAboard:
+        if (record.flight.capacity.instructor == null) {
+          return false;
+        }
+      case ConditionKind.dayNight:
+      case ConditionKind.landingType:
+        break; // Applied inside _circuitCount, not here.
     }
   }
   return true;
+}
+
+bool _passesCapacity(PilotCapacity capacity, CapacityRequirement requirement) {
+  return switch (requirement) {
+    CapacityRequirement.commandAuthority => capacity.commandAuthority,
+  };
 }
 
 bool _aircraftMatches(Aircraft flown, Aircraft reference, AircraftMatch level) {
@@ -452,6 +477,8 @@ String _describeEvent(
       case ConditionKind.landingType:
         landingType = condition.landingType;
       case ConditionKind.aircraftMatch:
+      case ConditionKind.capacity:
+      case ConditionKind.instructorAboard:
         break;
     }
   }

@@ -1,0 +1,100 @@
+# FCL.740.A(b)(1)(i): within the 12 months preceding a SEP(land) class
+# rating's expiry, 12 hours of flight time in the class, including 6 hours
+# as PIC, 12 take-offs and 12 landings, and a training flight of at least
+# 1 hour with an instructor. Alternatively, a class-rating proficiency
+# check (FCL.740.A(b)(1)(ii)).
+#
+# The window is anchored to the rating's own expiry date, not to today --
+# "within the 12 months preceding expiry" is a fixed calendar window that
+# does not slide as the evaluation date changes, unlike an ordinary
+# rolling-day recency rule. anchor_held_record_kind names the specific SEP
+# rating this window is computed from.
+#
+# Scope: this rule is authored for SEP(land) specifically. MEP, SEP(sea)
+# and TMG class ratings need their own rule files with the same shape --
+# a different anchor_held_record_kind designator and, for MEP, different
+# hour/count figures per docs/jurisdiction-matrix.md 5 -- rather than one
+# rule trying to parametrise over "whichever class rating the pilot
+# holds", which the schema has no mechanism for and which would make a
+# single rule's citation ambiguous.
+#
+# The training-flight instructor requirement reads PilotCapacity.instructor
+# via the instructor_aboard condition -- present, in any capacity, not
+# specifically InstructorCapacity.flightInstructor, since FCL.740.A does
+# not distinguish how the instructor was acting, only that one was aboard
+# for that flight.
+id: eu.easa.fcl740a.sep_land_revalidation
+jurisdiction: eu.easa.part-fcl
+citation: "FCL.740.A(b)(1)"
+effective_from: 2011-11-08
+requirement:
+  kind: any_of
+  of:
+    - kind: all_of
+      of:
+        - kind: flight_event_hours
+          event: landings
+          hours: 12
+          window:
+            kind: calendar_months
+            months: 12
+            anchor: held_record_expiry
+            anchor_held_record_kind: rating.eu.easa.part-fcl.classRating.SEP(land)
+          conditions:
+            - kind: aircraft_match
+              level: same_class
+        - kind: flight_event_hours
+          event: landings
+          hours: 6
+          window:
+            kind: calendar_months
+            months: 12
+            anchor: held_record_expiry
+            anchor_held_record_kind: rating.eu.easa.part-fcl.classRating.SEP(land)
+          conditions:
+            - kind: aircraft_match
+              level: same_class
+            - kind: capacity
+              value: command_authority
+        - kind: flight_event_count
+          event: takeoffs
+          count: 12
+          window:
+            kind: calendar_months
+            months: 12
+            anchor: held_record_expiry
+            anchor_held_record_kind: rating.eu.easa.part-fcl.classRating.SEP(land)
+          conditions:
+            - kind: aircraft_match
+              level: same_class
+        - kind: flight_event_count
+          event: landings
+          count: 12
+          window:
+            kind: calendar_months
+            months: 12
+            anchor: held_record_expiry
+            anchor_held_record_kind: rating.eu.easa.part-fcl.classRating.SEP(land)
+          conditions:
+            - kind: aircraft_match
+              level: same_class
+        - kind: flight_event_hours
+          event: landings
+          hours: 1
+          window:
+            kind: calendar_months
+            months: 12
+            anchor: held_record_expiry
+            anchor_held_record_kind: rating.eu.easa.part-fcl.classRating.SEP(land)
+          conditions:
+            - kind: aircraft_match
+              level: same_class
+            - kind: instructor_aboard
+    - kind: flight_event_count
+      event: easa_class_rating_proficiency_check
+      count: 1
+      window:
+        kind: calendar_months
+        months: 12
+        anchor: held_record_expiry
+        anchor_held_record_kind: rating.eu.easa.part-fcl.classRating.SEP(land)

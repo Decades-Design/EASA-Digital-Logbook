@@ -88,6 +88,31 @@ requirement:
       ]);
     });
 
+    test('parses capacity and instructor_aboard conditions', () {
+      const yaml = '''
+id: x
+jurisdiction: eu.easa.part-fcl
+citation: "x"
+effective_from: 2011-11-08
+requirement:
+  kind: flight_event_hours
+  event: landings
+  hours: 6
+  window: { kind: rolling_days, days: 365 }
+  conditions:
+    - kind: capacity
+      value: command_authority
+    - kind: instructor_aboard
+''';
+
+      final rule = parseCurrencyRuleYaml(yaml);
+
+      expect(rule.requirement.conditions, [
+        FlightCondition.capacity(CapacityRequirement.commandAuthority),
+        FlightCondition.instructorAboard(),
+      ]);
+    });
+
     test('parses the class_or_type_if_required aircraft match level', () {
       const yaml = '''
 id: x
