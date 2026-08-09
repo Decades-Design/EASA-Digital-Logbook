@@ -1,5 +1,9 @@
-import 'package:drift/drift.dart';
+import 'dart:io';
 
+import 'package:drift/drift.dart';
+import 'package:drift/native.dart';
+
+import 'open_with_backup.dart';
 import 'tables/aircraft_tables.dart';
 import 'tables/custom_aerodrome_table.dart';
 import 'tables/flight_tables.dart';
@@ -36,4 +40,16 @@ class AppDatabase extends _$AppDatabase {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+}
+
+/// Opens [dbFile] as an [AppDatabase], guarded by [openWithBackup]. Querying
+/// once (`SELECT 1`) forces drift's open-and-migrate sequence to run and
+/// surface any error here, rather than lazily on whatever query a caller
+/// happens to run first.
+Future<AppDatabase> openAppDatabase(File dbFile) {
+  return openWithBackup(dbFile, () async {
+    final db = AppDatabase(NativeDatabase(dbFile));
+    await db.customStatement('SELECT 1');
+    return db;
+  });
 }
