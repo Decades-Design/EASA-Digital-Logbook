@@ -191,8 +191,10 @@ Easy to get wrong:
   fields that a hand-written `==` would be easy to get wrong.
 - Run `dart format .`, `flutter analyze` and `flutter test` before committing; all must be clean.
 - `flutter` and `dart` are puro shims that work under PowerShell only, not Git Bash. Locally,
-  code generation is `flutter pub run build_runner build --delete-conflicting-outputs` — plain
-  `dart run build_runner` cannot find the Flutter SDK.
+  code generation is `flutter pub run build_runner build` — plain `dart run build_runner` cannot
+  find the Flutter SDK. `--delete-conflicting-outputs` is no longer passed: build_runner 2.15.1
+  made conflict deletion the default, and the flag only produced a removed-and-ignored warning
+  (issue #100).
 - Domain logic needs unit tests. Where two jurisdictions disagree, test both sides of the
   disagreement against the same input.
 - Prefer adding a fixture to `test/fixtures/` over inventing test data inline.
