@@ -1,0 +1,14 @@
+# Sec.61.23(d): a first-class medical certificate must be currently valid
+# to exercise the corresponding privileges.
+#
+# Validity here covers the private/recreational/student tier only --
+# medical_certificate_validity.dart's dartdoc explains why: this app has no
+# "which privilege is this flight" fact to key ATP/commercial tiering on
+# yet.
+id: us.faa.61_23.first_class_medical_validity
+jurisdiction: us.faa.part61
+citation: "§61.23(d)"
+effective_from: 1997-08-04
+requirement:
+  kind: held_record_currently_valid
+  held_record_kind: medical_certificate.faaFirstClass

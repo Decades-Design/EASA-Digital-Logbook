@@ -7,6 +7,7 @@ import 'open_with_backup.dart';
 import 'tables/aircraft_tables.dart';
 import 'tables/custom_aerodrome_table.dart';
 import 'tables/flight_tables.dart';
+import 'tables/pilot_record_tables.dart';
 
 part 'database.g.dart';
 
@@ -20,13 +21,15 @@ part 'database.g.dart';
     FlightRouteLegsTable,
     FlightApproachesTable,
     FlightRevisionsTable,
+    PilotProfileTable,
+    MedicalCertificatesTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -36,6 +39,18 @@ class AppDatabase extends _$AppDatabase {
   // was added.
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    // #51: adds pilot_profile and medical_certificates. Neither references
+    // an existing table, so the upgrade is two plain CREATE TABLEs — no
+    // data migration, nothing to backfill. ADR-0010's file-level backup
+    // (`open_with_backup.dart`) still covers this against an interrupted
+    // upgrade; this is the first real exercise of the framework it
+    // describes, which until now had only run against a throwaway fixture.
+    onUpgrade: (Migrator m, int from, int to) async {
+      if (from < 2) {
+        await m.createTable(pilotProfileTable);
+        await m.createTable(medicalCertificatesTable);
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },

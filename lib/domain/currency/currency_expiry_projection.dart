@@ -15,6 +15,30 @@ class NextExpiry {
   final CalendarDate expiresOn;
 }
 
+/// Whether [expiresOn] falls within [leadDays] of [asOf] — #51's
+/// "warnings surfaced ahead of expiry, with a configurable lead time".
+/// [leadDays] is always caller-supplied, never a fixed default baked in
+/// here: how much warning is useful differs by what's expiring (a medical
+/// certificate deserves more notice than a 90-day landing count) and is a
+/// UI/settings concern, not this function's to decide.
+///
+/// `false` once [expiresOn] is already in the past relative to [asOf] —
+/// that is [RuleResult.satisfied] turning `false`, a different state from
+/// "still current but about to lapse". Meaningful only when called for a
+/// requirement that is currently satisfied; an unsatisfied requirement's
+/// [RuleResult.expiresOn] is already null.
+bool isNearingExpiry(
+  CalendarDate expiresOn,
+  CalendarDate asOf, {
+  required int leadDays,
+}) {
+  if (expiresOn < asOf) {
+    return false;
+  }
+  final warningStart = expiresOn.addDays(-leadDays);
+  return asOf >= warningStart;
+}
+
 /// Across every rule evaluation in [evaluations], the one that lapses
 /// soonest — #44's "combined next thing to expire view across all
 /// applicable requirements".
