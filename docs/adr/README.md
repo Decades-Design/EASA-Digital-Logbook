@@ -10,6 +10,7 @@
 | [0006](0006-dependency-stack.md) | Settle the dependency stack now, add packages per milestone | Accepted | The full package list is decided up front, but each dependency is only added to `pubspec.yaml` in the milestone that first imports it. |
 | [0007](0007-duration-representation.md) | Represent logbook durations as integer minutes | Accepted | `FlightDuration` stores whole minutes for exact arithmetic; `HH:MM` and decimal hours (tenths, half away from zero) are display-only formats, and rounding never happens before a total is summed. |
 | [0008](0008-night-time-position-interpolation.md) | Approximate in-flight position as a straight great-circle line between two waypoints | Accepted | Night-time primitives interpolate position linearly, by elapsed time, along the great circle between the first and last resolvable route waypoints — not every intermediate stop, since `Flight` records no per-waypoint timestamp to split time against. |
+| [0009](0009-date-boundary-policy.md) | A flight's logbook date is the UTC calendar date of departure | Accepted | `Flight.logbookDate` is the UTC calendar date of `offBlocks`, never of `onBlocks` and never a local date — the one place list ordering, PDF pagination and currency windows must read it from. |
 
 New ADRs are numbered sequentially and are never renumbered. A decision that is later reversed
 is superseded by a new ADR, not edited in place — the old record stays as evidence of what was
