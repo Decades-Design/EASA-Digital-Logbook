@@ -38,6 +38,7 @@ class JurisdictionProjection implements Projection {
     final quantities = <String, DerivedQuantity>{
       ..._pilotFunctionTime(profile, flight),
       ..._nightTime(profile, flight),
+      ..._crossCountry(profile, flight, aircraft),
     };
     return ProjectionResult(
       jurisdictionId: jurisdictionId,
@@ -46,7 +47,7 @@ class JurisdictionProjection implements Projection {
   }
 
   /// `pic_rule` quantities, or nothing if the profile hasn't set one yet —
-  /// not an error. #23-26 will add cross-country/instrument rule keys the
+  /// not an error. #25-26 will add instrument/multi-pilot rule keys the
   /// same way; a profile with none of them set yet is incomplete, not
   /// broken.
   Map<String, DerivedQuantity> _pilotFunctionTime(
@@ -75,6 +76,21 @@ class JurisdictionProjection implements Projection {
     }
     final rule = primitives.nightTime(ruleId);
     return rule(flight, aerodromes);
+  }
+
+  /// `cross_country_rule` quantities, or nothing if the profile hasn't set
+  /// one yet.
+  Map<String, DerivedQuantity> _crossCountry(
+    ResolvedJurisdictionProfile profile,
+    Flight flight,
+    Aircraft aircraft,
+  ) {
+    final ruleId = profile['cross_country_rule'];
+    if (ruleId == null) {
+      return const {};
+    }
+    final rule = primitives.crossCountry(ruleId);
+    return rule(flight, aircraft, aerodromes);
   }
 
   @override

@@ -37,6 +37,7 @@ const Map<String, AircraftCategory> _categories = <String, AircraftCategory>{
   'touring_motor_glider': AircraftCategory.touringMotorGlider,
   'airship': AircraftCategory.airship,
   'balloon': AircraftCategory.balloon,
+  'powered_parachute': AircraftCategory.poweredParachute,
 };
 
 const Map<String, EngineType> _engineTypes = <String, EngineType>{

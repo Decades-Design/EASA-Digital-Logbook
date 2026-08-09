@@ -41,6 +41,7 @@ Flight _flight({
 }) => Flight(
   aircraftRegistration: 'N12345',
   route: route,
+  prePlannedNavigation: false,
   offBlocks: offBlocks,
   onBlocks: onBlocks,
   capacity: _capacity(),

@@ -6,3 +6,4 @@ id: us.faa.part61
 
 pic_rule: faa.pilot_function_time
 night_rule: faa.night_time
+cross_country_rule: faa.cross_country_time

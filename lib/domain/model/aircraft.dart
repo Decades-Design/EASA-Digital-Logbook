@@ -107,6 +107,12 @@ enum AircraftCategory {
 
   airship,
   balloon,
+
+  /// `§61.1(b)(3)(iv)`/`(vi)` name this category explicitly to carve it out
+  /// of the FAA's private/commercial and sport-pilot cross-country distance
+  /// tests and give it its own, shorter one — see `cross_country_time.dart`
+  /// (#24). No EASA analogue; Part-FCL has no powered-parachute category.
+  poweredParachute,
 }
 
 enum EngineType { none, piston, turboprop, turbojet, turbofan, electric }

@@ -52,6 +52,7 @@ Aircraft _aircraft() => const Aircraft(
 Flight _flight({required bool commandAuthority}) => Flight(
   aircraftRegistration: 'G-TEST',
   route: const ['EGKA', 'EGKA'],
+  prePlannedNavigation: false,
   offBlocks: UtcInstant.utc(2026, 1, 1, 9, 0),
   onBlocks: UtcInstant.utc(2026, 1, 1, 10, 30),
   capacity: PilotCapacity(
@@ -91,6 +92,7 @@ void main() {
     final primitives = PrimitiveRegistry(
       pilotFunctionTimeRules: {'test.fake_rule': _fakeRule},
       nightTimeRules: const {},
+      crossCountryRules: const {},
     );
     projection = JurisdictionProjection(
       registry: registry,
@@ -135,6 +137,7 @@ void main() {
           primitives: PrimitiveRegistry(
             pilotFunctionTimeRules: const {},
             nightTimeRules: const {},
+            crossCountryRules: const {},
           ),
           aerodromes: _emptyAerodromes(),
           jurisdictionId: 'test.no-rules',
@@ -164,6 +167,7 @@ void main() {
         primitives: PrimitiveRegistry(
           pilotFunctionTimeRules: {'test.fake_rule': _fakeRule},
           nightTimeRules: {'test.fake_night_rule': _fakeNightRule},
+          crossCountryRules: const {},
         ),
         aerodromes: _emptyAerodromes(),
         jurisdictionId: 'test.both-rules',
@@ -187,6 +191,7 @@ void main() {
         primitives: PrimitiveRegistry(
           pilotFunctionTimeRules: const {},
           nightTimeRules: const {},
+          crossCountryRules: const {},
         ),
         aerodromes: _emptyAerodromes(),
         jurisdictionId: 'test.broken',
@@ -231,6 +236,7 @@ void main() {
           primitives: PrimitiveRegistry(
             pilotFunctionTimeRules: {'test.pending_rule': pendingRule},
             nightTimeRules: const {},
+            crossCountryRules: const {},
           ),
           aerodromes: _emptyAerodromes(),
           jurisdictionId: 'test.pending',
