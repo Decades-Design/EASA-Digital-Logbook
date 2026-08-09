@@ -46,4 +46,18 @@ enum LandingType { fullStop, touchAndGo }
 /// aircraft has one, else [Aircraft.icaoTypeDesignator]; `sameClass`
 /// compares engine type, engine count and operating surface — the same
 /// tuple that determines an EASA class rating (SEP(land), MEP(sea), ...).
-enum AircraftMatch { sameType, sameClass, sameTypeOrClass }
+///
+/// [classOrTypeIfRequired] is `§61.57(a)`'s own wording: "the same category
+/// and class of aircraft (if a class rating is required) and, if the
+/// aircraft is type-rated, ... the same type of aircraft" — same class
+/// ordinarily, but same *type* when [Aircraft.typeRatingDesignator] is set,
+/// since a type is always a subset of its class. A distinct value rather
+/// than reusing [sameType]/[sameClass]: which one applies depends on the
+/// *reference* aircraft, not on a rule author's static choice, and only
+/// `§61.57(a)` needs that.
+enum AircraftMatch {
+  sameType,
+  sameClass,
+  sameTypeOrClass,
+  classOrTypeIfRequired,
+}

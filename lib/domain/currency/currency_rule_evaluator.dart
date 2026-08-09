@@ -388,6 +388,14 @@ bool _aircraftMatches(Aircraft flown, Aircraft reference, AircraftMatch level) {
     AircraftMatch.sameType => sameType,
     AircraftMatch.sameClass => sameClass,
     AircraftMatch.sameTypeOrClass => sameType || sameClass,
+    // §61.57(a): a type match only if the reference aircraft is itself
+    // type-rated — tested against the actual type-rating designators, not
+    // the icaoTypeDesignator fallback [sameType] uses, since this is
+    // specifically about type-rating currency.
+    AircraftMatch.classOrTypeIfRequired =>
+      reference.typeRatingDesignator == null
+          ? sameClass
+          : flown.typeRatingDesignator == reference.typeRatingDesignator,
   };
 }
 

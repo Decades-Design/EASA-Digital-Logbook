@@ -1,0 +1,39 @@
+# Sec.61.57(a)(2): in a tailwheel airplane, the three takeoffs and three
+# landings required by Sec.61.57(a) must each have been to a full stop.
+#
+# A caller evaluating currency for a tailwheel aircraft should resolve this
+# rule id instead of 61_57_a's -- check
+# Aircraft.requiredQualifications['us.faa.part61'] for
+# AircraftQualification.faaTailwheel, the same fact the entry form and
+# endorsement tracking already key on (docs/ratings-and-endorsements.md 3).
+# The currency engine itself has no notion of "tailwheel"; that selection is
+# the caller's, not a conditional inside this rule.
+id: us.faa.61_57_a2.tailwheel_takeoff_landing_currency
+jurisdiction: us.faa.part61
+citation: "§61.57(a)(2)"
+effective_from: 1997-08-04
+requirement:
+  kind: all_of
+  of:
+    - kind: flight_event_count
+      event: takeoffs
+      count: 3
+      window:
+        kind: rolling_days
+        days: 90
+      conditions:
+        - kind: landing_type
+          value: full_stop
+        - kind: aircraft_match
+          level: class_or_type_if_required
+    - kind: flight_event_count
+      event: landings
+      count: 3
+      window:
+        kind: rolling_days
+        days: 90
+      conditions:
+        - kind: landing_type
+          value: full_stop
+        - kind: aircraft_match
+          level: class_or_type_if_required
