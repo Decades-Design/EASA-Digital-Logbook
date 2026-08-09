@@ -43,13 +43,22 @@ Map<String, DerivedQuantity> faaNightTime(
     };
   }
 
+  // #27: a caller must never present a block-time-substituted reading as
+  // indistinguishable from one measured against real airborne instants.
+  final caveat = night.airborneTimesUsed
+      ? ''
+      : ' — takeoff/landing were not recorded, so off-blocks/on-blocks '
+            'were used instead; this may overstate night flight time by '
+            'including ground time';
+
   return {
     'nightFlightTime': DerivedQuantity.creditable(
-      night,
+      night.value,
       "§1.1 'night': end of evening civil twilight to beginning of "
       "morning civil twilight, along the flight's route — logging only; "
       "§61.57(b) night takeoff/landing currency is a separate, later-"
-      'starting window recorded on Flight.landings, not this quantity',
+      'starting window recorded on Flight.landings, not this '
+      'quantity$caveat',
     ),
   };
 }

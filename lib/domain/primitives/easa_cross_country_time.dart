@@ -2,6 +2,7 @@ import '../model/aerodrome_directory.dart';
 import '../model/aircraft.dart';
 import '../model/flight.dart';
 import '../model/flight_duration.dart';
+import '../model/flight_times.dart';
 import '../projection/derived_quantity.dart';
 import 'cross_country_support.dart';
 
@@ -35,9 +36,7 @@ Map<String, DerivedQuantity> easaCrossCountryTime(
   Aircraft aircraft,
   AerodromeDirectory aerodromes,
 ) {
-  final blockTime = FlightDuration(
-    flight.onBlocks.difference(flight.offBlocks).inMinutes,
-  );
+  final blockTime = flight.blockTime;
 
   return {
     'crossCountry': _generalCrossCountry(flight, blockTime),

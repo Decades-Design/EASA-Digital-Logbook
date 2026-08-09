@@ -154,6 +154,27 @@ void main() {
           FlightDuration.zero,
           reason: 'a zero-length airborne window has no night time at all',
         );
+        expect(
+          result['night']?.explanation,
+          isNot(contains('were not recorded')),
+          reason: 'real airborne instants were used, so no caveat is owed',
+        );
+      });
+
+      // #27: a missing takeoff/landing must not be silently blended into a
+      // reading that looks identical to one measured against real airborne
+      // instants.
+      test('discloses the block-time substitution when takeoff/landing are '
+          'not recorded', () {
+        final flight = _flight(
+          route: const ['EGXX', 'EGXX'],
+          offBlocks: UtcInstant.utc(2024, 6, 21, 22, 0),
+          onBlocks: UtcInstant.utc(2024, 6, 21, 23, 0),
+        );
+
+        final result = easaNightTime(flight, aerodromes);
+
+        expect(result['night']?.explanation, contains('were not recorded'));
       });
     },
   );

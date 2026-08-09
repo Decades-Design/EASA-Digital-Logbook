@@ -2,6 +2,7 @@ import '../model/aerodrome_directory.dart';
 import '../model/aircraft.dart';
 import '../model/flight.dart';
 import '../model/flight_duration.dart';
+import '../model/flight_times.dart';
 import '../projection/derived_quantity.dart';
 import 'cross_country_support.dart';
 
@@ -30,9 +31,7 @@ Map<String, DerivedQuantity> faaCrossCountryTime(
   Aircraft aircraft,
   AerodromeDirectory aerodromes,
 ) {
-  final blockTime = FlightDuration(
-    flight.onBlocks.difference(flight.offBlocks).inMinutes,
-  );
+  final blockTime = flight.blockTime;
   final generalCrossCountry = landedAwayFromDeparture(flight);
   final furthestNm = furthestLandingDistanceFromDepartureNm(flight, aerodromes);
   final isRotorcraft = aircraft.category == AircraftCategory.helicopter;
