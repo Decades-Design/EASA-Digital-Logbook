@@ -1,0 +1,6 @@
+# tool/hooks/pre-commit is a #!/bin/sh script git's own bundled sh executes
+# directly (#10). A CRLF line ending on the shebang line breaks that
+# interpreter lookup on Windows, so this must stay LF regardless of a
+# contributor's core.autocrlf setting.
+tool/hooks/pre-commit text eol=lf
+*.sh text eol=lf
