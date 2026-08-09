@@ -1,9 +1,18 @@
 import '../model/aerodrome_directory.dart';
 import '../model/flight.dart';
 import '../model/flight_duration.dart';
+import '../model/flight_times.dart';
 import '../model/geo_coordinate.dart';
 import '../model/solar_position.dart';
 import '../model/utc_instant.dart';
+
+/// [civilTwilightNightPortion]'s result: the computed night duration, plus
+/// whether it was measured against the flight's real airborne instants or
+/// fell back to block times because [Flight.takeoff]/[Flight.landing]
+/// weren't both recorded (#27) — a fact the caller must disclose in its own
+/// explanation rather than silently produce the same shape of result either
+/// way, per #27's acceptance criteria.
+typedef NightPortion = ({FlightDuration value, bool airborneTimesUsed});
 
 /// Shared by the EASA (#21) and FAA (#22) night-time primitives: both
 /// define night, for *logging* purposes, identically — the period the sun
@@ -17,16 +26,18 @@ import '../model/utc_instant.dart';
 /// great-circle line between the first and last resolvable route waypoints,
 /// walked in step with elapsed time between [Flight.takeoff]/
 /// [Flight.landing] (or [Flight.offBlocks]/[Flight.onBlocks] where airborne
-/// times aren't recorded).
+/// times aren't recorded — see [FlightTimes.airborneTime] and
+/// [NightPortion.airborneTimesUsed]).
 ///
 /// Returns `null` if neither the departure nor the destination in
 /// [flight]'s route resolved to a position — the caller decides how to
 /// report that in its own jurisdiction's vocabulary, rather than this
 /// shared helper guessing at a shape that fits both.
-FlightDuration? civilTwilightNightPortion(
+NightPortion? civilTwilightNightPortion(
   Flight flight,
   AerodromeDirectory aerodromes,
 ) {
+  final airborneTimesUsed = flight.airborneTime != null;
   final start = flight.takeoff ?? flight.offBlocks;
   final end = flight.landing ?? flight.onBlocks;
 
@@ -40,12 +51,13 @@ FlightDuration? civilTwilightNightPortion(
   final from = departure ?? destination!;
   final to = destination ?? departure!;
 
-  return _nightPortion(
+  final value = _nightPortion(
     start: start,
     end: end,
     positionAtFraction: (fraction) =>
         interpolateGreatCircle(from, to, fraction),
   );
+  return (value: value, airborneTimesUsed: airborneTimesUsed);
 }
 
 String? _firstOrNull(List<String> route) => route.isEmpty ? null : route.first;

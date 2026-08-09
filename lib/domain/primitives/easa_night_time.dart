@@ -30,11 +30,19 @@ Map<String, DerivedQuantity> easaNightTime(
     };
   }
 
+  // #27: a caller must never present a block-time-substituted reading as
+  // indistinguishable from one measured against real airborne instants.
+  final caveat = night.airborneTimesUsed
+      ? ''
+      : ' — takeoff/landing were not recorded, so off-blocks/on-blocks '
+            'were used instead; this may overstate night time by including '
+            'ground time';
+
   return {
     'night': DerivedQuantity.creditable(
-      night,
+      night.value,
       "FCL.010 'night': end of evening civil twilight to beginning of "
-      "morning civil twilight, along the flight's route",
+      "morning civil twilight, along the flight's route$caveat",
     ),
   };
 }

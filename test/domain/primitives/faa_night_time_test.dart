@@ -37,6 +37,8 @@ Flight _flight({
   required List<String> route,
   required UtcInstant offBlocks,
   required UtcInstant onBlocks,
+  UtcInstant? takeoff,
+  UtcInstant? landing,
   CircuitCounts landings = const CircuitCounts(dayFullStop: 1),
 }) => Flight(
   aircraftRegistration: 'N12345',
@@ -44,6 +46,8 @@ Flight _flight({
   prePlannedNavigation: false,
   offBlocks: offBlocks,
   onBlocks: onBlocks,
+  takeoff: takeoff,
+  landing: landing,
   capacity: _capacity(),
   carryingPassengers: false,
   takeoffs: const CircuitCounts(dayFullStop: 1),
@@ -99,6 +103,42 @@ void main() {
       expect(
         result['nightFlightTime']?.explanation,
         contains('cannot be computed'),
+      );
+    });
+
+    // #27: a missing takeoff/landing must not be silently blended into a
+    // reading that looks identical to one measured against real airborne
+    // instants.
+    test('discloses the block-time substitution when takeoff/landing are not '
+        'recorded', () {
+      final flight = _flight(
+        route: const ['KXXX', 'KXXX'],
+        offBlocks: UtcInstant.utc(2024, 6, 21, 22, 0),
+        onBlocks: UtcInstant.utc(2024, 6, 21, 23, 0),
+      );
+
+      final result = faaNightTime(flight, aerodromes);
+
+      expect(
+        result['nightFlightTime']?.explanation,
+        contains('were not recorded'),
+      );
+    });
+
+    test('no caveat when takeoff/landing are both recorded', () {
+      final flight = _flight(
+        route: const ['KXXX', 'KXXX'],
+        offBlocks: UtcInstant.utc(2024, 6, 21, 22, 0),
+        onBlocks: UtcInstant.utc(2024, 6, 21, 23, 0),
+        takeoff: UtcInstant.utc(2024, 6, 21, 22, 5),
+        landing: UtcInstant.utc(2024, 6, 21, 22, 55),
+      );
+
+      final result = faaNightTime(flight, aerodromes);
+
+      expect(
+        result['nightFlightTime']?.explanation,
+        isNot(contains('were not recorded')),
       );
     });
   });

@@ -4,6 +4,7 @@ import '../model/aerodrome_directory.dart';
 import '../model/aircraft.dart';
 import '../model/flight.dart';
 import '../model/flight_duration.dart';
+import '../model/flight_times.dart';
 import '../primitives/primitive_registry.dart';
 import 'derived_quantity.dart';
 import 'projection.dart';
@@ -61,10 +62,7 @@ class JurisdictionProjection implements Projection {
       return const {};
     }
     final rule = primitives.pilotFunctionTime(ruleId);
-    final blockTime = FlightDuration(
-      flight.onBlocks.difference(flight.offBlocks).inMinutes,
-    );
-    return rule(flight, blockTime);
+    return rule(flight, flight.blockTime);
   }
 
   /// `night_rule` quantities, or nothing if the profile hasn't set one yet.
@@ -106,10 +104,7 @@ class JurisdictionProjection implements Projection {
       return const {};
     }
     final rule = primitives.instrumentTime(ruleId);
-    final blockTime = FlightDuration(
-      flight.onBlocks.difference(flight.offBlocks).inMinutes,
-    );
-    return rule(flight, blockTime);
+    return rule(flight, flight.blockTime);
   }
 
   /// `multi_pilot_rule` quantities, or nothing if the profile hasn't set
@@ -125,10 +120,7 @@ class JurisdictionProjection implements Projection {
       return const {};
     }
     final rule = primitives.multiPilotTime(ruleId);
-    final blockTime = FlightDuration(
-      flight.onBlocks.difference(flight.offBlocks).inMinutes,
-    );
-    return rule(flight, aircraft, blockTime);
+    return rule(flight, aircraft, flight.blockTime);
   }
 
   @override
