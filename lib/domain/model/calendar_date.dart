@@ -24,6 +24,22 @@ class CalendarDate implements Comparable<CalendarDate> {
   final int month;
   final int day;
 
+  /// Parses a zero-padded `YYYY-MM-DD` string — the exact form [toString]
+  /// produces. Throws [FormatException] naming [source] if malformed.
+  factory CalendarDate.parse(String source) {
+    final match = _pattern.firstMatch(source);
+    if (match == null) {
+      throw FormatException('Not a valid YYYY-MM-DD calendar date', source);
+    }
+    return CalendarDate(
+      int.parse(match.group(1)!),
+      int.parse(match.group(2)!),
+      int.parse(match.group(3)!),
+    );
+  }
+
+  static final RegExp _pattern = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
+
   @override
   int compareTo(CalendarDate other) {
     if (year != other.year) {

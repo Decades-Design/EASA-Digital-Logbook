@@ -37,7 +37,7 @@ instructor:
   influenced_flight: true           # so this is dual instruction, not SPIC
   name: "R. Mallory"
   credential_number: "GBR.FI.4471"  # AMC1 FCL.050; §61.51(h)(2)(ii)
-  credential_expiry: "2027-05-31T23:59:59Z"   # §61.51(h)(2)(ii)
+  credential_expiry: "2027-05-31"   # §61.51(h)(2)(ii)
 
 # AMC1 FCL.050(b)(1)(ii): each flight of instruction received is certified by
 # the instructor responsible for the flight. §61.51(h)(2) sets the FAA
@@ -47,5 +47,5 @@ countersignature:
   status: "signed"
   signatory_name: "R. Mallory"
   signatory_credential_number: "GBR.FI.4471"
-  signatory_credential_expiry: "2027-05-31T23:59:59Z"
+  signatory_credential_expiry: "2027-05-31"
   signed_at: "2026-03-14T11:05:00Z"
