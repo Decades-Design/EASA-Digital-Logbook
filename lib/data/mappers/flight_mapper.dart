@@ -1,4 +1,9 @@
+import '../../domain/model/calendar_date.dart';
+import '../../domain/model/countersignature.dart' as domain;
 import '../../domain/model/flight.dart' as domain;
+import '../../domain/model/flight_duration.dart';
+import '../../domain/model/instructor_presence.dart' as domain;
+import '../../domain/model/pilot_capacity.dart' as domain;
 import '../../domain/model/utc_instant.dart';
 import '../database.dart';
 import '../ulid.dart';
@@ -108,3 +113,120 @@ List<FlightApproachRow> flightApproachRows(
       ),
   ];
 }
+
+domain.Flight flightFromRow(
+  FlightRow row,
+  List<FlightRouteLegRow> legs,
+  List<FlightApproachRow> approaches, {
+  required String aircraftRegistration,
+}) {
+  domain.InstructorPresence? instructor;
+  if (row.capacityInstructorCapacity != null) {
+    instructor = domain.InstructorPresence(
+      capacity: domain.InstructorCapacity.values.byName(
+        row.capacityInstructorCapacity!,
+      ),
+      influencedFlight: row.capacityInstructorInfluencedFlight!,
+      name: row.capacityInstructorName,
+      credentialNumber: row.capacityInstructorCredentialNumber,
+      credentialExpiry: row.capacityInstructorCredentialExpiry == null
+          ? null
+          : CalendarDate.parse(row.capacityInstructorCredentialExpiry!),
+    );
+  }
+
+  domain.Countersignature? countersignature;
+  if (row.capacityCountersignatureStatus != null) {
+    countersignature = domain.Countersignature(
+      status: domain.CountersignatureStatus.values.byName(
+        row.capacityCountersignatureStatus!,
+      ),
+      signatoryName: row.capacityCountersignatureSignatoryName,
+      signatoryCredentialNumber:
+          row.capacityCountersignatureSignatoryCredentialNumber,
+      signatoryCredentialExpiry:
+          row.capacityCountersignatureSignatoryCredentialExpiry == null
+          ? null
+          : CalendarDate.parse(
+              row.capacityCountersignatureSignatoryCredentialExpiry!,
+            ),
+      signedAt: row.capacityCountersignatureSignedAt == null
+          ? null
+          : _fromEpoch(row.capacityCountersignatureSignedAt!),
+    );
+  }
+
+  final capacity = domain.PilotCapacity(
+    commandAuthority: row.capacityCommandAuthority,
+    soleManipulator: row.capacitySoleManipulator,
+    soleOccupant: row.capacitySoleOccupant,
+    multiPilotOperation: row.capacityMultiPilotOperation,
+    additionalCrewRequiredByRule: row.capacityAdditionalCrewRequiredByRule,
+    actingAsInstructor: row.capacityActingAsInstructor,
+    actingAsExaminer: row.capacityActingAsExaminer,
+    picusClaimed: row.capacityPicusClaimed,
+    picInterventionNotRequired: row.capacityPicInterventionNotRequired,
+    manipulationTime: row.capacityManipulationTimeMinutes == null
+        ? null
+        : FlightDuration(row.capacityManipulationTimeMinutes!),
+    soloEndorsementHeld: row.capacitySoloEndorsementHeld,
+    endorsingInstructorName: row.capacityEndorsingInstructorName,
+    instructor: instructor,
+    otherPilotRole: row.capacityOtherPilotRole == null
+        ? null
+        : domain.OtherPilotRole.values.byName(row.capacityOtherPilotRole!),
+    countersignature: countersignature,
+  );
+
+  final sortedLegs = [...legs]
+    ..sort((a, b) => a.sequence.compareTo(b.sequence));
+
+  return domain.Flight(
+    aircraftRegistration: aircraftRegistration,
+    route: [for (final leg in sortedLegs) leg.identifier],
+    prePlannedNavigation: row.prePlannedNavigation,
+    offBlocks: _fromEpoch(row.offBlocks),
+    onBlocks: _fromEpoch(row.onBlocks),
+    takeoff: row.takeoff == null ? null : _fromEpoch(row.takeoff!),
+    landing: row.landing == null ? null : _fromEpoch(row.landing!),
+    capacity: capacity,
+    otherPilotName: row.otherPilotName,
+    otherPilotCredentialNumber: row.otherPilotCredentialNumber,
+    carryingPassengers: row.carryingPassengers,
+    takeoffs: domain.CircuitCounts(
+      dayFullStop: row.takeoffsDayFullStop,
+      dayTouchAndGo: row.takeoffsDayTouchAndGo,
+      nightFullStop: row.takeoffsNightFullStop,
+      nightTouchAndGo: row.takeoffsNightTouchAndGo,
+    ),
+    landings: domain.CircuitCounts(
+      dayFullStop: row.landingsDayFullStop,
+      dayTouchAndGo: row.landingsDayTouchAndGo,
+      nightFullStop: row.landingsNightFullStop,
+      nightTouchAndGo: row.landingsNightTouchAndGo,
+    ),
+    ifrFlightPlanFiled: row.ifrFlightPlanFiled,
+    actualInstrumentTime: FlightDuration(row.actualInstrumentMinutes),
+    simulatedInstrumentTime: FlightDuration(row.simulatedInstrumentMinutes),
+    approaches: [
+      for (final approach in approaches)
+        domain.Approach(
+          type: domain.ApproachType.values.byName(approach.type),
+          aerodromeIcao: approach.aerodromeIcao,
+          runway: approach.runway,
+          count: approach.count,
+        ),
+    ],
+    holdingProceduresCount: row.holdingProceduresCount,
+    trackingPerformed: row.trackingPerformed,
+    seriesGroupId: row.seriesGroupId,
+    airworthinessBasis: row.airworthinessBasis == null
+        ? null
+        : domain.AirworthinessBasis.values.byName(row.airworthinessBasis!),
+    remarks: row.remarks,
+  );
+}
+
+UtcInstant _fromEpoch(int ms) => UtcInstant.fromDateTime(
+  DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true),
+);
