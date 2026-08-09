@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:easa_digital_log/data/database.dart';
 import 'package:easa_digital_log/data/open_with_backup.dart';
+import 'package:easa_digital_log/data/repositories/held_rating_repository.dart';
 import 'package:easa_digital_log/data/repositories/medical_certificate_repository.dart';
 import 'package:easa_digital_log/data/repositories/pilot_profile_repository.dart';
 import 'package:easa_digital_log/domain/model/calendar_date.dart';
+import 'package:easa_digital_log/domain/pilot_record/held_rating.dart';
 import 'package:easa_digital_log/domain/pilot_record/medical_certificate.dart';
 import 'package:easa_digital_log/domain/pilot_record/pilot_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -61,6 +63,31 @@ void _seedV1Database(String path) {
   }
 }
 
+/// As [_seedV1Database], but already at v2 (the `pilot_profile` and
+/// `medical_certificates` tables from #51 already exist and have a row),
+/// to exercise the migration path a pilot who upgrades straight from v2 —
+/// not from the very first v1 release — actually takes: the `from < 2`
+/// block must be skipped and only `from < 3` must run.
+void _seedV2Database(String path) {
+  final db = sqlite3.sqlite3.open(path);
+  try {
+    db.execute('''
+      CREATE TABLE pilot_profile (
+        id TEXT NOT NULL,
+        date_of_birth TEXT NOT NULL,
+        PRIMARY KEY (id)
+      )
+    ''');
+    db.execute('INSERT INTO pilot_profile (id, date_of_birth) VALUES (?, ?)', [
+      'singleton',
+      '1990-01-01',
+    ]);
+    db.execute('PRAGMA user_version = 2');
+  } finally {
+    db.close();
+  }
+}
+
 void main() {
   late Directory tempDir;
   late File dbFile;
@@ -102,6 +129,38 @@ void main() {
       );
       final id = await medicalCertificates.upsert(certificate);
       expect(await medicalCertificates.find(id), certificate);
+    },
+  );
+
+  test(
+    '#52: migrating a real v2 database to v3 preserves existing pilot_profile '
+    'data and adds held_ratings, without re-running the v1->v2 step',
+    () async {
+      _seedV2Database(dbFile.path);
+
+      final db = await openWithBackup(dbFile, () async {
+        final database = AppDatabase(NativeDatabase(dbFile));
+        await database.customStatement('SELECT 1');
+        return database;
+      });
+      addTearDown(db.close);
+
+      final pilotProfiles = PilotProfileRepository(db);
+      expect(
+        await pilotProfiles.find(),
+        const PilotProfile(dateOfBirth: CalendarDate(1990, 1, 1)),
+      );
+
+      final heldRatings = HeldRatingRepository(db);
+      const rating = HeldRating(
+        kind: HeldRatingKind.instrumentRating,
+        designator: 'IR',
+        jurisdictionId: 'eu.easa.part-fcl',
+        issueDate: CalendarDate(2024, 1, 1),
+        expiryDate: CalendarDate(2025, 1, 1),
+      );
+      final id = await heldRatings.upsert(rating);
+      expect(await heldRatings.find(id), rating);
     },
   );
 }
