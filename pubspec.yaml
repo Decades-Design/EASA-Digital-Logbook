@@ -21,6 +21,7 @@ dependencies:
   drift: 2.34.0
   flutter:
     sdk: flutter
+  flutter_riverpod: ^3.4.2
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
   sqlite3_flutter_libs: ^0.6.0+eol
@@ -55,3 +56,36 @@ flutter:
     - assets/aerodromes/
     - assets/jurisdictions/
     - assets/rules/
+  fonts:
+    # Variable font (wdth,wght axes) — the same file is listed once per
+    # weight; Flutter/Skia resolves each request against the font's own
+    # wght axis rather than needing separate static instances.
+    - family: Instrument Sans
+      fonts:
+        - asset: assets/fonts/InstrumentSans-Variable.ttf
+        - asset: assets/fonts/InstrumentSans-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/InstrumentSans-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/InstrumentSans-Variable.ttf
+          weight: 700
+        - asset: assets/fonts/InstrumentSans-Italic-Variable.ttf
+          style: italic
+    - family: IBM Plex Sans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+        - asset: assets/fonts/IBMPlexSans-Italic.ttf
+          style: italic
+        - asset: assets/fonts/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSans-Bold.ttf
+          weight: 700
+    - family: IBM Plex Mono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
