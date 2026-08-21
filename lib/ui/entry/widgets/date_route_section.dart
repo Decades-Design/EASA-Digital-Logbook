@@ -14,6 +14,7 @@ class DateRouteSection extends StatelessWidget {
     required this.date,
     required this.onTapDate,
     required this.legControllers,
+    required this.legFocusNodes,
     required this.onAddStop,
     required this.onRemoveStop,
   });
@@ -21,6 +22,12 @@ class DateRouteSection extends StatelessWidget {
   final DateTime date;
   final VoidCallback onTapDate;
   final List<TextEditingController> legControllers;
+
+  /// Parallel to [legControllers], owned and disposed alongside it by the
+  /// parent screen. Lets each `_LegField` hand focus to the *next* leg once
+  /// its four ICAO characters are typed, instead of leaving the pilot to
+  /// tap across every field by hand.
+  final List<FocusNode> legFocusNodes;
   final VoidCallback onAddStop;
   final ValueChanged<int> onRemoveStop;
 
@@ -90,6 +97,10 @@ class DateRouteSection extends StatelessWidget {
                             ),
                           _LegField(
                             controller: legControllers[i],
+                            focusNode: legFocusNodes[i],
+                            nextFocusNode: i + 1 < legFocusNodes.length
+                                ? legFocusNodes[i + 1]
+                                : null,
                             removable: i != 0 && i != legControllers.length - 1,
                             onRemove: () => onRemoveStop(i),
                           ),
@@ -123,11 +134,17 @@ class DateRouteSection extends StatelessWidget {
 class _LegField extends StatelessWidget {
   const _LegField({
     required this.controller,
+    required this.focusNode,
+    required this.nextFocusNode,
     required this.removable,
     required this.onRemove,
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
+
+  /// Null for the last leg — nothing to advance to.
+  final FocusNode? nextFocusNode;
   final bool removable;
   final VoidCallback onRemove;
 
@@ -140,6 +157,7 @@ class _LegField extends StatelessWidget {
         IntrinsicWidth(
           child: TextField(
             controller: controller,
+            focusNode: focusNode,
             textAlign: TextAlign.right,
             textCapitalization: TextCapitalization.characters,
             maxLength: 4,
@@ -159,6 +177,16 @@ class _LegField extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               hintText: 'ICAO',
             ),
+            // A 4-character ICAO code is always complete at 4 characters —
+            // advancing there, rather than waiting for the pilot to tap the
+            // next field by hand, is the whole point of a fixed-length
+            // identifier (docs/entry-form.md never expects a 3-character
+            // code to be topped up later).
+            onChanged: (value) {
+              if (value.length >= 4 && nextFocusNode != null) {
+                FocusScope.of(context).requestFocus(nextFocusNode);
+              }
+            },
           ),
         ),
         if (removable)

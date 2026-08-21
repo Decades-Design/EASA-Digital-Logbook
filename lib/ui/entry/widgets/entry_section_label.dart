@@ -55,7 +55,11 @@ class EntrySection extends StatelessWidget {
           else
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [EntrySectionLabel(label), trailing!],
+              children: [
+                Expanded(child: EntrySectionLabel(label)),
+                const SizedBox(width: 8),
+                trailing!,
+              ],
             ),
           const SizedBox(height: 8),
           child,
