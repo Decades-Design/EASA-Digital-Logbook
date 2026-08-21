@@ -25,6 +25,7 @@ CurrencyRule parseCurrencyRuleYaml(String yamlContent) {
   final id = _requiredString(yaml, 'id', 'currency rule');
   final jurisdictionId = _requiredString(yaml, 'jurisdiction', id);
   final citation = _requiredString(yaml, 'citation', id);
+  final title = _requiredString(yaml, 'title', id);
   final effectiveFrom = _requiredDate(yaml, 'effective_from', id);
   final expiresOn = _optionalDate(yaml, 'expires_on', id);
 
@@ -38,6 +39,7 @@ CurrencyRule parseCurrencyRuleYaml(String yamlContent) {
     id: id,
     jurisdictionId: jurisdictionId,
     citation: citation,
+    title: title,
     effectiveFrom: effectiveFrom,
     expiresOn: expiresOn,
     requirement: requirement,

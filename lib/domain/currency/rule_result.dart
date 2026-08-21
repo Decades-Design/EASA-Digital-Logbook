@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../model/calendar_date.dart';
+import '../model/flight_duration.dart';
 
 part 'rule_result.freezed.dart';
 
@@ -36,7 +37,68 @@ abstract class RuleResult with _$RuleResult {
     /// declared. Empty for a leaf requirement (flight-event or held-record
     /// check).
     @Default(<RuleResult>[]) List<RuleResult> components,
+
+    /// The structured numbers behind [explanation] — a progress bar or
+    /// "4 / 6" readout needs the actual current/required values, not a
+    /// regex against prose. Null for a composite (`allOf`/`anyOf`) result,
+    /// where no single number represents the requirement.
+    RuleProgress? progress,
   }) = _RuleResult;
+}
+
+/// The count/hours/validity numbers a leaf [RuleResult] was decided from —
+/// what a progress bar and a "current / required" readout render from,
+/// instead of parsing [RuleResult.explanation]'s prose back into numbers.
+///
+/// A flat class with a [kind] discriminator, not a sealed union — the same
+/// shape [FlightCondition] and [Requirement] already use in this codebase
+/// (see `currency_rule.dart`'s dartdoc for why).
+enum RuleProgressKind { count, hours, validity }
+
+@freezed
+abstract class RuleProgress with _$RuleProgress {
+  const factory RuleProgress({
+    required RuleProgressKind kind,
+
+    // ---- count.
+    int? currentCount,
+    int? requiredCount,
+
+    // ---- hours.
+    FlightDuration? currentHours,
+    FlightDuration? requiredHours,
+
+    // ---- validity. No "current/required" here — a held document either
+    // covers the evaluation date or it doesn't; the progress bar instead
+    // fills by how much of [validFrom]..[validUntil] has elapsed.
+    CalendarDate? validFrom,
+    CalendarDate? validUntil,
+  }) = _RuleProgress;
+
+  factory RuleProgress.count({required int current, required int required}) =>
+      RuleProgress(
+        kind: RuleProgressKind.count,
+        currentCount: current,
+        requiredCount: required,
+      );
+
+  factory RuleProgress.hours({
+    required FlightDuration current,
+    required FlightDuration required,
+  }) => RuleProgress(
+    kind: RuleProgressKind.hours,
+    currentHours: current,
+    requiredHours: required,
+  );
+
+  factory RuleProgress.validity({
+    required CalendarDate validFrom,
+    CalendarDate? validUntil,
+  }) => RuleProgress(
+    kind: RuleProgressKind.validity,
+    validFrom: validFrom,
+    validUntil: validUntil,
+  );
 }
 
 /// A [RuleResult] labelled with the rule it came from — what

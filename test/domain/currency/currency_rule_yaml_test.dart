@@ -13,6 +13,7 @@ void main() {
 id: easa.fcl060.passenger_recency
 jurisdiction: eu.easa.part-fcl
 citation: "FCL.060(b)(1)"
+title: "Passenger recency"
 effective_from: 2011-11-08
 requirement:
   kind: flight_event_count
@@ -45,6 +46,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 expires_on: 2020-01-01
 requirement:
@@ -62,6 +64,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 requirement:
   kind: flight_event_count
@@ -93,6 +96,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 requirement:
   kind: flight_event_hours
@@ -118,6 +122,7 @@ requirement:
 id: x
 jurisdiction: us.faa.part61
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 requirement:
   kind: flight_event_count
@@ -143,6 +148,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 requirement:
   kind: flight_event_hours
@@ -174,6 +180,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 requirement:
   kind: flight_event_hours
@@ -194,6 +201,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 requirement:
   kind: any_of
@@ -222,6 +230,7 @@ requirement:
       'id',
       'jurisdiction',
       'citation',
+      'title',
       'effective_from',
       'requirement',
     ]) {
@@ -232,6 +241,7 @@ requirement:
             'id': 'x',
             'jurisdiction': 'eu.easa.part-fcl',
             'citation': 'x',
+            'title': 'x',
             'effective_from': '2011-11-08',
           };
           fields.remove(missing);
@@ -262,6 +272,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: "not-a-date"
 requirement:
   kind: held_record_currently_valid
@@ -276,6 +287,7 @@ requirement:
 id: x
 jurisdiction: eu.easa.part-fcl
 citation: "x"
+title: "x"
 effective_from: 2011-11-08
 requirement:
   kind: not_a_real_kind

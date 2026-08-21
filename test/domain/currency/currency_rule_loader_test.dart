@@ -6,6 +6,7 @@ const _v1 = '''
 id: faa.61_56.flight_review
 jurisdiction: us.faa.part61
 citation: "§61.56 (pre-2020 wording)"
+title: "Flight review"
 effective_from: 2010-01-01
 expires_on: 2020-06-01
 requirement:
@@ -17,6 +18,7 @@ const _v2 = '''
 id: faa.61_56.flight_review
 jurisdiction: us.faa.part61
 citation: "§61.56"
+title: "Flight review"
 effective_from: 2020-06-01
 requirement:
   kind: held_record_currently_valid
@@ -27,6 +29,7 @@ const _otherRule = '''
 id: easa.fcl060.passenger_recency
 jurisdiction: eu.easa.part-fcl
 citation: "FCL.060(b)(1)"
+title: "Passenger recency"
 effective_from: 2011-11-08
 requirement:
   kind: held_record_currently_valid
@@ -119,6 +122,7 @@ void main() {
 id: faa.61_56.flight_review
 jurisdiction: us.faa.part61
 citation: "a different citation, same effective date"
+title: "Flight review"
 effective_from: 2010-01-01
 requirement:
   kind: held_record_currently_valid

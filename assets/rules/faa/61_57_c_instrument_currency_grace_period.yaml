@@ -10,6 +10,7 @@
 id: us.faa.61_57_c.instrument_currency_grace_period
 jurisdiction: us.faa.part61
 citation: "§61.57(c)"
+title: "Instrument currency (grace period)"
 effective_from: 1997-08-04
 requirement:
   kind: any_of

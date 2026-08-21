@@ -161,14 +161,30 @@ void _seedV2Database(String path) {
 /// As [_seedV2Database], but at v3, with a `flights` row already on
 /// disk — to prove #121's `addColumn` step preserves existing flight data
 /// and backfills the new column's default rather than, say, requiring every
-/// row to be rewritten by the app first. `pilot_profile`/`held_*` are
-/// omitted for the same reason [_seedV1Database] omits the other v1
-/// tables: irrelevant to the one step under test here, and the `from < 2`/
-/// `from < 3` migration blocks never run for a database already at v3, so
-/// their absence doesn't trip anything.
+/// row to be rewritten by the app first. `held_*` is omitted for the same
+/// reason [_seedV1Database] omits the other v1 tables: irrelevant to the one
+/// step under test here, and the `from < 3` migration block never runs for a
+/// database already at v3, so its absence doesn't trip anything.
+///
+/// `pilot_profile` **is** included, at its pre-v5 shape (no
+/// `primary_jurisdiction_id`) — a real v3 database always has this table
+/// from its earlier v1->v2 upgrade, and the later `from < 5` step in
+/// `database.dart` alters it, so a seed that omitted it would fail that
+/// step with "no such table" rather than exercising it honestly.
 void _seedV3Database(String path) {
   final db = sqlite3.sqlite3.open(path);
   try {
+    db.execute('''
+      CREATE TABLE pilot_profile (
+        id TEXT NOT NULL,
+        date_of_birth TEXT NOT NULL,
+        PRIMARY KEY (id)
+      )
+    ''');
+    db.execute('INSERT INTO pilot_profile (id, date_of_birth) VALUES (?, ?)', [
+      'singleton',
+      '1990-01-01',
+    ]);
     db.execute('''
       CREATE TABLE aircraft (
         id TEXT NOT NULL,
@@ -285,7 +301,10 @@ void main() {
       expect(aircraftRows.single.registration, 'G-ABCD');
 
       final pilotProfiles = PilotProfileRepository(db);
-      const profile = PilotProfile(dateOfBirth: CalendarDate(1990, 1, 1));
+      const profile = PilotProfile(
+        dateOfBirth: CalendarDate(1990, 1, 1),
+        primaryJurisdictionId: 'eu.easa.part-fcl',
+      );
       await pilotProfiles.save(profile);
       expect(await pilotProfiles.find(), profile);
 
@@ -316,7 +335,13 @@ void main() {
       final pilotProfiles = PilotProfileRepository(db);
       expect(
         await pilotProfiles.find(),
-        const PilotProfile(dateOfBirth: CalendarDate(1990, 1, 1)),
+        // primaryJurisdictionId didn't exist at v2 -- the v4->v5 addColumn
+        // step backfills its default, same proof-of-backfill shape as
+        // #121's alternativeComplianceEvents column above.
+        const PilotProfile(
+          dateOfBirth: CalendarDate(1990, 1, 1),
+          primaryJurisdictionId: 'eu.easa.part-fcl',
+        ),
       );
 
       final heldRatings = HeldRatingRepository(db);

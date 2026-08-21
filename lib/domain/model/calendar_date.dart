@@ -50,6 +50,13 @@ class CalendarDate implements Comparable<CalendarDate> {
     return _fromJulianDayNumber(jdn);
   }
 
+  /// Number of days from [other] to this date — positive when this date is
+  /// later, negative when earlier. The inverse of [addDays]:
+  /// `other.addDays(this.differenceInDays(other)) == this`.
+  int differenceInDays(CalendarDate other) =>
+      _toJulianDayNumber(year, month, day) -
+      _toJulianDayNumber(other.year, other.month, other.day);
+
   static int _toJulianDayNumber(int y, int m, int d) {
     final a = (14 - m) ~/ 12;
     final y2 = y + 4800 - a;

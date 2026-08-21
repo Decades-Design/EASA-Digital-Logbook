@@ -20,6 +20,7 @@
 id: us.faa.61_57_b.night_takeoff_landing_currency
 jurisdiction: us.faa.part61
 citation: "§61.57(b)"
+title: "Night take-off & landing currency"
 effective_from: 1997-08-04
 requirement:
   kind: all_of

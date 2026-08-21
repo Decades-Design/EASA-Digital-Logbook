@@ -3,6 +3,7 @@ import 'package:easa_digital_log/domain/currency/currency_rule_evaluator.dart';
 import 'package:easa_digital_log/domain/currency/evaluation_subject.dart';
 import 'package:easa_digital_log/domain/currency/flight_condition.dart';
 import 'package:easa_digital_log/domain/currency/held_record.dart';
+import 'package:easa_digital_log/domain/currency/rule_result.dart';
 import 'package:easa_digital_log/domain/currency/rule_window.dart';
 import 'package:easa_digital_log/domain/model/aircraft.dart';
 import 'package:easa_digital_log/domain/model/calendar_date.dart';
@@ -786,6 +787,52 @@ void main() {
 
       expect(result.satisfied, isFalse);
     });
+
+    test('progress bubbles up from the alternative nearest to being met — a '
+        'bar needs one number, and only one branch has to succeed', () {
+      final requirement = Requirement.anyOf([
+        // 1 of 6 -- far from satisfied.
+        Requirement.flightEventCount(
+          event: CountableFlightEvent.approaches,
+          count: 6,
+          window: RuleWindow.rollingDays(90),
+        ),
+        // 3 of 3 -- the nearer alternative, in fact already satisfied.
+        Requirement.flightEventCount(
+          event: CountableFlightEvent.landings,
+          count: 3,
+          window: RuleWindow.rollingDays(90),
+        ),
+      ]);
+      final subject = EvaluationSubject(
+        flights: [
+          currencyTestRecord(
+            '1',
+            _flight(
+              date: CalendarDate(2024, 5, 1),
+              approaches: [
+                const Approach(
+                  type: ApproachType.ils,
+                  aerodromeIcao: 'EGXX',
+                  runway: '09',
+                ),
+              ],
+              landings: const CircuitCounts(dayFullStop: 3),
+            ),
+          ),
+        ],
+      );
+
+      final result = evaluator.evaluateRequirement(
+        requirement,
+        subject,
+        CalendarDate(2024, 6, 1),
+      );
+
+      expect(result.progress!.kind, RuleProgressKind.count);
+      expect(result.progress!.currentCount, 3);
+      expect(result.progress!.requiredCount, 3);
+    });
   });
 
   group('allOf', () {
@@ -811,6 +858,52 @@ void main() {
       expect(result.components[0].satisfied, isTrue);
       expect(result.components[1].satisfied, isFalse);
     });
+
+    test('progress bubbles up from the tightest component — every branch must '
+        'succeed, so the closest-to-failing one is the one worth watching', () {
+      final requirement = Requirement.allOf([
+        // 3 of 3 -- comfortably met.
+        Requirement.flightEventCount(
+          event: CountableFlightEvent.landings,
+          count: 3,
+          window: RuleWindow.rollingDays(90),
+        ),
+        // 1 of 6 -- the tighter of the two.
+        Requirement.flightEventCount(
+          event: CountableFlightEvent.approaches,
+          count: 6,
+          window: RuleWindow.rollingDays(90),
+        ),
+      ]);
+      final subject = EvaluationSubject(
+        flights: [
+          currencyTestRecord(
+            '1',
+            _flight(
+              date: CalendarDate(2024, 5, 1),
+              landings: const CircuitCounts(dayFullStop: 3),
+              approaches: [
+                const Approach(
+                  type: ApproachType.ils,
+                  aerodromeIcao: 'EGXX',
+                  runway: '09',
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+
+      final result = evaluator.evaluateRequirement(
+        requirement,
+        subject,
+        CalendarDate(2024, 6, 1),
+      );
+
+      expect(result.progress!.kind, RuleProgressKind.count);
+      expect(result.progress!.currentCount, 1);
+      expect(result.progress!.requiredCount, 6);
+    });
   });
 
   group('CurrencyRuleEvaluator.evaluateRule', () {
@@ -819,6 +912,7 @@ void main() {
         id: 'test.rule',
         jurisdictionId: 'eu.easa.part-fcl',
         citation: 'FCL.060(b)(1)',
+        title: 'Test rule',
         effectiveFrom: CalendarDate(2020, 1, 1),
         requirement: Requirement.heldRecordCurrentlyValid('x'),
       );

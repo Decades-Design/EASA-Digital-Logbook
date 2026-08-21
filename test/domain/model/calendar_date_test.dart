@@ -38,6 +38,32 @@ void main() {
     });
   });
 
+  group('CalendarDate.differenceInDays', () {
+    test('is the inverse of addDays', () {
+      const start = CalendarDate(2024, 1, 28);
+      const end = CalendarDate(2024, 3, 2);
+
+      expect(end.differenceInDays(start), 34);
+      expect(start.addDays(34), end);
+    });
+
+    test('is negative when this date is earlier than other', () {
+      expect(
+        const CalendarDate(
+          2024,
+          1,
+          1,
+        ).differenceInDays(const CalendarDate(2024, 1, 10)),
+        -9,
+      );
+    });
+
+    test('is zero for the same date', () {
+      const date = CalendarDate(2024, 6, 15);
+      expect(date.differenceInDays(date), 0);
+    });
+  });
+
   group('CalendarDate', () {
     test('orders, compares and de-duplicates by value', () {
       const a = CalendarDate(2026, 6, 15);

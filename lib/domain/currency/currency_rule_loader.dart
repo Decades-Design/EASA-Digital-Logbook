@@ -89,4 +89,11 @@ class CurrencyRuleLoader {
     }
     return inForce;
   }
+
+  /// Every loaded rule id's in-force version as of [evaluationDate] — one
+  /// resolved [CurrencyRule] per id, for a caller building a dashboard
+  /// across every rule rather than asking about one specific id.
+  List<CurrencyRule> allInForce(CalendarDate evaluationDate) => [
+    for (final id in _byId.keys) resolve(id, evaluationDate),
+  ];
 }

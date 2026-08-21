@@ -8,6 +8,7 @@
 id: eu.easa.med_a045.class2_validity
 jurisdiction: eu.easa.part-fcl
 citation: "MED.A.045"
+title: "Class 2 medical"
 effective_from: 2011-11-08
 requirement:
   kind: held_record_currently_valid
