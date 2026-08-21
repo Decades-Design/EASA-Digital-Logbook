@@ -29,6 +29,12 @@ abstract class CurrencyRule with _$CurrencyRule {
     /// per #40 — every [RuleResult] carries it through for display.
     required String citation,
 
+    /// Human display label, e.g. "Passenger recency" — [id] is a dotted
+    /// machine string never meant for a screen. Lives here, next to
+    /// [citation], rather than as a UI-side `id -> title` lookup table,
+    /// which would silently drift the moment a rule file changes.
+    required String title,
+
     /// The date this version takes effect. #41 selects, for a given
     /// evaluation date, the latest version with `effectiveFrom <=` that date.
     required CalendarDate effectiveFrom,

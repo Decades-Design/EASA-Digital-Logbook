@@ -56,6 +56,8 @@ flutter:
     - assets/aerodromes/
     - assets/jurisdictions/
     - assets/rules/
+    - assets/rules/easa/
+    - assets/rules/faa/
   fonts:
     # Variable font (wdth,wght axes) — the same file is listed once per
     # weight; Flutter/Skia resolves each request against the font's own

@@ -110,6 +110,10 @@ class CurrencyRuleEvaluator {
                 '${requirement.count! - cumulative} more',
       expiresOn: satisfied ? window.expiryFrom(anchorDate!) : null,
       contributingFlightIds: contributingIds,
+      progress: RuleProgress.count(
+        current: cumulative,
+        required: requirement.count!,
+      ),
     );
   }
 
@@ -178,6 +182,10 @@ class CurrencyRuleEvaluator {
                 'needs ${(requirement.hours! - cumulative).toDecimalHours()} more',
       expiresOn: satisfied ? window.expiryFrom(anchorDate!) : null,
       contributingFlightIds: contributingIds,
+      progress: RuleProgress.hours(
+        current: cumulative,
+        required: requirement.hours!,
+      ),
     );
   }
 
@@ -201,6 +209,12 @@ class CurrencyRuleEvaluator {
           : 'Currently-valid "$kind" held'
                 '${covering.validUntil != null ? ', expires ${covering.validUntil}' : ''}',
       expiresOn: covering?.validUntil,
+      progress: covering == null
+          ? null
+          : RuleProgress.validity(
+              validFrom: covering.validFrom,
+              validUntil: covering.validUntil,
+            ),
     );
   }
 
@@ -236,6 +250,10 @@ class CurrencyRuleEvaluator {
       expiresOn: expiresOn,
       contributingFlightIds: _mergedContributingIds(components),
       components: components,
+      // The tightest component is the one that decides whether the whole
+      // conjunction holds, so it's the one worth putting on a progress bar
+      // — matching [expiresOn] above picking the earliest component lapse.
+      progress: _representativeProgress(components, pickLowest: true),
     );
   }
 
@@ -269,7 +287,56 @@ class CurrencyRuleEvaluator {
       expiresOn: expiresOn,
       contributingFlightIds: _mergedContributingIds(components),
       components: components,
+      // The alternative closest to being satisfied is the one worth a
+      // progress bar — only one branch needs to succeed, so the nearest is
+      // the actionable one, matching [expiresOn] above picking the most
+      // generous satisfied alternative.
+      progress: _representativeProgress(components, pickLowest: false),
     );
+  }
+
+  /// Picks one [components] member's [RuleResult.progress] to represent the
+  /// whole composite — a bar needs one number, and neither [_evaluateAllOf]
+  /// nor [_evaluateAnyOf] has a single natural "the" requirement otherwise,
+  /// since a real currency rule is almost always compound (hours AND
+  /// landings AND a training flight, say). [pickLowest] selects the
+  /// tightest component for a conjunction, the nearest-to-met component for
+  /// a disjunction — see each caller's own comment.
+  ///
+  /// Only compares [RuleProgressKind.count]/[RuleProgressKind.hours]
+  /// components against each other — [RuleProgressKind.validity] has no
+  /// fill-ratio concept to rank against a count or hours sibling, and a
+  /// component with no progress at all (itself an unrepresented composite,
+  /// or a [RequirementKind.heldRecordCurrentlyValid] miss) is skipped
+  /// rather than treated as a zero.
+  RuleProgress? _representativeProgress(
+    List<RuleResult> components, {
+    required bool pickLowest,
+  }) {
+    RuleProgress? best;
+    double? bestRatio;
+    for (final component in components) {
+      final progress = component.progress;
+      final ratio = switch (progress?.kind) {
+        RuleProgressKind.count =>
+          progress!.requiredCount == 0
+              ? 1.0
+              : progress.currentCount! / progress.requiredCount!,
+        RuleProgressKind.hours =>
+          progress!.requiredHours!.inMinutes == 0
+              ? 1.0
+              : progress.currentHours!.inMinutes /
+                    progress.requiredHours!.inMinutes,
+        RuleProgressKind.validity || null => null,
+      };
+      if (ratio == null) continue;
+      if (bestRatio == null ||
+          (pickLowest ? ratio < bestRatio : ratio > bestRatio)) {
+        bestRatio = ratio;
+        best = progress;
+      }
+    }
+    return best;
   }
 
   List<String> _mergedContributingIds(List<RuleResult> components) {

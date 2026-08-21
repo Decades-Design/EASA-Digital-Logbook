@@ -30,6 +30,7 @@
 id: us.faa.61_57_c.instrument_currency
 jurisdiction: us.faa.part61
 citation: "§61.57(c)"
+title: "Instrument currency"
 effective_from: 1997-08-04
 requirement:
   kind: any_of

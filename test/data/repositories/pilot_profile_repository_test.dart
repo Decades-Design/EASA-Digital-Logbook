@@ -21,7 +21,10 @@ void main() {
   });
 
   test('round-trips through save and find', () async {
-    const profile = PilotProfile(dateOfBirth: CalendarDate(1990, 6, 15));
+    const profile = PilotProfile(
+      dateOfBirth: CalendarDate(1990, 6, 15),
+      primaryJurisdictionId: 'eu.easa.part-fcl',
+    );
 
     await repository.save(profile);
 
@@ -32,15 +35,24 @@ void main() {
     'saving again replaces the single row rather than adding a second one',
     () async {
       await repository.save(
-        const PilotProfile(dateOfBirth: CalendarDate(1990, 6, 15)),
+        const PilotProfile(
+          dateOfBirth: CalendarDate(1990, 6, 15),
+          primaryJurisdictionId: 'eu.easa.part-fcl',
+        ),
       );
       await repository.save(
-        const PilotProfile(dateOfBirth: CalendarDate(1985, 1, 1)),
+        const PilotProfile(
+          dateOfBirth: CalendarDate(1985, 1, 1),
+          primaryJurisdictionId: 'us.faa.part61',
+        ),
       );
 
       expect(
         await repository.find(),
-        const PilotProfile(dateOfBirth: CalendarDate(1985, 1, 1)),
+        const PilotProfile(
+          dateOfBirth: CalendarDate(1985, 1, 1),
+          primaryJurisdictionId: 'us.faa.part61',
+        ),
       );
     },
   );

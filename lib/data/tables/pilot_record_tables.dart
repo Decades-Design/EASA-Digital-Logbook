@@ -11,6 +11,15 @@ class PilotProfileTable extends Table {
   TextColumn get id => text()();
   TextColumn get dateOfBirth => text()();
 
+  /// The [JurisdictionProfile.id] whose figures render everywhere that
+  /// isn't the currency screen (CLAUDE.md: "let the user choose their
+  /// primary jurisdiction must be a settings value, never a code path").
+  /// Defaulted only for the migration backfill of the one pre-existing
+  /// singleton row, never for a newly-created profile — `PilotProfile`'s
+  /// own field is `required`.
+  TextColumn get primaryJurisdictionId =>
+      text().withDefault(const Constant('eu.easa.part-fcl'))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

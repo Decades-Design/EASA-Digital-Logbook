@@ -8,6 +8,7 @@
 id: us.faa.61_23.first_class_medical_validity
 jurisdiction: us.faa.part61
 citation: "§61.23(d)"
+title: "First-class medical"
 effective_from: 1997-08-04
 requirement:
   kind: held_record_currently_valid

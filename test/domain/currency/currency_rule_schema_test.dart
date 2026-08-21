@@ -14,6 +14,7 @@ const _parserRequiredFields = [
   'id',
   'jurisdiction',
   'citation',
+  'title',
   'effective_from',
   'requirement',
 ];
@@ -22,6 +23,7 @@ const _validRuleYaml = '''
 id: easa.fcl060.passenger_recency
 jurisdiction: eu.easa.part-fcl
 citation: "FCL.060(b)(1)"
+title: "Passenger recency"
 effective_from: 2011-11-08
 requirement:
   kind: any_of

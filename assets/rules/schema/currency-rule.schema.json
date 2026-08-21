@@ -4,7 +4,7 @@
   "title": "Currency rule",
   "description": "One versioned currency rule under assets/rules/. See assets/rules/README.md (#54) for a field-by-field authoring guide, and lib/domain/currency/currency_rule_yaml.dart for the Dart parser this schema documents -- the parser is the actual enforcement (test/domain/currency/currency_rule_schema_test.dart checks the two agree on required fields).",
   "type": "object",
-  "required": ["id", "jurisdiction", "citation", "effective_from", "requirement"],
+  "required": ["id", "jurisdiction", "citation", "title", "effective_from", "requirement"],
   "additionalProperties": false,
   "properties": {
     "id": {
@@ -21,6 +21,11 @@
       "type": "string",
       "minLength": 1,
       "description": "The regulation this rule implements, e.g. FCL.060(b)(1)."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human display label, e.g. Passenger recency."
     },
     "effective_from": {
       "$ref": "#/$defs/date",

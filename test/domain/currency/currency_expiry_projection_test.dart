@@ -151,6 +151,7 @@ void main() {
       id: 'test.recency',
       jurisdictionId: 'eu.easa.part-fcl',
       citation: 'test citation',
+      title: 'Test recency',
       effectiveFrom: CalendarDate(2020, 1, 1),
       requirement: Requirement.flightEventCount(
         event: CountableFlightEvent.landings,

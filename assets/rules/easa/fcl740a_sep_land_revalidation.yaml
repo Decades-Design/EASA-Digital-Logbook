@@ -26,6 +26,7 @@
 id: eu.easa.fcl740a.sep_land_revalidation
 jurisdiction: eu.easa.part-fcl
 citation: "FCL.740.A(b)(1)"
+title: "SEP (land) revalidation"
 effective_from: 2011-11-08
 requirement:
   kind: any_of

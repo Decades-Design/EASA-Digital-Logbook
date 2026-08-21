@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -66,6 +66,24 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(
           flightsTable,
           flightsTable.alternativeComplianceEvents,
+        );
+      }
+      // Adds primaryJurisdictionId to pilot_profile — CLAUDE.md's "primary
+      // jurisdiction must be an explicit settings value". The column's
+      // withDefault backfills the one pre-existing singleton row to EASA;
+      // a real pilot changes it in Settings same as any other preference.
+      //
+      // Guarded to `from >= 2`: a database upgrading from v1 hits the
+      // `from < 2` branch above first, and `createTable` always builds from
+      // *today's* Dart table definition — which already includes this
+      // column — so running `addColumn` again on the same upgrade would
+      // fail with "duplicate column name". Only a database whose
+      // pilot_profile table was created by an *older* build (schema v2-v4,
+      // genuinely missing the column) needs this step.
+      if (from >= 2 && from < 5) {
+        await m.addColumn(
+          pilotProfileTable,
+          pilotProfileTable.primaryJurisdictionId,
         );
       }
     },

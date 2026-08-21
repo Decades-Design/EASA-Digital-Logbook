@@ -1,60 +1,27 @@
 import 'package:flutter/material.dart';
 
-import '../../../theme/app_colors.dart';
+import '../../entry_form_types.dart';
 import '../duration_field.dart';
 import '../entry_segmented_choice.dart';
 import '../entry_toggle_row.dart';
-
-enum _Arrangement { receivingInstruction, inCommandObserving }
-
-const _purposes = [
-  'Training — general',
-  'Skill test',
-  'Proficiency check',
-  'SEP/TMG revalidation refresher',
-  'FAA flight review',
-  'FAA IPC',
-  'Instrument training',
-];
+import 'crew_form_data.dart';
 
 /// §4B. Both arrangements share the same field set; only the arrangement
-/// choice itself changes what gets derived (Dual vs SPIC under EASA).
-///
-/// Not built here: certificate-expiry (FAA-only, needs licence-held
-/// detection), and the second arrangement option is shown unconditionally
-/// rather than gated to student pilots under a licence profile — both need
-/// a real pilot-profile source this screen doesn't have yet.
-class CrewWithInstructor extends StatefulWidget {
-  const CrewWithInstructor({super.key});
+/// choice itself changes what gets derived (Dual vs SPIC under EASA — see
+/// `flight_draft_mapper.dart`). The countersignature block itself lives in
+/// the remarks section (§7), not here — docs/entry-form.md places it
+/// alongside §4C's PICUS countersignature under one "always present, never
+/// required to save" block, gated on `crew == instructor || picus`.
+class CrewWithInstructor extends StatelessWidget {
+  const CrewWithInstructor({super.key, required this.data});
 
-  @override
-  State<CrewWithInstructor> createState() => _CrewWithInstructorState();
-}
-
-class _CrewWithInstructorState extends State<CrewWithInstructor> {
-  _Arrangement _arrangement = _Arrangement.receivingInstruction;
-  final _instructorName = TextEditingController();
-  final _instructorLicence = TextEditingController();
-  String? _purpose;
-  bool _soleManipulator = true;
-  final _manipHours = TextEditingController();
-  final _manipMinutes = TextEditingController();
-  bool _passengersOnBoard = false;
-  bool _signed = false;
-  DateTime? _signedAt;
-
-  @override
-  void dispose() {
-    _instructorName.dispose();
-    _instructorLicence.dispose();
-    _manipHours.dispose();
-    _manipMinutes.dispose();
-    super.dispose();
-  }
+  final CrewFormData data;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final receiving =
+        data.arrangement == InstructorArrangement.receivingInstruction;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -63,68 +30,119 @@ class _CrewWithInstructorState extends State<CrewWithInstructor> {
         children: [
           Text('What was the arrangement?', style: theme.textTheme.bodyMedium),
           const SizedBox(height: 8),
-          EntrySegmentedChoice<_Arrangement>(
-            options: const [
+          EntrySegmentedChoice<InstructorArrangement>(
+            options: [
               (
-                _Arrangement.receivingInstruction,
-                'I was receiving instruction',
+                InstructorArrangement.receivingInstruction,
+                InstructorArrangement.receivingInstruction.label,
               ),
-              (
-                _Arrangement.inCommandObserving,
-                'I was in command, instructor observing',
-              ),
+              if (data.spicOffered)
+                (
+                  InstructorArrangement.inCommandObserving,
+                  InstructorArrangement.inCommandObserving.label,
+                ),
             ],
-            selected: _arrangement,
-            onChanged: (v) => setState(() => _arrangement = v),
+            selected: data.arrangement,
+            onChanged: data.onArrangementChanged,
           ),
           const SizedBox(height: 18),
           TextField(
-            controller: _instructorName,
+            controller: data.instructorNameController,
             decoration: const InputDecoration(labelText: 'Instructor name'),
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: _instructorLicence,
+            controller: data.instructorLicenceController,
             decoration: const InputDecoration(
               labelText: 'Instructor licence / certificate number',
             ),
           ),
+          if (data.hasFaaLicence) ...[
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: data.onPickInstructorCertExpiry,
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Certificate expiry',
+                ),
+                child: Text(
+                  data.instructorCertExpiry != null
+                      ? _formatDate(data.instructorCertExpiry!)
+                      : '—',
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            initialValue: _purpose,
+            initialValue: data.purpose,
+            isExpanded: true,
             decoration: const InputDecoration(labelText: 'Purpose of flight'),
             items: [
-              for (final p in _purposes)
-                DropdownMenuItem(value: p, child: Text(p)),
+              for (final p in flightPurposes)
+                DropdownMenuItem(
+                  value: p,
+                  child: Text(p, overflow: TextOverflow.ellipsis),
+                ),
             ],
-            onChanged: (v) => setState(() => _purpose = v),
+            onChanged: data.onPurposeChanged,
           ),
+          if (flightPurposeNotes[data.purpose] != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              flightPurposeNotes[data.purpose]!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+          ],
+          if (purposeHasExaminer(data.purpose)) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: data.examinerNoController,
+              decoration: const InputDecoration(
+                labelText: 'Examiner no.',
+                hintText: 'e.g. UK.FE.1284',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text('Result', style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 8),
+            EntrySegmentedChoice<String>(
+              options: const [
+                ('Pass', 'Pass'),
+                ('Partial', 'Partial'),
+                ('Fail', 'Fail'),
+              ],
+              selected: data.result,
+              onChanged: data.onResultChanged,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: data.ratingAffectedController,
+              decoration: const InputDecoration(
+                labelText: 'Rating affected',
+                hintText: 'e.g. SEP (land)',
+              ),
+            ),
+          ],
           EntryToggleRow(
             label: 'I was sole manipulator',
-            value: _soleManipulator,
-            onChanged: (v) => setState(() => _soleManipulator = v),
+            value: data.instructorSoleManipulator,
+            onChanged: (_) => data.onToggleInstructorSoleManipulator(),
           ),
-          if (!_soleManipulator) ...[
+          if (!data.instructorSoleManipulator && receiving) ...[
             const SizedBox(height: 6),
             DurationField(
-              label: 'Manipulation time',
-              hoursController: _manipHours,
-              minutesController: _manipMinutes,
+              label: 'My manipulation time',
+              hoursController: data.instructorManipHoursController,
+              minutesController: data.instructorManipMinutesController,
             ),
           ],
           EntryToggleRow(
             label: 'Passengers on board',
-            value: _passengersOnBoard,
-            onChanged: (v) => setState(() => _passengersOnBoard = v),
-          ),
-          const SizedBox(height: 8),
-          _CountersignatureBlock(
-            signed: _signed,
-            signedAt: _signedAt,
-            onSign: () => setState(() {
-              _signed = true;
-              _signedAt = DateTime.now();
-            }),
+            value: data.instructorPassengers,
+            onChanged: (_) => data.onToggleInstructorPassengers(),
           ),
         ],
       ),
@@ -132,63 +150,5 @@ class _CrewWithInstructorState extends State<CrewWithInstructor> {
   }
 }
 
-/// Always present, never required to save (§4B). Uncountersigned SPIC/PICUS
-/// time is not creditable, so this stays visible whether the flight is
-/// saved as a draft or not — it just marks the entry as awaiting signature.
-class _CountersignatureBlock extends StatelessWidget {
-  const _CountersignatureBlock({
-    required this.signed,
-    required this.signedAt,
-    required this.onSign,
-  });
-
-  final bool signed;
-  final DateTime? signedAt;
-  final VoidCallback onSign;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final ink = context.inkTiers;
-    final semantic = context.semanticColors;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: signed ? scheme.surface : semantic.currencyWarningSurface,
-        border: Border.all(
-          color: signed
-              ? scheme.outlineVariant
-              : semantic.currencyWarning.withValues(alpha: 0.4),
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            signed ? Icons.check_circle : Icons.schedule,
-            size: 18,
-            color: signed ? ink.muted : semantic.currencyWarning,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              signed
-                  ? 'Countersigned at ${_formatTime(signedAt!)}'
-                  : 'Awaiting countersignature',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: signed ? ink.medium : semantic.currencyWarning,
-              ),
-            ),
-          ),
-          if (!signed)
-            TextButton(onPressed: onSign, child: const Text('Sign now')),
-        ],
-      ),
-    );
-  }
-}
-
-String _formatTime(DateTime t) =>
-    '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+String _formatDate(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';

@@ -17,6 +17,7 @@
 id: easa.fcl060.b1_passenger_recency
 jurisdiction: eu.easa.part-fcl
 citation: "FCL.060(b)(1)"
+title: "Passenger recency"
 effective_from: 2011-11-08
 requirement:
   kind: flight_event_count

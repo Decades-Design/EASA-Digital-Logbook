@@ -15,6 +15,7 @@
 id: us.faa.61_56.flight_review
 jurisdiction: us.faa.part61
 citation: "§61.56"
+title: "Flight review"
 effective_from: 1997-08-04
 requirement:
   kind: any_of

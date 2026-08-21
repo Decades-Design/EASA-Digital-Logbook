@@ -7,11 +7,18 @@ PilotProfileRow pilotProfileToRow(
   domain.PilotProfile profile, {
   required String id,
 }) {
-  return PilotProfileRow(id: id, dateOfBirth: profile.dateOfBirth.toString());
+  return PilotProfileRow(
+    id: id,
+    dateOfBirth: profile.dateOfBirth.toString(),
+    primaryJurisdictionId: profile.primaryJurisdictionId,
+  );
 }
 
 domain.PilotProfile pilotProfileFromRow(PilotProfileRow row) {
-  return domain.PilotProfile(dateOfBirth: CalendarDate.parse(row.dateOfBirth));
+  return domain.PilotProfile(
+    dateOfBirth: CalendarDate.parse(row.dateOfBirth),
+    primaryJurisdictionId: row.primaryJurisdictionId,
+  );
 }
 
 MedicalCertificateRow medicalCertificateToRow(

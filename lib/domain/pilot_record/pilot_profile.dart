@@ -15,6 +15,13 @@ part 'pilot_profile.freezed.dart';
 /// would ever vary.
 @freezed
 abstract class PilotProfile with _$PilotProfile {
-  const factory PilotProfile({required CalendarDate dateOfBirth}) =
-      _PilotProfile;
+  const factory PilotProfile({
+    required CalendarDate dateOfBirth,
+
+    /// The `JurisdictionProfile.id` whose figures the logbook, currency and
+    /// totals screens render — "let the user choose their primary
+    /// jurisdiction" must be this explicit settings value, never inferred
+    /// from which licence happens to come first (CLAUDE.md).
+    required String primaryJurisdictionId,
+  }) = _PilotProfile;
 }
