@@ -8,32 +8,10 @@ import '../../domain/model/utc_instant.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import 'rule_asset_paths.dart';
 import 'sample_currency_data.dart';
 import 'widgets/currency_hero_card.dart';
 import 'widgets/currency_rule_row.dart';
-
-/// Every rule file the Currency screen loads at start-up — see
-/// `assets/rules/README.md`. Loading the full set rather than only the ids
-/// [sampleCurrencyLicences] happens to reference keeps this list from
-/// needing to track the sample fixture's own choices, which are themselves
-/// a stand-in for a real per-licence rule resolver (see that file's
-/// dartdoc).
-const _ruleAssetPaths = [
-  'assets/rules/easa/fcl060_b1_passenger_recency.yaml',
-  'assets/rules/easa/fcl060_b3_night_passenger_recency.yaml',
-  'assets/rules/easa/fcl740a_sep_land_revalidation.yaml',
-  'assets/rules/easa/med_a045_class1_validity.yaml',
-  'assets/rules/easa/med_a045_class2_validity.yaml',
-  'assets/rules/faa/61_23_first_class_medical_validity.yaml',
-  'assets/rules/faa/61_23_second_class_medical_validity.yaml',
-  'assets/rules/faa/61_23_third_class_medical_validity.yaml',
-  'assets/rules/faa/61_56_flight_review.yaml',
-  'assets/rules/faa/61_57_a2_tailwheel_takeoff_landing_currency.yaml',
-  'assets/rules/faa/61_57_a_takeoff_landing_currency.yaml',
-  'assets/rules/faa/61_57_b_night_takeoff_landing_currency.yaml',
-  'assets/rules/faa/61_57_c_instrument_currency.yaml',
-  'assets/rules/faa/61_57_c_instrument_currency_grace_period.yaml',
-];
 
 /// #62: the currency dashboard — every held licence, grouped, with a reason
 /// for each pill. Runs the real `CurrencyRuleEvaluator`/`CurrencyRuleLoader`
@@ -66,7 +44,7 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
     // `rootBundle`'s process-wide cache otherwise returns a permanently-
     // pending `Future` to a later widget-test run that reopens this screen.
     final yamlContents = await Future.wait([
-      for (final path in _ruleAssetPaths)
+      for (final path in ruleAssetPaths)
         rootBundle.loadString(path, cache: false),
     ]);
     final loader = CurrencyRuleLoader.fromYaml(yamlContents);
