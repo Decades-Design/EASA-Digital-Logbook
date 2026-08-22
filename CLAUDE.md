@@ -147,11 +147,15 @@ showing a red or green pill. "Not current" with no explanation is a bug.
 
 ## Multi-jurisdiction UX
 
-- Totals, flight entry and dashboard render in the **primary** jurisdiction only.
+- Totals defaults to the **primary** jurisdiction, with an explicit dropdown to view the same
+  figures under any other held licence instead. The dropdown always shows the jurisdiction
+  currently in view, so a switch is a visible, chosen state — never a global toggle that silently
+  changes what the numbers mean.
+- Flight entry and the dashboard still render primary-only.
 - A flight whose derived values differ under a secondary licence gets a badge opening a
-  side-by-side comparison. Do not render both columns everywhere; do not use a global toggle
-  that silently changes what the numbers mean.
-- Currency is the exception: show all held licences grouped, always.
+  side-by-side comparison. Do not render both columns everywhere.
+- Currency shows all held licences grouped by default, with an optional jurisdiction filter (also
+  a visible dropdown, not a silent default) to narrow the view to one authority.
 - Export asks which jurisdiction explicitly. Never infer it.
 - Adding a licence triggers a recompute plus a **"N past flights need more information" queue**.
   Never guess a missing discriminator, never silently default it.
