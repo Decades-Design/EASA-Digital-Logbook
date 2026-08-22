@@ -11,6 +11,7 @@ PilotProfileRow pilotProfileToRow(
     id: id,
     dateOfBirth: profile.dateOfBirth.toString(),
     primaryJurisdictionId: profile.primaryJurisdictionId,
+    homeBaseIcao: profile.homeBaseIcao,
   );
 }
 
@@ -18,6 +19,7 @@ domain.PilotProfile pilotProfileFromRow(PilotProfileRow row) {
   return domain.PilotProfile(
     dateOfBirth: CalendarDate.parse(row.dateOfBirth),
     primaryJurisdictionId: row.primaryJurisdictionId,
+    homeBaseIcao: row.homeBaseIcao,
   );
 }
 

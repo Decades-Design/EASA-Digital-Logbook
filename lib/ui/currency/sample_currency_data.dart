@@ -31,6 +31,7 @@ import '../../domain/repository/flight_read_repository.dart';
 const samplePilotProfile = PilotProfile(
   dateOfBirth: CalendarDate(1985, 6, 15),
   primaryJurisdictionId: 'eu.easa.part-fcl',
+  homeBaseIcao: 'EGKA',
 );
 
 const sampleAircraft = Aircraft(

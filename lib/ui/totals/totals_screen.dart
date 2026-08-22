@@ -12,6 +12,7 @@ import '../../domain/primitives/default_primitives.dart';
 import '../../domain/projection/jurisdiction_projection.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../../domain/totals/totals_summary.dart';
+import '../aerodromes/aerodromes_screen.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'sample_totals_data.dart';
@@ -169,10 +170,14 @@ class _Header extends StatelessWidget {
               ),
               Row(
                 children: [
-                  // Pushes to the Aerodromes screen, which doesn't exist yet
-                  // (Phase 4) — a harmless no-op, same convention as
-                  // Currency's "Edit".
-                  _HeaderPillButton(label: 'Map', onTap: () {}),
+                  _HeaderPillButton(
+                    label: 'Map',
+                    onTap: () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => const AerodromesScreen(),
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   // CLAUDE.md requires an explicit jurisdiction choice before
                   // anything is exported; that flow doesn't exist yet
@@ -767,27 +772,32 @@ class _OpsTab extends StatelessWidget {
         const _TabDivider(),
         // FSTD sessions have no persistence or read path yet (#28) --
         // omitted rather than fabricated.
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Aerodromes visited', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 2),
-              Text(
-                '${visited.aerodromes} across ${visited.countries} '
-                'countries',
-                style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${visited.aerodromes}',
-                style: AppMonoText.value(
-                  theme.colorScheme.onSurface,
-                  size: 13.5,
+        InkWell(
+          onTap: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(builder: (_) => const AerodromesScreen()),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Aerodromes visited', style: theme.textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  '${visited.aerodromes} across ${visited.countries} '
+                  'countries',
+                  style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  '${visited.aerodromes}',
+                  style: AppMonoText.value(
+                    theme.colorScheme.onSurface,
+                    size: 13.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const _TabDivider(),

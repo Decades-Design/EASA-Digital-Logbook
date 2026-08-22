@@ -272,6 +272,33 @@ void _seedV3Database(String path) {
   }
 }
 
+/// As [_seedV3Database], but at v5 with `primary_jurisdiction_id` already
+/// present (from the earlier v4->v5 step) — isolates the v5->v6 step under
+/// test here, the same way [_seedV3Database] isolates v3->v4. Proves the new
+/// step adds `home_base_icao` and backfills it to null rather than guessing a
+/// value, and leaves the pre-existing `primary_jurisdiction_id` untouched.
+void _seedV5Database(String path) {
+  final db = sqlite3.sqlite3.open(path);
+  try {
+    db.execute('''
+      CREATE TABLE pilot_profile (
+        id TEXT NOT NULL,
+        date_of_birth TEXT NOT NULL,
+        primary_jurisdiction_id TEXT NOT NULL DEFAULT 'eu.easa.part-fcl',
+        PRIMARY KEY (id)
+      )
+    ''');
+    db.execute(
+      'INSERT INTO pilot_profile (id, date_of_birth, primary_jurisdiction_id) '
+      'VALUES (?, ?, ?)',
+      ['singleton', '1990-01-01', 'us.faa.part61'],
+    );
+    db.execute('PRAGMA user_version = 5');
+  } finally {
+    db.close();
+  }
+}
+
 void main() {
   late Directory tempDir;
   late File dbFile;
@@ -373,5 +400,26 @@ void main() {
     expect(flightRows.single.id, 'flight-1');
     expect(flightRows.single.remarks, 'a pre-existing flight');
     expect(flightRows.single.alternativeComplianceEvents, isEmpty);
+  });
+
+  test('migrating a real v5 database to v6 preserves primaryJurisdictionId and '
+      'backfills homeBaseIcao to null', () async {
+    _seedV5Database(dbFile.path);
+
+    final db = await openWithBackup(dbFile, () async {
+      final database = AppDatabase(NativeDatabase(dbFile));
+      await database.customStatement('SELECT 1');
+      return database;
+    });
+    addTearDown(db.close);
+
+    final pilotProfiles = PilotProfileRepository(db);
+    expect(
+      await pilotProfiles.find(),
+      const PilotProfile(
+        dateOfBirth: CalendarDate(1990, 1, 1),
+        primaryJurisdictionId: 'us.faa.part61',
+      ),
+    );
   });
 }
