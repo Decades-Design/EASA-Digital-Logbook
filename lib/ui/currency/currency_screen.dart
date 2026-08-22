@@ -8,10 +8,17 @@ import '../../domain/model/utc_instant.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../widgets/jurisdiction_dropdown.dart';
+import '../widgets/large_title_scaffold.dart';
 import 'rule_asset_paths.dart';
 import 'sample_currency_data.dart';
 import 'widgets/currency_hero_card.dart';
 import 'widgets/currency_rule_row.dart';
+
+const _jurisdictionLabels = {
+  'eu.easa.part-fcl': 'EASA Part-FCL',
+  'us.faa.part61': 'FAA Part 61',
+};
 
 /// #62: the currency dashboard — every held licence, grouped, with a reason
 /// for each pill. Runs the real `CurrencyRuleEvaluator`/`CurrencyRuleLoader`
@@ -29,6 +36,10 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
   CurrencyDashboard? _dashboard;
   List<FlightRecord> _flights = const [];
   late final CalendarDate _today;
+
+  /// `null` means "Both" — the default, matching CLAUDE.md's "show all held
+  /// licences grouped by default."
+  String? _selectedJurisdictionId;
 
   @override
   void initState() {
@@ -83,7 +94,45 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
     }
 
     final theme = Theme.of(context);
-    final heroRows = dashboard.atRiskRows;
+    final selected = _selectedJurisdictionId;
+    final visibleGroups = selected == null
+        ? dashboard.groups
+        : [
+            for (final group in dashboard.groups)
+              if (group.jurisdictionId == selected) group,
+          ];
+    final heroRows = [
+      for (final group in visibleGroups)
+        for (final row in group.rows)
+          if (row.isAtRisk) row,
+    ];
+
+    if (_flights.isEmpty) {
+      return Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              _Header(
+                asOf: _today,
+                groups: dashboard.groups,
+                selectedJurisdictionId: selected,
+                onJurisdictionChanged: (id) =>
+                    setState(() => _selectedJurisdictionId = id),
+              ),
+              const Expanded(
+                child: EmptyStateMessage(
+                  icon: Icons.verified_outlined,
+                  headline: 'No flights logged yet',
+                  caption:
+                      'Currency requirements will appear here once you log your first flight.',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: CustomScrollView(
@@ -99,7 +148,13 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
                 color: theme.colorScheme.surfaceContainerLowest,
                 child: Column(
                   children: [
-                    _Header(asOf: _today),
+                    _Header(
+                      asOf: _today,
+                      groups: dashboard.groups,
+                      selectedJurisdictionId: selected,
+                      onJurisdictionChanged: (id) =>
+                          setState(() => _selectedJurisdictionId = id),
+                    ),
                     if (heroRows.isNotEmpty) ...[
                       // A `ListView` needs a bounded cross-axis height from
                       // its parent — it can't ask a horizontally-scrolling
@@ -144,7 +199,7 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
               ),
               child: Column(
                 children: [
-                  for (final group in dashboard.groups)
+                  for (final group in visibleGroups)
                     _LicenceGroupSection(
                       group: group,
                       asOf: _today,
@@ -203,9 +258,19 @@ class _HeroPageDots extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.asOf});
+  const _Header({
+    required this.asOf,
+    required this.groups,
+    required this.selectedJurisdictionId,
+    required this.onJurisdictionChanged,
+  });
 
   final CalendarDate asOf;
+  final List<CurrencyLicenceGroup> groups;
+
+  /// `null` means "Both".
+  final String? selectedJurisdictionId;
+  final ValueChanged<String?> onJurisdictionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -213,25 +278,51 @@ class _Header extends StatelessWidget {
     final ink = context.inkTiers;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Currency',
-            style: theme.textTheme.displaySmall?.copyWith(fontSize: 27),
-          ),
-          Text.rich(
-            TextSpan(
-              children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Currency',
+                style: theme.textTheme.displaySmall?.copyWith(fontSize: 27),
+              ),
+              Text.rich(
                 TextSpan(
-                  text: 'as at ',
-                  style: theme.textTheme.bodySmall?.copyWith(color: ink.muted),
+                  children: [
+                    TextSpan(
+                      text: 'as at ',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: ink.muted,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '$asOf',
+                      style: AppMonoText.value(ink.medium),
+                    ),
+                  ],
                 ),
-                TextSpan(text: '$asOf', style: AppMonoText.value(ink.medium)),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          JurisdictionDropdown<String?>(
+            value: selectedJurisdictionId,
+            label: selectedJurisdictionId == null
+                ? 'Both'
+                : (_jurisdictionLabels[selectedJurisdictionId] ??
+                      selectedJurisdictionId!),
+            options: {
+              null: 'Both',
+              for (final group in groups)
+                group.jurisdictionId:
+                    _jurisdictionLabels[group.jurisdictionId] ??
+                    group.jurisdictionId,
+            },
+            onChanged: onJurisdictionChanged,
           ),
         ],
       ),

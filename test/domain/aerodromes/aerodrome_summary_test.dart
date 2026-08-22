@@ -270,4 +270,68 @@ void main() {
       );
     });
   });
+
+  group('totalDistanceFlownNm', () {
+    test('sums leg-by-leg distance across every flight', () {
+      final directory = _directory();
+      final egka = directory.byIcao('EGKA')!;
+      final eghh = directory.byIcao('EGHH')!;
+      final lfat = directory.byIcao('LFAT')!;
+
+      final flights = [
+        _record(
+          'f1',
+          _flight(
+            date: const CalendarDate(2026, 1, 1),
+            route: ['EGKA', 'EGHH', 'EGKA'],
+          ),
+        ),
+        _record(
+          'f2',
+          _flight(
+            date: const CalendarDate(2026, 1, 2),
+            route: ['EGKA', 'LFAT'],
+          ),
+        ),
+      ];
+
+      final expected =
+          greatCircleDistanceNm(egka.position, eghh.position) * 2 +
+          greatCircleDistanceNm(egka.position, lfat.position);
+
+      expect(
+        totalDistanceFlownNm(flights, directory),
+        closeTo(expected, 0.001),
+      );
+    });
+
+    test('skips a leg whose aerodrome does not resolve', () {
+      final flights = [
+        _record(
+          'f1',
+          _flight(
+            date: const CalendarDate(2026, 1, 1),
+            route: ['EGKA', 'PRIVATE-STRIP', 'EGKA'],
+          ),
+        ),
+      ];
+
+      expect(totalDistanceFlownNm(flights, _directory()), 0);
+    });
+
+    test('a single-aerodrome route (no legs) contributes nothing', () {
+      final flights = [
+        _record(
+          'f1',
+          _flight(date: const CalendarDate(2026, 1, 1), route: ['EGKA']),
+        ),
+      ];
+
+      expect(totalDistanceFlownNm(flights, _directory()), 0);
+    });
+
+    test('an empty flight set flies zero distance', () {
+      expect(totalDistanceFlownNm(const [], _directory()), 0);
+    });
+  });
 }

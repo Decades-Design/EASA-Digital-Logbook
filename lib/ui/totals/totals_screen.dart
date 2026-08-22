@@ -13,8 +13,10 @@ import '../../domain/projection/jurisdiction_projection.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../../domain/totals/totals_summary.dart';
 import '../aerodromes/aerodromes_screen.dart';
+import '../currency/sample_currency_data.dart' show sampleCurrencyLicences;
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../widgets/jurisdiction_dropdown.dart';
 import 'sample_totals_data.dart';
 import 'widgets/totals_bar_chart.dart';
 import 'widgets/totals_row.dart';
@@ -27,14 +29,66 @@ const _jurisdictionLabels = {
   'us.faa.part61': 'FAA Part 61',
 };
 
-/// #85: totals and summary view — five sub-tabs over one flight set, all
-/// rendered under the pilot's **primary** jurisdiction only (CLAUDE.md's
-/// multi-jurisdiction UX rule). Total time of flight, aircraft hours and
-/// take-off/landing counts are jurisdiction-agnostic facts computed directly
-/// off `Flight`/`PilotCapacity`; PIC/dual/night/instrument/cross-country go
-/// through the existing `JurisdictionProjection` unchanged. Runs against
-/// `sample_totals_data.dart`'s fixture, the same convention Currency and the
-/// entry form already use pending #56's live repository wiring.
+/// Function-tab rows, per jurisdiction — EASA and FAA pilot function time
+/// are genuinely different regulatory concepts (`pic`/`picus`/`spic`/
+/// `copilot`/`dual`/`instructor` vs `actingPic`/`loggedPic`/`dualReceived`/
+/// `sic`), not aliases of each other, so this can't be one shared row list
+/// the way `_jurisdictionLabels` is. `easaPilotFunctionTime`/
+/// `faaPilotFunctionTime` (`lib/domain/primitives/`) are each other's only
+/// source of truth for their own key names.
+///
+/// FAA's own `solo` quantity is deliberately excluded — it's the same raw
+/// fact (`PilotCapacity.soleOccupant`) `soloTime()` already renders under
+/// "Other arrangements" below for every jurisdiction; repeating it here
+/// would double it up, not add information.
+const _functionRowsByJurisdiction = {
+  'eu.easa.part-fcl': [
+    ('pic', 'PIC'),
+    ('picus', 'PICUS'),
+    ('spic', 'SPIC'),
+    ('copilot', 'Co-pilot'),
+    ('dual', 'Dual'),
+    ('instructor', 'Instructor'),
+  ],
+  'us.faa.part61': [
+    ('actingPic', 'Acting PIC'),
+    ('loggedPic', 'Logged PIC'),
+    ('dualReceived', 'Dual received'),
+    ('sic', 'SIC'),
+  ],
+};
+
+/// Conditions-tab rows, per jurisdiction — EASA logs IFR as one column
+/// (`easa_instrument_time.dart`'s `ifr`); FAA has no such concept at all and
+/// splits actual/simulated instrument time instead
+/// (`faa_instrument_time.dart`). `crossCountry` and night both exist under
+/// both jurisdictions, but night's own key name still differs
+/// (`night` vs `nightFlightTime`).
+const _conditionRowsByJurisdiction = {
+  'eu.easa.part-fcl': [
+    ('night', 'Night'),
+    ('ifr', 'IFR'),
+    ('crossCountry', 'Cross-country'),
+  ],
+  'us.faa.part61': [
+    ('nightFlightTime', 'Night'),
+    ('actualInstrument', 'Actual instrument'),
+    ('simulatedInstrument', 'Simulated instrument'),
+    ('crossCountry', 'Cross-country'),
+  ],
+};
+
+/// #85: totals and summary view — five sub-tabs over one flight set,
+/// defaulting to the pilot's **primary** jurisdiction with an explicit,
+/// always-visible dropdown to view the same figures under any other held
+/// licence instead (CLAUDE.md's multi-jurisdiction UX rule — a switch, never
+/// a silent toggle). Total time of flight, aircraft hours and take-off/
+/// landing counts are jurisdiction-agnostic facts computed directly off
+/// `Flight`/`PilotCapacity`; PIC/dual/night/instrument/cross-country go
+/// through the existing `JurisdictionProjection`, one instance per held
+/// licence so switching jurisdictions is a lookup, not a reload. Runs
+/// against `sample_totals_data.dart`'s fixture, the same convention Currency
+/// and the entry form already use pending #56's live repository wiring.
 class TotalsScreen extends StatefulWidget {
   const TotalsScreen({super.key});
 
@@ -46,9 +100,15 @@ class _TotalsScreenState extends State<TotalsScreen> {
   int _tabIndex = 0;
   Granularity _granularity = Granularity.year;
 
+  /// Defaults to the pilot's primary licence — CLAUDE.md: Totals *defaults*
+  /// to primary, but an explicit, visible dropdown (never a silent toggle)
+  /// lets the pilot view the same figures under any other held licence.
+  late String _selectedJurisdictionId =
+      samplePilotProfile.primaryJurisdictionId;
+
   List<FlightRecord>? _flights;
   AerodromeDirectory? _aerodromes;
-  JurisdictionProjection? _projection;
+  Map<String, JurisdictionProjection>? _projections;
   late final CalendarDate _today;
 
   @override
@@ -78,18 +138,23 @@ class _TotalsScreenState extends State<TotalsScreen> {
       parseJurisdictionProfileYaml(results[1]),
     ]);
     final aerodromes = AerodromeDirectory.fromOurAirportsCsv(results[2]);
-    final projection = JurisdictionProjection(
-      registry: registry,
-      primitives: defaultPrimitives,
-      aerodromes: aerodromes,
-      jurisdictionId: samplePilotProfile.primaryJurisdictionId,
-    );
+    // One projection per held licence, not just the primary one, so
+    // switching the dropdown is a cheap lookup rather than a reload.
+    final projections = {
+      for (final licence in sampleCurrencyLicences)
+        licence.jurisdictionId: JurisdictionProjection(
+          registry: registry,
+          primitives: defaultPrimitives,
+          aerodromes: aerodromes,
+          jurisdictionId: licence.jurisdictionId,
+        ),
+    };
     final flights = sampleTotalsFlights(_today);
     if (!mounted) return;
     setState(() {
       _flights = flights;
       _aerodromes = aerodromes;
-      _projection = projection;
+      _projections = projections;
     });
   }
 
@@ -97,10 +162,11 @@ class _TotalsScreenState extends State<TotalsScreen> {
   Widget build(BuildContext context) {
     final flights = _flights;
     final aerodromes = _aerodromes;
-    final projection = _projection;
-    if (flights == null || aerodromes == null || projection == null) {
+    final projections = _projections;
+    if (flights == null || aerodromes == null || projections == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+    final projection = projections[_selectedJurisdictionId]!;
 
     return Scaffold(
       body: CustomScrollView(
@@ -111,10 +177,9 @@ class _TotalsScreenState extends State<TotalsScreen> {
               child: Column(
                 children: [
                   _Header(
-                    jurisdictionLabel:
-                        _jurisdictionLabels[samplePilotProfile
-                            .primaryJurisdictionId] ??
-                        samplePilotProfile.primaryJurisdictionId,
+                    selectedJurisdictionId: _selectedJurisdictionId,
+                    onJurisdictionChanged: (id) =>
+                        setState(() => _selectedJurisdictionId = id),
                   ),
                   _MainTabs(
                     selected: _tabIndex,
@@ -146,14 +211,20 @@ class _TotalsScreenState extends State<TotalsScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.jurisdictionLabel});
+  const _Header({
+    required this.selectedJurisdictionId,
+    required this.onJurisdictionChanged,
+  });
 
-  final String jurisdictionLabel;
+  final String selectedJurisdictionId;
+  final ValueChanged<String> onJurisdictionChanged;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ink = context.inkTiers;
+    final isPrimary =
+        selectedJurisdictionId == samplePilotProfile.primaryJurisdictionId;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
       child: Column(
@@ -192,10 +263,32 @@ class _Header extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Derived under $jurisdictionLabel — your primary licence',
-            style: theme.textTheme.bodySmall?.copyWith(color: ink.muted),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'Derived under ',
+                style: theme.textTheme.bodySmall?.copyWith(color: ink.muted),
+              ),
+              JurisdictionDropdown<String>(
+                value: selectedJurisdictionId,
+                label:
+                    _jurisdictionLabels[selectedJurisdictionId] ??
+                    selectedJurisdictionId,
+                options: {
+                  for (final licence in sampleCurrencyLicences)
+                    licence.jurisdictionId:
+                        _jurisdictionLabels[licence.jurisdictionId] ??
+                        licence.jurisdictionId,
+                },
+                onChanged: onJurisdictionChanged,
+              ),
+              Text(
+                isPrimary ? ' — primary licence' : ' — secondary licence',
+                style: theme.textTheme.bodySmall?.copyWith(color: ink.muted),
+              ),
+            ],
           ),
         ],
       ),
@@ -551,16 +644,10 @@ class _FunctionTab extends StatelessWidget {
     final result = projection.projectAggregate([
       for (final record in flights) (record.flight, record.aircraft),
     ]);
-    const functionQuantityNames = [
-      'pic',
-      'picus',
-      'spic',
-      'copilot',
-      'dual',
-      'instructor',
-    ];
+    final rows =
+        _functionRowsByJurisdiction[projection.jurisdictionId] ?? const [];
     final total = FlightDuration.sum([
-      for (final name in functionQuantityNames)
+      for (final name in rows.map((r) => r.$1))
         if (result[name] case final quantity? when quantity.creditable)
           quantity.value,
     ]);
@@ -576,14 +663,7 @@ class _FunctionTab extends StatelessWidget {
           label: 'PILOT FUNCTION TIME',
           trailing: total.toHoursMinutes(),
         ),
-        for (final name in const [
-          ('pic', 'PIC'),
-          ('picus', 'PICUS'),
-          ('spic', 'SPIC'),
-          ('copilot', 'Co-pilot'),
-          ('dual', 'Dual'),
-          ('instructor', 'Instructor'),
-        ])
+        for (final name in rows)
           if (result[name.$1] != null) ...[
             const _TabDivider(),
             TotalsRow(label: name.$2, value: valueOf(name.$1)),
@@ -622,6 +702,8 @@ class _ConditionsTab extends StatelessWidget {
     final result = projection.projectAggregate([
       for (final record in flights) (record.flight, record.aircraft),
     ]);
+    final rows =
+        _conditionRowsByJurisdiction[projection.jurisdictionId] ?? const [];
 
     String valueOf(String name) =>
         (result[name]?.value ?? FlightDuration.zero).toHoursMinutes();
@@ -631,13 +713,7 @@ class _ConditionsTab extends StatelessWidget {
       children: [
         const _TabDivider(),
         const TotalsSectionHeader(label: 'OPERATIONAL CONDITION TIME'),
-        for (final name in const [
-          ('night', 'Night'),
-          ('ifr', 'IFR'),
-          ('actualInstrument', 'Actual instrument'),
-          ('simulatedInstrument', 'Simulated instrument'),
-          ('crossCountry', 'Cross-country'),
-        ])
+        for (final name in rows)
           if (result[name.$1] != null) ...[
             const _TabDivider(),
             TotalsRow(label: name.$2, value: valueOf(name.$1)),

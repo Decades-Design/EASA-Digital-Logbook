@@ -114,3 +114,29 @@ int newAerodromesThisYear(List<FlightRecord> flights, CalendarDate asOf) {
   }
   return firstVisitYear.values.where((year) => year == asOf.year).length;
 }
+
+/// Total great-circle distance flown, summing every flight's route
+/// leg-by-leg rather than a single point-to-point figure — a multi-stop
+/// flight's real distance is the sum of each leg, the same principle
+/// `cross_country_support.dart`'s route-distance summation already uses for
+/// the cross-country primitives. A leg whose aerodrome doesn't resolve in
+/// [directory] is skipped rather than guessed, so this is always an honest
+/// lower bound, never a fabricated total.
+double totalDistanceFlownNm(
+  List<FlightRecord> flights,
+  AerodromeDirectory directory,
+) {
+  var total = 0.0;
+  for (final record in flights) {
+    final route = record.flight.route;
+    for (var i = 1; i < route.length; i++) {
+      final from = directory.byIcao(route[i - 1]);
+      final to = directory.byIcao(route[i]);
+      if (from == null || to == null) {
+        continue;
+      }
+      total += greatCircleDistanceNm(from.position, to.position);
+    }
+  }
+  return total;
+}

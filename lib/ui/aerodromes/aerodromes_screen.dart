@@ -249,6 +249,7 @@ class _MapTab extends StatelessWidget {
     final furthest = homeBaseIcao == null
         ? null
         : furthestAerodrome(flights, aerodromes, homeBaseIcao!);
+    final totalDistanceNm = totalDistanceFlownNm(flights, aerodromes);
 
     return Stack(
       children: [
@@ -432,6 +433,25 @@ class _MapTab extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text.rich(
+                  TextSpan(
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: ink.muted,
+                    ),
+                    children: [
+                      const TextSpan(text: 'Total distance flown '),
+                      TextSpan(
+                        text: '${totalDistanceNm.round()} nm',
+                        style: AppMonoText.value(
+                          theme.colorScheme.onSurface,
+                          size: 11.5,
+                          weight: FontWeight.w500,
                         ),
                       ),
                     ],
