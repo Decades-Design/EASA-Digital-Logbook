@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -85,6 +85,17 @@ class AppDatabase extends _$AppDatabase {
           pilotProfileTable,
           pilotProfileTable.primaryJurisdictionId,
         );
+      }
+      // Adds homeBaseIcao to pilot_profile — the Aerodromes screen's
+      // "furthest" figure. Nullable and never defaulted, so the column's
+      // backfill leaves every existing row with no home base set rather than
+      // guessing one.
+      //
+      // Guarded to `from >= 2`, same reasoning as the `primaryJurisdictionId`
+      // step above: `from < 2`'s `createTable` already builds from today's
+      // Dart schema, which already includes this column.
+      if (from >= 2 && from < 6) {
+        await m.addColumn(pilotProfileTable, pilotProfileTable.homeBaseIcao);
       }
     },
     beforeOpen: (details) async {

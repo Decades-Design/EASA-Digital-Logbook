@@ -20,6 +20,10 @@ class PilotProfileTable extends Table {
   TextColumn get primaryJurisdictionId =>
       text().withDefault(const Constant('eu.easa.part-fcl'))();
 
+  /// Mirrors `PilotProfile.homeBaseIcao` — nullable, never defaulted, since a
+  /// pilot who hasn't set one should read back as unset, not backfilled.
+  TextColumn get homeBaseIcao => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
