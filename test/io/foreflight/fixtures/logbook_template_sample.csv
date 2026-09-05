@@ -1,0 +1,22 @@
+ForeFlight Logbook Import,This row is required for importing into ForeFlight. Do not delete or modify.
+
+Aircraft Table
+AircraftID,TypeCode,Year,Make,Model,GearType,EngineType,equipType (FAA),aircraftClass (FAA),complexAircraft (FAA),taa (FAA),highPerformance (FAA),pressurized (FAA)
+N100AB,C172,,Cessna,C172P Skyhawk,fixed_tricycle,Piston,aircraft,airplane_single_engine_land,,,,
+N200CD,P28R,,Piper Aircraft,PA28-200 Arrow II,retractable_tricycle,Piston,aircraft,airplane_single_engine_land,TRUE,,,
+XXXX,,,,,,,aircraft,,,,,
+SIM01,P28R,,Piper Aircraft,PA28R-201 Arrow,retractable_tricycle,Piston,ftd,airplane_single_engine_land,,,,
+N300EF,SR20,,Cirrus Aircraft,SR20,fixed_tricycle,Piston,aircraft,airplane_single_engine_land,,TRUE,,
+
+Flights Table
+Date,AircraftID,From,To,Route,TimeOut,TimeOff,TimeOn,TimeIn,OnDuty,OffDuty,TotalTime,PIC,SIC,Night,Solo,CrossCountry,PICUS,MultiPilot,IFR,Examiner,NVG,NVG Ops,Distance,ActualInstrument,SimulatedInstrument,HobbsStart,HobbsEnd,TachStart,TachEnd,Holds,Approach1,Approach2,Approach3,Approach4,Approach5,Approach6,DualGiven,DualReceived,SimulatedFlight,GroundTraining,GroundTrainingGiven,InstructorName,InstructorComments,Person1,Person2,Person3,Person4,Person5,Person6,PilotComments,Flight Review (FAA),IPC (FAA),Checkride (FAA),FAA 61.58 (FAA),NVG Proficiency (FAA),Takeoff Day,Takeoff Day Towered,Landing Full-Stop Day,Landing Full-Stop Day Towered,DayTakeoffs,DayLandingsFullStop,NightTakeoffs,NightLandingsFullStop,AllLandings,[Text]Safety pilot
+2026-01-01,N100AB,KABC,KDEF,,14:00,14:02,15:28,15:30,,,1:30,1:30,0:00,,1:30,0:00,0:00,0:00,0:00,,,,,0:00,0:00,,,,,0,1;ILS RWY 27;27;KDEF;;,,,,,,0:00,0:00,,,,,,,,,,,,,,,,,,,,,,1,1,0,0,1,
+2026-01-02,N200CD,KABC,KABC,,09:00,09:05,10:25,10:30,,,1:30,0:00,0:00,,0:00,0:00,0:00,0:00,0:00,,,,,0:00,0:00,,,,,0,,,,,,,0:00,1:30,,,,Jane Instructor,,,,,,,,,,,,,,,,,,3,1,0,0,3,
+2026-01-03,N100AB,KABC,KGHI,,11:00,11:04,12:26,12:30,,,1:30,0:00,0:00,,0:00,1:30,1:30,0:00,0:00,,,,,0:00,0:00,,,,,0,,,,,,,0:00,0:00,,,,Jane Instructor,,,,,,,,,,,,,,,,,,1,1,0,0,1,
+2026-01-04,N100AB,KABC,KABC,,13:00,13:05,13:55,14:00,,,1:00,1:00,0:00,,1:00,0:00,0:00,0:00,0:00,,,,,0:00,0:00,,,,,0,,,,,,,0:00,0:00,,,,,,,,,,,,,,,,,,,,,,3,1,0,0,3,
+2026-01-05,XXXX,KABC,KABC,,08:00,08:05,08:55,09:00,,,1:00,1:00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1,1,,,1,
+2026-01-06,SIM01,,,,10:00,,,12:00,,,0:00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,2:00,Sam Trainer,,,,,,,,,,,,,,,,,,,,,,,
+2026-01-07,N300EF,KABC,KABC,,15:00,15:05,16:55,17:00,,,2:00,2:00,,,,,,,,,,,,,2:00,,,,,1,1;RNAV RWY 09;09;KABC;;,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1,1,,,1,Alex Rivera
+2026-01-08,N100AB,KABC,KJKL,,23:50,23:55,00:15,00:20,,,0:30,0:30,,,0:30,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,0,,1,1,1,
+2026-01-09,N200CD,KABC,KABC,,09:00,09:05,09:55,10:00,,,1:00,1:00,,,1:00,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,"Great flight, smooth air throughout",,,,,,,,,,1,1,,,1,
+2026-01-10,N100AB,KABC,KABC,,10:00,10:05,10:55,11:00,,,1:00,1:00,,,1:00,,,,,,,,,,,,,,,0,1;VOR;09;;;,,,,,,,,,,,,,,,,,,,,,,,,,,,,,1,1,,,1,
