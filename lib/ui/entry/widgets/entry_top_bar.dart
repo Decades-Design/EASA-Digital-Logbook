@@ -10,11 +10,17 @@ class EntryTopBar extends StatelessWidget {
   const EntryTopBar({
     super.key,
     required this.title,
-    required this.onSaveDraft,
+    this.onSaveDraft,
+    this.saveLabel = 'Save draft',
   });
 
   final String title;
-  final VoidCallback onSaveDraft;
+
+  /// `null` hides the quick save button entirely — editing a committed
+  /// entry (#59) needs the diff/reason flow the footer's own primary
+  /// button drives, not a shortcut that skips it.
+  final VoidCallback? onSaveDraft;
+  final String saveLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -40,11 +46,14 @@ class EntryTopBar extends StatelessWidget {
                 style: theme.textTheme.titleMedium,
               ),
             ),
-            TextButton(
-              onPressed: onSaveDraft,
-              style: TextButton.styleFrom(foregroundColor: scheme.primary),
-              child: const Text('Save draft'),
-            ),
+            if (onSaveDraft != null)
+              TextButton(
+                onPressed: onSaveDraft,
+                style: TextButton.styleFrom(foregroundColor: scheme.primary),
+                child: Text(saveLabel),
+              )
+            else
+              const SizedBox(width: 12),
           ],
         ),
       ),

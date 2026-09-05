@@ -64,17 +64,24 @@ class EntryCardRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ink = context.inkTiers;
-    final row = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: theme.textTheme.bodyMedium?.copyWith(color: ink.medium),
-          ),
-          const Spacer(),
-          child,
-        ],
+    // #66: merges this row's own label into whatever control sits in
+    // [child] — a bare Switch/DropdownButton otherwise announces only its
+    // own state ("on", "Aeroplane") with no word saying what it's for,
+    // since a sibling Text isn't merged into a control's semantics node
+    // by default.
+    final row = MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(color: ink.medium),
+            ),
+            const Spacer(),
+            child,
+          ],
+        ),
       ),
     );
     if (onTap == null) return row;

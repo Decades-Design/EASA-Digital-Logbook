@@ -142,25 +142,30 @@ class CrewWithOtherPilot extends StatelessWidget {
                   border: Border.all(color: theme.colorScheme.outlineVariant),
                   borderRadius: BorderRadius.circular(9),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Checkbox(
-                      value: data.picInterventionNotRequired,
-                      onChanged: (_) =>
-                          data.onTogglePicInterventionNotRequired(),
-                    ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Text(
-                          'PIC intervention was not required at any point in '
-                          'the flight.',
-                          style: theme.textTheme.bodySmall,
+                // #66: merges the checkbox's label text into its own
+                // semantics node, so a screen reader announces what's being
+                // checked rather than just "unchecked, checkbox".
+                child: MergeSemantics(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: data.picInterventionNotRequired,
+                        onChanged: (_) =>
+                            data.onTogglePicInterventionNotRequired(),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(
+                            'PIC intervention was not required at any point '
+                            'in the flight.',
+                            style: theme.textTheme.bodySmall,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ],

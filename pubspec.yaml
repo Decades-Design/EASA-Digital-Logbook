@@ -29,6 +29,9 @@ dependencies:
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
   package_info_plus: ^10.2.1
+  # Locates a writable app-data directory for the real on-device database
+  # (#56) -- a plain runtime plugin, no codegen/analyzer entanglement.
+  path_provider: ^2.1.5
   shared_preferences: ^2.5.5
   sqlite3_flutter_libs: ^0.6.0+eol
   yaml: ^3.1.3

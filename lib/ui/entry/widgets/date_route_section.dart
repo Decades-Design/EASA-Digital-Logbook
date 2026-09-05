@@ -17,6 +17,7 @@ class DateRouteSection extends StatelessWidget {
     required this.legFocusNodes,
     required this.onAddStop,
     required this.onRemoveStop,
+    required this.onPickLeg,
   });
 
   final DateTime date;
@@ -30,6 +31,11 @@ class DateRouteSection extends StatelessWidget {
   final List<FocusNode> legFocusNodes;
   final VoidCallback onAddStop;
   final ValueChanged<int> onRemoveStop;
+
+  /// #63: opens the aerodrome picker for leg [index]. The text field stays
+  /// the fast, primary path for a pilot who already knows the code —
+  /// this is a supplementary way in for when they don't.
+  final ValueChanged<int> onPickLeg;
 
   static const _months = [
     'Jan',
@@ -103,18 +109,22 @@ class DateRouteSection extends StatelessWidget {
                                 : null,
                             removable: i != 0 && i != legControllers.length - 1,
                             onRemove: () => onRemoveStop(i),
+                            onPick: () => onPickLeg(i),
                           ),
                         ],
                         const SizedBox(width: 2),
-                        InkWell(
-                          onTap: onAddStop,
-                          borderRadius: BorderRadius.circular(20),
-                          child: Padding(
-                            padding: const EdgeInsets.all(4),
-                            child: Icon(
-                              Icons.add_circle_outline,
-                              size: 18,
-                              color: ink.muted,
+                        Tooltip(
+                          message: 'Add stop',
+                          child: InkWell(
+                            onTap: onAddStop,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Icon(
+                                Icons.add_circle_outline,
+                                size: 18,
+                                color: ink.muted,
+                              ),
                             ),
                           ),
                         ),
@@ -138,6 +148,7 @@ class _LegField extends StatelessWidget {
     required this.nextFocusNode,
     required this.removable,
     required this.onRemove,
+    required this.onPick,
   });
 
   final TextEditingController controller;
@@ -147,6 +158,7 @@ class _LegField extends StatelessWidget {
   final FocusNode? nextFocusNode;
   final bool removable;
   final VoidCallback onRemove;
+  final VoidCallback onPick;
 
   @override
   Widget build(BuildContext context) {
@@ -154,6 +166,17 @@ class _LegField extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        Tooltip(
+          message: 'Search for aerodrome',
+          child: InkWell(
+            onTap: onPick,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.search, size: 14, color: ink.faint),
+            ),
+          ),
+        ),
         IntrinsicWidth(
           child: TextField(
             controller: controller,
@@ -190,12 +213,15 @@ class _LegField extends StatelessWidget {
           ),
         ),
         if (removable)
-          InkWell(
-            onTap: onRemove,
-            borderRadius: BorderRadius.circular(10),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(Icons.close, size: 12, color: ink.faint),
+          Tooltip(
+            message: 'Remove stop',
+            child: InkWell(
+              onTap: onRemove,
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close, size: 12, color: ink.faint),
+              ),
             ),
           ),
       ],

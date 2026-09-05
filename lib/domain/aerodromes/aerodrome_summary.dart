@@ -2,6 +2,7 @@ import '../model/aerodrome.dart';
 import '../model/aerodrome_directory.dart';
 import '../model/calendar_date.dart';
 import '../model/geo_coordinate.dart';
+import '../model/utc_instant.dart';
 import '../repository/flight_read_repository.dart';
 
 /// Pure aggregation over a flight set for the Aerodromes screen — mirrors
@@ -62,6 +63,30 @@ List<AerodromeVisit> rankAerodromesByVisits(
     return byCount != 0 ? byCount : a.icao.compareTo(b.icao);
   });
   return visits;
+}
+
+/// Aerodromes touched by [flights], most-recently-flown-to first (ties
+/// broken by ICAO code) — #63's "recent" ranking for the aerodrome picker,
+/// alongside [rankAerodromesByVisits]'s "frequent" one. A flight visiting
+/// the same aerodrome twice in one route only counts its most recent visit
+/// once, same de-duplication as [rankAerodromesByVisits].
+List<String> rankAerodromesByRecency(List<FlightRecord> flights, {int limit = 8}) {
+  final lastFlown = <String, UtcInstant>{};
+  for (final record in flights) {
+    for (final icao in record.flight.route.toSet()) {
+      final existing = lastFlown[icao];
+      if (existing == null || record.flight.offBlocks.compareTo(existing) > 0) {
+        lastFlown[icao] = record.flight.offBlocks;
+      }
+    }
+  }
+
+  final codes = lastFlown.keys.toList()
+    ..sort((a, b) {
+      final byRecency = lastFlown[b]!.compareTo(lastFlown[a]!);
+      return byRecency != 0 ? byRecency : a.compareTo(b);
+    });
+  return codes.take(limit).toList();
 }
 
 /// The furthest aerodrome visited from [homeBaseIcao], with its great-circle

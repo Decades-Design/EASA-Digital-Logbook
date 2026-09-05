@@ -83,10 +83,16 @@ class ApproachRow extends StatelessWidget {
                       vertical: 8,
                     ),
                   ),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'IBM Plex Mono',
                     fontWeight: FontWeight.w600,
                     fontSize: 12.5,
+                    // Explicit, not left to inherit — without a color here
+                    // the dropdown's *popup* menu items (not just the
+                    // closed field) render at whatever near-invisible
+                    // default DefaultTextStyle passes through, unreadable
+                    // in light mode.
+                    color: theme.colorScheme.onSurface,
                   ),
                   items: [
                     for (final t in ApproachType.values)
@@ -158,6 +164,7 @@ class ApproachRow extends StatelessWidget {
               IconButton(
                 onPressed: onRemove,
                 icon: const Icon(Icons.close, size: 16),
+                tooltip: 'Remove approach',
                 visualDensity: VisualDensity.compact,
                 color: ink.faint,
               ),
@@ -175,6 +182,7 @@ class ApproachRow extends StatelessWidget {
                 width: 120,
                 compact: true,
                 value: approach.count,
+                label: 'times flown',
                 onIncrement: () => onCountChanged(approach.count + 1),
                 onDecrement: approach.count > 1
                     ? () => onCountChanged(approach.count - 1)

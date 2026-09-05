@@ -78,6 +78,26 @@ const String _createFlightsTableV1ThroughV3 = '''
   )
 ''';
 
+/// The `aircraft` table's shape from v1 through v6 -- unchanged until #61
+/// (v7) adds `archived`. Column names mirror
+/// `lib/data/tables/aircraft_tables.dart`'s drift-generated snake_case.
+const String _createAircraftTableV1ThroughV6 = '''
+  CREATE TABLE aircraft (
+    id TEXT NOT NULL,
+    registration TEXT NOT NULL UNIQUE,
+    manufacturer TEXT NOT NULL,
+    model TEXT NOT NULL,
+    icao_type_designator TEXT NULL,
+    category TEXT NOT NULL,
+    engine_type TEXT NOT NULL,
+    engine_count INTEGER NOT NULL,
+    operating_surface TEXT NOT NULL,
+    requires_multi_crew INTEGER NOT NULL,
+    type_rating_designator TEXT NULL,
+    PRIMARY KEY (id)
+  )
+''';
+
 /// Creates a v1-shaped database file directly with sqlite3, seeded with one
 /// aircraft row — the only way to get a real "v1 database" to migrate from,
 /// since `AircraftsTable` only ever represents the *current* schema. Column
@@ -90,22 +110,7 @@ const String _createFlightsTableV1ThroughV3 = '''
 void _seedV1Database(String path) {
   final db = sqlite3.sqlite3.open(path);
   try {
-    db.execute('''
-      CREATE TABLE aircraft (
-        id TEXT NOT NULL,
-        registration TEXT NOT NULL UNIQUE,
-        manufacturer TEXT NOT NULL,
-        model TEXT NOT NULL,
-        icao_type_designator TEXT NULL,
-        category TEXT NOT NULL,
-        engine_type TEXT NOT NULL,
-        engine_count INTEGER NOT NULL,
-        operating_surface TEXT NOT NULL,
-        requires_multi_crew INTEGER NOT NULL,
-        type_rating_designator TEXT NULL,
-        PRIMARY KEY (id)
-      )
-    ''');
+    db.execute(_createAircraftTableV1ThroughV6);
     db.execute(
       'INSERT INTO aircraft (id, registration, manufacturer, model, '
       'category, engine_type, engine_count, operating_surface, '
@@ -150,8 +155,12 @@ void _seedV2Database(String path) {
     ]);
     // #121's `from < 4` step alters `flights` regardless of which earlier
     // version this database started at, so every seed at v3 or below needs
-    // the table present, empty or not.
+    // the table present, empty or not. Likewise #61's `from < 7` step
+    // alters `aircraft`, which every real v1+ database has always had
+    // (unlike `flights`, `aircraft` isn't touched by #121, but #61 is a
+    // later addColumn that applies regardless of starting version).
     db.execute(_createFlightsTableV1ThroughV3);
+    db.execute(_createAircraftTableV1ThroughV6);
     db.execute('PRAGMA user_version = 2');
   } finally {
     db.close();
@@ -185,22 +194,7 @@ void _seedV3Database(String path) {
       'singleton',
       '1990-01-01',
     ]);
-    db.execute('''
-      CREATE TABLE aircraft (
-        id TEXT NOT NULL,
-        registration TEXT NOT NULL UNIQUE,
-        manufacturer TEXT NOT NULL,
-        model TEXT NOT NULL,
-        icao_type_designator TEXT NULL,
-        category TEXT NOT NULL,
-        engine_type TEXT NOT NULL,
-        engine_count INTEGER NOT NULL,
-        operating_surface TEXT NOT NULL,
-        requires_multi_crew INTEGER NOT NULL,
-        type_rating_designator TEXT NULL,
-        PRIMARY KEY (id)
-      )
-    ''');
+    db.execute(_createAircraftTableV1ThroughV6);
     db.execute(
       'INSERT INTO aircraft (id, registration, manufacturer, model, '
       'category, engine_type, engine_count, operating_surface, '
@@ -277,6 +271,8 @@ void _seedV3Database(String path) {
 /// test here, the same way [_seedV3Database] isolates v3->v4. Proves the new
 /// step adds `home_base_icao` and backfills it to null rather than guessing a
 /// value, and leaves the pre-existing `primary_jurisdiction_id` untouched.
+/// Still carries `aircraft` (empty) — #61's `from < 7` step alters it
+/// regardless of starting version, same reasoning as `_seedV2Database`'s.
 void _seedV5Database(String path) {
   final db = sqlite3.sqlite3.open(path);
   try {
@@ -293,7 +289,51 @@ void _seedV5Database(String path) {
       'VALUES (?, ?, ?)',
       ['singleton', '1990-01-01', 'us.faa.part61'],
     );
+    db.execute(_createAircraftTableV1ThroughV6);
     db.execute('PRAGMA user_version = 5');
+  } finally {
+    db.close();
+  }
+}
+
+/// As [_seedV5Database], but at v6 with `home_base_icao` already present —
+/// isolates the v6->v7 step under test here: #61's `archived` column on
+/// `aircraft`, backfilled to `false` for a pre-existing registration.
+void _seedV6Database(String path) {
+  final db = sqlite3.sqlite3.open(path);
+  try {
+    db.execute('''
+      CREATE TABLE pilot_profile (
+        id TEXT NOT NULL,
+        date_of_birth TEXT NOT NULL,
+        primary_jurisdiction_id TEXT NOT NULL DEFAULT 'eu.easa.part-fcl',
+        home_base_icao TEXT NULL,
+        PRIMARY KEY (id)
+      )
+    ''');
+    db.execute(
+      'INSERT INTO pilot_profile (id, date_of_birth, primary_jurisdiction_id) '
+      'VALUES (?, ?, ?)',
+      ['singleton', '1990-01-01', 'eu.easa.part-fcl'],
+    );
+    db.execute(_createAircraftTableV1ThroughV6);
+    db.execute(
+      'INSERT INTO aircraft (id, registration, manufacturer, model, '
+      'category, engine_type, engine_count, operating_surface, '
+      'requires_multi_crew) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        'aircraft-1',
+        'G-ABCD',
+        'Cessna',
+        '152',
+        'aeroplane',
+        'piston',
+        1,
+        'land',
+        0,
+      ],
+    );
+    db.execute('PRAGMA user_version = 6');
   } finally {
     db.close();
   }
@@ -422,4 +462,24 @@ void main() {
       ),
     );
   });
+
+  test(
+    '#61: migrating a real v6 database to v7 preserves an existing aircraft '
+    'and backfills archived to false',
+    () async {
+      _seedV6Database(dbFile.path);
+
+      final db = await openWithBackup(dbFile, () async {
+        final database = AppDatabase(NativeDatabase(dbFile));
+        await database.customStatement('SELECT 1');
+        return database;
+      });
+      addTearDown(db.close);
+
+      final aircraftRows = await db.select(db.aircraftsTable).get();
+      expect(aircraftRows, hasLength(1));
+      expect(aircraftRows.single.registration, 'G-ABCD');
+      expect(aircraftRows.single.archived, isFalse);
+    },
+  );
 }

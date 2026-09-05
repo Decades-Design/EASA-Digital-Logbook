@@ -27,6 +27,17 @@ class CustomAerodromeRepository {
     return row == null ? null : customAerodromeFromRow(row);
   }
 
+  /// Every pilot-defined aerodrome (#63) — folded into
+  /// `AerodromeDirectory.search`'s `extra` parameter alongside the bundled
+  /// OurAirports dataset, since a private strip is exactly the kind of
+  /// aerodrome that dataset doesn't know about.
+  Stream<List<domain.Aerodrome>> watchAll() {
+    return _db
+        .select(_db.customAerodromesTable)
+        .watch()
+        .map((rows) => [for (final row in rows) customAerodromeFromRow(row)]);
+  }
+
   Future<void> delete(String id) => (_db.delete(
     _db.customAerodromesTable,
   )..where((t) => t.id.equals(id))).go();

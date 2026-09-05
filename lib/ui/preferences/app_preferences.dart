@@ -85,3 +85,31 @@ final timeDisplayProvider =
     NotifierProvider<TimeDisplayNotifier, TimeDisplayPreference>(
       TimeDisplayNotifier.new,
     );
+
+const _hasEditedCommittedEntryKey = 'entry.has_edited_committed';
+
+/// Whether the pilot has ever gone through editing a committed flight
+/// before (#59) — gates the one-line explanation of why that differs from
+/// editing a draft, shown only the first time so it doesn't become a
+/// dismiss-and-ignore ritual on every later edit.
+class HasEditedCommittedEntryNotifier extends Notifier<bool> {
+  @override
+  bool build() =>
+      ref
+          .watch(sharedPreferencesProvider)
+          .getBool(_hasEditedCommittedEntryKey) ??
+      false;
+
+  void markSeen() {
+    if (state) return;
+    state = true;
+    ref
+        .read(sharedPreferencesProvider)
+        .setBool(_hasEditedCommittedEntryKey, true);
+  }
+}
+
+final hasEditedCommittedEntryProvider =
+    NotifierProvider<HasEditedCommittedEntryNotifier, bool>(
+      HasEditedCommittedEntryNotifier.new,
+    );

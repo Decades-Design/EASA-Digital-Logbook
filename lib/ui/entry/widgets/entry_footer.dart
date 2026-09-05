@@ -93,16 +93,22 @@ class EntryFooter extends StatefulWidget {
     required this.easaResult,
     required this.faaResult,
     required this.hasFaaLicence,
-    required this.onSaveDraft,
+    this.onSaveDraft,
     required this.onSave,
+    this.saveLabel = 'Save flight',
   });
 
   final String blockTimeText;
   final ProjectionResult? easaResult;
   final ProjectionResult? faaResult;
   final bool hasFaaLicence;
-  final VoidCallback onSaveDraft;
+
+  /// `null` collapses the footer to [onSave] alone — editing (#59) has one
+  /// save action, not a "Draft"/"Save flight" pair that only makes sense
+  /// when starting a fresh entry.
+  final VoidCallback? onSaveDraft;
   final VoidCallback onSave;
+  final String saveLabel;
 
   @override
   State<EntryFooter> createState() => _EntryFooterState();
@@ -332,15 +338,17 @@ class _EntryFooterState extends State<EntryFooter> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  OutlinedButton(
-                    onPressed: widget.onSaveDraft,
-                    child: const Text('Draft'),
-                  ),
-                  const SizedBox(width: 10),
+                  if (widget.onSaveDraft != null) ...[
+                    OutlinedButton(
+                      onPressed: widget.onSaveDraft,
+                      child: const Text('Draft'),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
                   Expanded(
                     child: FilledButton(
                       onPressed: widget.onSave,
-                      child: const Text('Save flight'),
+                      child: Text(widget.saveLabel),
                     ),
                   ),
                 ],

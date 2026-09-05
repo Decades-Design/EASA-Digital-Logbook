@@ -62,6 +62,9 @@ jobs:
       - name: Check currency rules
         run: dart run tool/check_currency_rules.dart
 
+      - name: Check no networking (#67)
+        run: dart run tool/check_no_networking.dart
+
       - name: Test
         run: flutter test --coverage
 

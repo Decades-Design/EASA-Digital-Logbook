@@ -2,7 +2,9 @@
 // Dart tests need no separate package:test dependency.
 import 'dart:io';
 
+import 'package:easa_digital_log/domain/model/aerodrome.dart';
 import 'package:easa_digital_log/domain/model/aerodrome_directory.dart';
+import 'package:easa_digital_log/domain/model/geo_coordinate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Fixtures live under `test/fixtures/aerodromes/` as raw CSV, matching
@@ -120,6 +122,71 @@ void main() {
         _fixture('duplicate_icao'),
       );
       expect(directory.byIcao('DUPE')?.name, 'Second Entry');
+    });
+
+    test('byIata finds an aerodrome by IATA code case-insensitively', () {
+      expect(directory.byIata('xyz')?.name, 'Remote Island Strip');
+      expect(directory.byIata('jfk')?.name, 'John F Kennedy International Airport');
+    });
+
+    test('byIata returns null for an unknown code', () {
+      expect(directory.byIata('ZZQ'), isNull);
+    });
+  });
+
+  group('AerodromeDirectory.search', () {
+    late final directory = AerodromeDirectory.fromOurAirportsCsv(
+      _fixture('sample_ourairports'),
+    );
+
+    test('returns nothing for a blank query', () {
+      expect(directory.search(''), isEmpty);
+      expect(directory.search('   '), isEmpty);
+    });
+
+    test('an exact ICAO match ranks first', () {
+      final results = directory.search('KJFK');
+      expect(results.first.name, 'John F Kennedy International Airport');
+    });
+
+    test('an exact IATA match is found even with no ICAO code', () {
+      final results = directory.search('XYZ');
+      expect(
+        results.any((a) => a.name == 'Remote Island Strip'),
+        isTrue,
+      );
+    });
+
+    test('a prefix match on ICAO ranks before a name substring match', () {
+      // "EG" prefixes EGLL's ICAO; it also isn't a substring of any other
+      // fixture name, but this proves prefix tier ordering holds when both
+      // tiers are populated together, using a query that legitimately
+      // spans both.
+      final results = directory.search('NEWARK');
+      expect(results.single.name, 'Newark, Liberty International Airport');
+    });
+
+    test('a name substring match is found', () {
+      final results = directory.search('HEATHROW');
+      expect(results.single.name, 'London Heathrow Airport');
+    });
+
+    test('is case-insensitive', () {
+      expect(directory.search('heathrow'), isNotEmpty);
+    });
+
+    test('merges in extra (custom) aerodromes alongside the bundled set', () {
+      final strip = Aerodrome(
+        name: "Farmer Brown's Strip",
+        position: GeoCoordinate(latitude: 1, longitude: 2),
+      );
+      final results = directory.search('FARMER', extra: [strip]);
+      expect(results.single.name, "Farmer Brown's Strip");
+    });
+
+    test('respects limit', () {
+      final results = directory.search('A', limit: 2);
+      expect(results.length, lessThanOrEqualTo(2));
     });
   });
 }

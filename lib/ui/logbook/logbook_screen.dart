@@ -1,34 +1,213 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/model/calendar_date.dart';
+import '../../domain/model/flight_duration.dart';
+import '../../domain/model/flight_times.dart';
+import '../entry/duplicate_flight_action.dart';
+import '../providers/flight_records_providers.dart';
+import '../providers/jurisdiction_projection_providers.dart';
+import '../providers/jurisdiction_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
-import 'sample_logbook_data.dart';
+import '../widgets/large_title_scaffold.dart';
+import 'flight_detail_screen.dart';
+import 'logbook_filter.dart';
+import 'logbook_filters_screen.dart';
+import 'logbook_view_model.dart';
 
 /// #57: chronological logbook, primary-jurisdiction figures only — per
 /// CLAUDE.md's multi-jurisdiction UX rule, the logbook list is not the
 /// place for a jurisdiction toggle. Matches design 1b — "Logbook — Ledger.
 /// Dense, ruled, every figure aligned" (Claude Design project
-/// 513e7fc3-e41a-40ea-b3a5-f16f086d15f8). Reads [sampleLogbookMonths] for
-/// now — see that file's dartdoc for what real data wiring (#56) replaces
-/// it with. The "New flight" FAB lives in [AppShell], not here — 1e settled
-/// it as a nav-bar fixture, not a per-screen action.
-class LogbookScreen extends StatelessWidget {
+/// 513e7fc3-e41a-40ea-b3a5-f16f086d15f8).
+///
+/// #56: reads real repository-backed data (drafts and committed flights
+/// both — see `logbook_view_model.dart`'s `buildLogbookMonths`) rather than
+/// `sample_logbook_data.dart`'s fixture. The `watchFlights` API needs *some*
+/// jurisdiction's projection to run at all, so this reads whichever one is
+/// available (the primary if one is held) purely as a technical
+/// requirement — nothing shown here is jurisdiction-dependent (see
+/// `logbook_view_model.dart`'s dartdoc on why `crewRole`/`night` are raw
+/// facts, not derived quantities). The "New flight" FAB lives in
+/// [AppShell], not here — 1e settled it as a nav-bar fixture, not a
+/// per-screen action.
+class LogbookScreen extends ConsumerStatefulWidget {
   const LogbookScreen({super.key});
 
   @override
+  ConsumerState<LogbookScreen> createState() => _LogbookScreenState();
+}
+
+class _LogbookScreenState extends ConsumerState<LogbookScreen> {
+  LogbookFilter _filter = const LogbookFilter();
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(
+        () => _filter = _filter.copyWith(searchText: _searchController.text),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openFilters() async {
+    final updated = await Navigator.of(context).push<LogbookFilter>(
+      MaterialPageRoute(builder: (_) => LogbookFiltersScreen(initial: _filter)),
+    );
+    if (updated != null) {
+      setState(() => _filter = updated);
+    }
+  }
+
+  void _clearAll() {
+    _searchController.clear();
+    setState(() => _filter = const LogbookFilter());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final projectionsAsync = ref.watch(jurisdictionProjectionsProvider);
+    if (projectionsAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (projectionsAsync.hasError) {
+      return const Scaffold(
+        body: EmptyStateMessage(
+          icon: Icons.error_outline,
+          headline: 'Logbook could not be loaded',
+          caption: 'Something went wrong reading the logbook.',
+        ),
+      );
+    }
+    final projections = projectionsAsync.requireValue;
+    if (projections.isEmpty) {
+      return const Scaffold(
+        body: SafeArea(
+          child: EmptyStateMessage(
+            icon: Icons.menu_book_outlined,
+            headline: 'No licence on file yet',
+            caption: 'The logbook opens once at least one licence is held.',
+          ),
+        ),
+      );
+    }
+    final primaryId = ref
+        .watch(primaryJurisdictionIdProvider)
+        .maybeWhen(data: (id) => id, orElse: () => null);
+    final projection = projections[primaryId] ?? projections.values.first;
+
+    final draftsAsync = ref.watch(draftFlightRecordsProvider);
+    final committedAsync = ref.watch(
+      committedFlightRecordsProvider((projection, _filter.toFlightQuery())),
+    );
+    if (draftsAsync.isLoading || committedAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (draftsAsync.hasError || committedAsync.hasError) {
+      return const Scaffold(
+        body: EmptyStateMessage(
+          icon: Icons.error_outline,
+          headline: 'Logbook could not be loaded',
+          caption: 'Something went wrong reading the logbook.',
+        ),
+      );
+    }
+
+    // `committedAsync` is already SQL-narrowed by `_filter.toFlightQuery()`
+    // (date range, aircraft, aerodrome, capacity); `.matches` is the single
+    // source of truth (see its own dartdoc) applied uniformly on top —
+    // drafts never went through any SQL filtering to begin with.
+    final drafts = draftsAsync.requireValue.where(_filter.matches).toList();
+    final committed = committedAsync.requireValue
+        .where(_filter.matches)
+        .toList();
+
+    if (drafts.isEmpty && committed.isEmpty && _filter.isEmpty) {
+      return const Scaffold(
+        body: SafeArea(
+          child: EmptyStateMessage(
+            icon: Icons.menu_book_outlined,
+            headline: 'No flights logged yet',
+            caption: 'Flights you log will appear here, newest first.',
+          ),
+        ),
+      );
+    }
+
+    final months = buildLogbookMonths(
+      drafts,
+      committed,
+      projections: projections,
+    );
+    final flightCount = drafts.length + committed.length;
+    final totalTime = FlightDuration.sum([
+      for (final record in drafts) record.flight.blockTime,
+      for (final record in committed) record.flight.blockTime,
+    ]);
+    final awaitingSignatureCount = committed
+        .where(isPendingCountersignature)
+        .length;
+
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          const SliverSafeArea(
+          SliverSafeArea(
             bottom: false,
-            sliver: SliverToBoxAdapter(child: _LogbookHeader()),
+            sliver: SliverToBoxAdapter(
+              child: _LogbookHeader(
+                flightCount: flightCount,
+                totalTime: Duration(minutes: totalTime.inMinutes),
+                filtered: !_filter.isEmpty,
+              ),
+            ),
           ),
-          const SliverToBoxAdapter(child: _SearchAndFilterRow()),
-          const SliverToBoxAdapter(child: _AttentionBanner()),
-          for (final month in sampleLogbookMonths) ...[
+          SliverToBoxAdapter(
+            child: _SearchAndFilterRow(
+              controller: _searchController,
+              onOpenFilters: _openFilters,
+            ),
+          ),
+          if (!_filter.isEmpty)
+            SliverToBoxAdapter(
+              child: _ActiveFiltersRow(
+                filter: _filter,
+                onChanged: (updated) => setState(() => _filter = updated),
+                onClearAll: _clearAll,
+              ),
+            ),
+          if (drafts.isNotEmpty || awaitingSignatureCount > 0)
+            SliverToBoxAdapter(
+              child: _AttentionBanner(
+                draftCount: drafts.length,
+                awaitingSignatureCount: awaitingSignatureCount,
+              ),
+            ),
+          if (months.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Text(
+                    'No flights match these filters.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: context.inkTiers.muted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          for (final month in months) ...[
             SliverToBoxAdapter(child: _MonthHeader(month: month)),
             SliverList.separated(
               itemCount: month.flights.length,
@@ -46,7 +225,20 @@ class LogbookScreen extends StatelessWidget {
 }
 
 class _LogbookHeader extends StatelessWidget {
-  const _LogbookHeader();
+  const _LogbookHeader({
+    required this.flightCount,
+    required this.totalTime,
+    required this.filtered,
+  });
+
+  final int flightCount;
+  final Duration totalTime;
+
+  /// #64: "result count and filtered totals shown" — [flightCount]/
+  /// [totalTime] are already the filtered figures whenever a filter is
+  /// active; this only controls the small "filtered" label so it's never
+  /// mistaken for the whole logbook's own totals.
+  final bool filtered;
 
   @override
   Widget build(BuildContext context) {
@@ -58,17 +250,27 @@ class _LogbookHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Logbook',
-            style: theme.textTheme.displaySmall?.copyWith(fontSize: 27),
+          // #56: `spaceBetween` with two fixed-size children (this row's
+          // earlier shape) overflows once a real logbook's flight count
+          // and running total grow wide enough — found writing this
+          // screen's first widget test, against a realistically-sized
+          // seeded dataset. `Expanded` (ellipsized) keeps the title from
+          // forcing the actual figures off-screen; the figures themselves
+          // are the more load-bearing of the two.
+          Expanded(
+            child: Text(
+              'Logbook',
+              style: theme.textTheme.displaySmall?.copyWith(fontSize: 27),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          const SizedBox(width: 8),
           RichText(
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: '$sampleFlightCount',
+                  text: '$flightCount',
                   style: AppMonoText.value(
                     theme.colorScheme.onSurface,
                     size: 14,
@@ -76,11 +278,11 @@ class _LogbookHeader extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: ' flights · ',
+                  text: filtered ? ' matching · ' : ' flights · ',
                   style: AppMonoText.value(ink.muted, size: 11.5),
                 ),
                 TextSpan(
-                  text: _formatDuration(sampleTotalTime),
+                  text: _formatDuration(totalTime),
                   style: AppMonoText.value(
                     theme.colorScheme.onSurface,
                     size: 14,
@@ -97,7 +299,13 @@ class _LogbookHeader extends StatelessWidget {
 }
 
 class _SearchAndFilterRow extends StatelessWidget {
-  const _SearchAndFilterRow();
+  const _SearchAndFilterRow({
+    required this.controller,
+    required this.onOpenFilters,
+  });
+
+  final TextEditingController controller;
+  final VoidCallback onOpenFilters;
 
   @override
   Widget build(BuildContext context) {
@@ -121,11 +329,15 @@ class _SearchAndFilterRow extends StatelessWidget {
             const SizedBox(width: 9),
             Expanded(
               child: TextField(
+                controller: controller,
                 style: TextStyle(fontSize: 13.5, color: ink.faint),
                 decoration: InputDecoration(
                   isDense: true,
                   isCollapsed: true,
+                  filled: false,
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
                   hintText: 'Registration, aerodrome, remark…',
                   hintStyle: TextStyle(fontSize: 13.5, color: ink.faint),
                 ),
@@ -134,7 +346,7 @@ class _SearchAndFilterRow extends StatelessWidget {
             Container(width: 1, height: 18, color: scheme.outlineVariant),
             const SizedBox(width: 10),
             InkWell(
-              onTap: () {},
+              onTap: onOpenFilters,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -158,20 +370,138 @@ class _SearchAndFilterRow extends StatelessWidget {
   }
 }
 
+/// #64: "Filters combinable and the active set clearly visible" — one
+/// removable chip per active dimension (free text excluded — it's already
+/// visible in the search box itself) plus a blanket "Clear all".
+class _ActiveFiltersRow extends StatelessWidget {
+  const _ActiveFiltersRow({
+    required this.filter,
+    required this.onChanged,
+    required this.onClearAll,
+  });
+
+  final LogbookFilter filter;
+  final ValueChanged<LogbookFilter> onChanged;
+  final VoidCallback onClearAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final ink = context.inkTiers;
+
+    final chips = <(String, LogbookFilter)>[
+      if (filter.from != null)
+        (
+          'From ${_formatFilterDate(filter.from!)}',
+          filter.copyWith(clearFrom: true),
+        ),
+      if (filter.to != null)
+        ('To ${_formatFilterDate(filter.to!)}', filter.copyWith(clearTo: true)),
+      if (filter.aircraftLabel != null)
+        (filter.aircraftLabel!, filter.copyWith(clearAircraft: true)),
+      if (filter.aerodromeIdentifier != null)
+        (filter.aerodromeIdentifier!, filter.copyWith(clearAerodrome: true)),
+      if (filter.ifrFlightPlanFiled != null)
+        (
+          filter.ifrFlightPlanFiled! ? 'IFR' : 'Not IFR',
+          filter.copyWith(clearIfr: true),
+        ),
+      if (filter.hasNightFlying != null)
+        (
+          filter.hasNightFlying! ? 'Night' : 'Day only',
+          filter.copyWith(clearNight: true),
+        ),
+      if (filter.capacity != null)
+        ('Capacity filters', filter.copyWith(clearCapacity: true)),
+    ];
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Wrap(
+        spacing: 7,
+        runSpacing: 7,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final (label, next) in chips)
+            Semantics(
+              label: 'Remove $label filter',
+              button: true,
+              excludeSemantics: true,
+              child: InkWell(
+                onTap: () => onChanged(next),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.primary,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.close, size: 12, color: scheme.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          InkWell(
+            onTap: onClearAll,
+            child: Text(
+              'Clear all',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: ink.muted,
+                fontSize: 11,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatFilterDate(CalendarDate date) =>
+    '${date.day}/${date.month}/${date.year}';
+
 /// The "N flights need attention" banner — 1b's answer to "not current, no
 /// explanation is a bug": every flight it counts is broken out by reason
 /// rather than folded into one number.
+///
+/// Only drafts and awaiting-signature are real, queryable reasons right now
+/// — the fixture this replaces also counted a "needs information" bucket
+/// (e.g. a draft missing its landings), but that has no real domain concept
+/// backing it yet (no validation surfaces "this flight is incomplete"), so
+/// it's dropped rather than reported as a fabricated zero.
 class _AttentionBanner extends StatelessWidget {
-  const _AttentionBanner();
+  const _AttentionBanner({
+    required this.draftCount,
+    required this.awaitingSignatureCount,
+  });
+
+  final int draftCount;
+  final int awaitingSignatureCount;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final semantic = context.semanticColors;
-    final needsAttention =
-        sampleDraftCount +
-        sampleAwaitingSignatureCount +
-        sampleNeedsInformationCount;
+    final needsAttention = draftCount + awaitingSignatureCount;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -188,29 +518,40 @@ class _AttentionBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.secondary,
-                        shape: BoxShape.circle,
+                // #56: `spaceBetween` with two fixed-size children (this
+                // row's earlier shape) overflows once the attention count
+                // grows wide enough on a real, long-lived logbook — found
+                // writing this screen's first widget test. `Expanded`
+                // (ellipsized) keeps "Hide" fully visible and lets the
+                // count give way instead.
+                Expanded(
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary,
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$needsAttention flights need attention',
-                      style: theme.textTheme.labelLarge?.copyWith(
-                        color: semantic.currencyWarning,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12.5,
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          '$needsAttention flights need attention',
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: semantic.currencyWarning,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Text(
                   'Hide',
                   style: theme.textTheme.labelMedium?.copyWith(
@@ -225,15 +566,13 @@ class _AttentionBanner extends StatelessWidget {
               spacing: 7,
               runSpacing: 7,
               children: [
-                _AttentionChip(count: sampleDraftCount, label: 'drafts'),
-                _AttentionChip(
-                  count: sampleAwaitingSignatureCount,
-                  label: 'awaiting signature',
-                ),
-                _AttentionChip(
-                  count: sampleNeedsInformationCount,
-                  label: 'needs information',
-                ),
+                if (draftCount > 0)
+                  _AttentionChip(count: draftCount, label: 'drafts'),
+                if (awaitingSignatureCount > 0)
+                  _AttentionChip(
+                    count: awaitingSignatureCount,
+                    label: 'awaiting signature',
+                  ),
               ],
             ),
           ],
@@ -292,7 +631,7 @@ class _AttentionChip extends StatelessWidget {
 class _MonthHeader extends StatelessWidget {
   const _MonthHeader({required this.month});
 
-  final SampleLogbookMonth month;
+  final LogbookMonth month;
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +668,7 @@ class _MonthHeader extends StatelessWidget {
 class _FlightRow extends StatelessWidget {
   const _FlightRow({required this.flight});
 
-  final SampleFlightRow flight;
+  final FlightRowView flight;
 
   bool get _isFlagged => flight.badges.contains(FlightRowBadge.draft);
 
@@ -350,7 +689,17 @@ class _FlightRow extends StatelessWidget {
             )
           : null,
       child: InkWell(
-        onTap: () {},
+        onTap: () => Navigator.of(context).push<void>(
+          MaterialPageRoute(
+            builder: (_) => FlightDetailScreen(
+              record: flight.record,
+              isDraft: flight.isDraft,
+            ),
+          ),
+        ),
+        // #65: "reachable... from the list" without going through detail
+        // first.
+        onLongPress: () => showDuplicateFlightMenu(context, flight.record),
         child: Padding(
           padding: EdgeInsets.fromLTRB(_isFlagged ? 13 : 16, 13, 16, 13),
           child: Row(
@@ -507,7 +856,7 @@ class _RowBadge extends StatelessWidget {
 class _TimeColumn extends StatelessWidget {
   const _TimeColumn({required this.flight});
 
-  final SampleFlightRow flight;
+  final FlightRowView flight;
 
   @override
   Widget build(BuildContext context) {

@@ -72,4 +72,45 @@ void main() {
 
     expect(await repository.find(id), isNull);
   });
+
+  test(
+    'findIdByRegistration resolves an existing row and returns null '
+    'for one never stored',
+    () async {
+      final id = await repository.upsert(c152);
+
+      expect(await repository.findIdByRegistration('G-ABCD'), id);
+      expect(await repository.findIdByRegistration('G-ZZZZ'), isNull);
+    },
+  );
+
+  test('watchAll emits every stored aircraft, including archived ones', () async {
+    final id = await repository.upsert(c152);
+    await repository.upsert(
+      c152.copyWith(registration: 'G-EFGH', archived: true),
+    );
+
+    final records = await repository.watchAll().first;
+
+    expect(records, hasLength(2));
+    final byId = {for (final r in records) r.id: r.aircraft};
+    expect(byId[id]!.archived, isFalse);
+    expect(
+      records.singleWhere((r) => r.aircraft.registration == 'G-EFGH').aircraft.archived,
+      isTrue,
+    );
+  });
+
+  test(
+    'setArchived flips the flag without touching required qualifications',
+    () async {
+      final id = await repository.upsert(c152);
+
+      await repository.setArchived(id, true);
+
+      final found = await repository.find(id);
+      expect(found!.archived, isTrue);
+      expect(found.requiredQualifications, c152.requiredQualifications);
+    },
+  );
 }

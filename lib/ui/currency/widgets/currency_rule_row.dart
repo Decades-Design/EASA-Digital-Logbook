@@ -49,9 +49,12 @@ class CurrencyRuleRow extends StatelessWidget {
   final CurrencyDashboardRow row;
   final CalendarDate asOf;
 
-  /// Called with [RuleResult.contributingFlightIds] when the pilot taps
-  /// the row — null (or an empty contributing list) leaves the row inert.
-  final ValueChanged<List<String>>? onShowContributingFlights;
+  /// Called with [row] itself when the pilot taps — null (or an empty
+  /// [RuleResult.contributingFlightIds]) leaves the row inert. Passing the
+  /// whole row rather than just the flight ids is what lets the resulting
+  /// sheet also show which rule was applied and its citation (#62), not
+  /// only the flight list.
+  final ValueChanged<CurrencyDashboardRow>? onShowContributingFlights;
 
   @override
   Widget build(BuildContext context) {
@@ -142,18 +145,17 @@ class CurrencyRuleRow extends StatelessWidget {
                   style: AppMonoText.value(ink.medium, size: 11.5),
                 ),
               const SizedBox(width: 10),
-              if (_noteText(progress, result) case final note?)
-                Expanded(
-                  child: Text(
-                    note,
-                    textAlign: TextAlign.right,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: flagColor ?? ink.muted,
-                    ),
+              Expanded(
+                child: Text(
+                  _noteText(progress, result),
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: flagColor ?? ink.muted,
                   ),
                 ),
+              ),
             ],
           ),
         ],
@@ -162,12 +164,14 @@ class CurrencyRuleRow extends StatelessWidget {
 
     if (!canDrillDown) return content;
     return InkWell(
-      onTap: () => onShowContributingFlights!(contributingFlightIds),
+      onTap: () => onShowContributingFlights!(row),
       child: content,
     );
   }
 
-  /// The trailing context note, or null to omit it entirely.
+  /// The trailing context note. Never null — #67's "currency status never
+  /// conveyed by colour alone" rule means a satisfied row needs *some*
+  /// word here too, not just its neutral title and a green accent.
   ///
   /// A satisfied [RuleProgressKind.validity] row's own
   /// [RuleResult.explanation] is just `Currently-valid "$kind" held...` —
@@ -175,11 +179,12 @@ class CurrencyRuleRow extends StatelessWidget {
   /// above it, not genuine context. The mockup's own validity-style rows
   /// (a medical certificate, a rating with no activity requirement) carry
   /// a short, real note instead ("issued 14 Mar 2025") that this domain
-  /// data doesn't have a source for yet, so omitting the row is more
-  /// honest than showing an internal string in its place.
-  String? _noteText(RuleProgress? progress, RuleResult result) {
+  /// data doesn't have a source for yet — "Current" is the honest
+  /// middle ground: true, and not a fabricated detail, unlike showing the
+  /// internal string in its place.
+  String _noteText(RuleProgress? progress, RuleResult result) {
     if (progress?.kind == RuleProgressKind.validity && result.satisfied) {
-      return null;
+      return 'Current';
     }
     return result.explanation;
   }

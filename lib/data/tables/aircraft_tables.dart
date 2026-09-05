@@ -19,6 +19,10 @@ class AircraftsTable extends Table {
   BoolColumn get requiresMultiCrew => boolean()();
   TextColumn get typeRatingDesignator => text().nullable()();
 
+  /// #61: hidden from the entry-form picker once true, retained (never
+  /// deleted) so a past flight against this registration still resolves it.
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

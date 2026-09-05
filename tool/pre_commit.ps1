@@ -28,5 +28,9 @@ Write-Host "pre-commit: checking domain types..."
 dart run tool/check_domain_types.dart
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "pre-commit: checking for networking (#67)..."
+dart run tool/check_no_networking.dart
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "pre-commit: all checks passed."
 exit 0
