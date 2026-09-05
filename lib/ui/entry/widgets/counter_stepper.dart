@@ -13,6 +13,7 @@ class CounterStepper extends StatelessWidget {
     required this.value,
     required this.onIncrement,
     required this.onDecrement,
+    required this.label,
     this.width,
     this.compact = false,
   });
@@ -20,6 +21,12 @@ class CounterStepper extends StatelessWidget {
   final int value;
   final VoidCallback onIncrement;
   final VoidCallback? onDecrement;
+
+  /// What this stepper counts, lowercase and without "count" — e.g. "day
+  /// take-offs", "holding procedures". #66: read into each button's own
+  /// `tooltip` ("Decrease day take-offs") since a bare +/- icon otherwise
+  /// announces nothing to a screen reader beyond "button".
+  final String label;
   final double? width;
 
   /// Slightly smaller box, used inline in the approach row where three
@@ -49,6 +56,7 @@ class CounterStepper extends StatelessWidget {
             icon: Icons.remove,
             size: buttonSize,
             onTap: onDecrement,
+            tooltip: 'Decrease $label',
             color: onDecrement == null ? ink.faint : scheme.primary,
           ),
           Text(
@@ -64,6 +72,7 @@ class CounterStepper extends StatelessWidget {
             icon: Icons.add,
             size: buttonSize,
             onTap: onIncrement,
+            tooltip: 'Increase $label',
             color: scheme.primary,
           ),
         ],
@@ -77,23 +86,28 @@ class _StepButton extends StatelessWidget {
     required this.icon,
     required this.size,
     required this.onTap,
+    required this.tooltip,
     required this.color,
   });
 
   final IconData icon;
   final double size;
   final VoidCallback? onTap;
+  final String tooltip;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Icon(icon, size: 17, color: color),
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(icon, size: 17, color: color),
+        ),
       ),
     );
   }

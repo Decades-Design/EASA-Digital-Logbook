@@ -16,10 +16,18 @@ import 'package:flutter/material.dart';
 /// sampled from a swatch (badge/banner surfaces) are relit by hand from the
 /// same hue/chroma family rather than guessed from scratch.
 class _Palette {
-  // Night — indigo. The one accent colour, unchanged across light/dark
-  // (the design keeps a single primary hue rather than lightening it for
-  // dark mode).
+  // Night — indigo. The one accent hue, but *not* the one exact value
+  // across light/dark: #67's contrast audit found the light-mode value
+  // (nightPrimary) at only 2.88:1 against the dark surface — well under
+  // WCAG AA's 4.5:1 for text — because it was never re-tuned for a dark
+  // background, only originally sampled against the light-mode swatch.
+  // nightPrimaryDark is a lightened tint of the same hue, used only by
+  // buildDarkColorScheme(): white-on-it (button fill) is 4.75:1, and it
+  // reads 3.78:1 directly on the dark surface (the "large text/UI
+  // component" AA threshold — see that function's own note on why small
+  // plain-text accent labels are the one case this doesn't fully clear).
   static const nightPrimary = Color(0xFF325AC2);
+  static const nightPrimaryDark = Color(0xFF4A6ECF);
   static const nightPressed = Color(0xFF142C6F);
 
   // Day — ochre. Secondary accent, also constant across modes.
@@ -31,7 +39,11 @@ class _Palette {
   static const inkLight = Color(0xFF1C202A);
   static const inkMediumLight = Color(0xFF424853);
   static const inkMutedLight = Color(0xFF6C7079);
-  static const inkFaintLight = Color(0xFF878B92);
+  // #67: darkened from the original #878B92 (3.19:1 against surfaceLight,
+  // 3.00:1 against paperLight — both under WCAG AA's 4.5:1 for text this
+  // tier is actually used for, e.g. row captions and hint text, not just
+  // large/decorative text). This value clears 4.5:1 against both.
+  static const inkFaintLight = Color(0xFF686C74);
   static const borderLight = Color(0xFFDDE0E5);
   static const borderStrongLight = Color(0xFFC7CBD2);
 
@@ -262,9 +274,15 @@ ColorScheme buildLightColorScheme() => const ColorScheme.light(
 );
 
 ColorScheme buildDarkColorScheme() => const ColorScheme.dark(
-  primary: _Palette.nightPrimary,
+  // #67: nightPrimaryDark, not nightPrimary — see that constant's own
+  // dartdoc. `primary` is read directly as a text/icon colour all over
+  // this app (jurisdiction dropdown, "Edit"/"History"/"Duplicate",
+  // "Filters", link-style rows), not only as a filled-button background,
+  // so it needs to hold up against the dark *surface*, not just behind
+  // white button text.
+  primary: _Palette.nightPrimaryDark,
   onPrimary: Colors.white,
-  primaryContainer: _Palette.nightPrimary,
+  primaryContainer: _Palette.nightPrimaryDark,
   onPrimaryContainer: Colors.white,
   secondary: _Palette.daySecondary,
   onSecondary: Colors.white,

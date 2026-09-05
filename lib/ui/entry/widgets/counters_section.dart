@@ -123,6 +123,7 @@ class CountersSection extends StatelessWidget {
                   CounterStepper(
                     width: 128,
                     value: fullStop,
+                    label: 'full-stop landings',
                     onIncrement: () => onChangeFullStop(fullStop + 1),
                     onDecrement: fullStop > 0
                         ? () => onChangeFullStop(fullStop - 1)
@@ -174,6 +175,7 @@ class _CounterRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: CounterStepper(
               value: dayValue,
+              label: 'day ${label.toLowerCase()}',
               onIncrement: () => onDayChanged(dayValue + 1),
               onDecrement: dayValue > 0
                   ? () => onDayChanged(dayValue - 1)
@@ -187,6 +189,7 @@ class _CounterRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: CounterStepper(
               value: nightValue,
+              label: 'night ${label.toLowerCase()}',
               onIncrement: () => onNightChanged(nightValue + 1),
               onDecrement: nightValue > 0
                   ? () => onNightChanged(nightValue - 1)

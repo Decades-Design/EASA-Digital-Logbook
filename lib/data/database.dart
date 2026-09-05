@@ -32,7 +32,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -96,6 +96,13 @@ class AppDatabase extends _$AppDatabase {
       // Dart schema, which already includes this column.
       if (from >= 2 && from < 6) {
         await m.addColumn(pilotProfileTable, pilotProfileTable.homeBaseIcao);
+      }
+      // #61: adds archived to aircraft, so the management screen can hide a
+      // retired registration from the entry-form picker without deleting
+      // it — a past flight still references it. withDefault(false)
+      // backfills every existing aircraft row to "not archived".
+      if (from < 7) {
+        await m.addColumn(aircraftsTable, aircraftsTable.archived);
       }
     },
     beforeOpen: (details) async {

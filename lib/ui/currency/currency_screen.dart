@@ -6,6 +6,7 @@ import '../../domain/currency/currency_rule_loader.dart';
 import '../../domain/model/calendar_date.dart';
 import '../../domain/model/utc_instant.dart';
 import '../../domain/repository/flight_read_repository.dart';
+import '../jurisdiction_display.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../widgets/jurisdiction_dropdown.dart';
@@ -15,16 +16,18 @@ import 'sample_currency_data.dart';
 import 'widgets/currency_hero_card.dart';
 import 'widgets/currency_rule_row.dart';
 
-const _jurisdictionLabels = {
-  'eu.easa.part-fcl': 'EASA Part-FCL',
-  'us.faa.part61': 'FAA Part 61',
-};
-
 /// #62: the currency dashboard — every held licence, grouped, with a reason
 /// for each pill. Runs the real `CurrencyRuleEvaluator`/`CurrencyRuleLoader`
-/// engine against `sample_currency_data.dart`'s fixture, the same
-/// real-engine-over-sample-data convention `NewFlightScreen` and
-/// `LogbookScreen` already use pending #56's live repository wiring.
+/// engine against `sample_currency_data.dart`'s fixture — unlike Logbook/
+/// Totals, this isn't just pending #56's repository wiring (that part's
+/// done elsewhere now): `sample_currency_data.dart`'s own dartdoc is
+/// explicit that *which currency rules apply to a held licence* has no
+/// resolver at all yet ("a pilot without a tailwheel endorsement should
+/// never see tailwheel currency" — Settings-phase work), so `ruleIds` stays
+/// hand-picked regardless of #56. Real flights/held-ratings/medical data
+/// could be wired in without that resolver, but would leave the dashboard
+/// evaluating against the *wrong* rule set for whatever a real pilot holds
+/// — worse than an honestly-labelled fixture.
 class CurrencyScreen extends StatefulWidget {
   const CurrencyScreen({super.key});
 
@@ -73,7 +76,8 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
     });
   }
 
-  void _showContributingFlights(List<String> flightIds) {
+  void _showContributingFlights(CurrencyDashboardRow row) {
+    final flightIds = row.evaluation.result.contributingFlightIds;
     final matching = [
       for (final record in _flights)
         if (flightIds.contains(record.id)) record,
@@ -82,7 +86,8 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (context) => _ContributingFlightsSheet(flights: matching),
+      builder: (context) =>
+          _ContributingFlightsSheet(row: row, flights: matching),
     );
   }
 
@@ -156,28 +161,33 @@ class _CurrencyScreenState extends State<CurrencyScreen> {
                           setState(() => _selectedJurisdictionId = id),
                     ),
                     if (heroRows.isNotEmpty) ...[
-                      // A `ListView` needs a bounded cross-axis height from
-                      // its parent — it can't ask a horizontally-scrolling
-                      // child to report its own intrinsic height the way a
-                      // plain `Row` can (`IntrinsicHeight` around the list
-                      // itself throws: the viewport passes its *own*
-                      // unbounded incoming height straight through rather
-                      // than computing one from its child). 185 is sized to
-                      // the card's own content (padding + every internal
-                      // row + a two-line footer, the tallest case), not the
-                      // much larger fixed box this used before.
-                      SizedBox(
-                        height: 185,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                          itemCount: heroRows.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 12),
-                          itemBuilder: (context, index) => CurrencyHeroCard(
-                            row: heroRows[index],
-                            asOf: _today,
-                            onShowContributingFlights: _showContributingFlights,
-                          ),
+                      // A fixed-height `SizedBox` here (this row's earlier
+                      // approach) clips at any text scale taller than the
+                      // pixel count it was tuned for. A plain `Row` sizes
+                      // its own cross axis (height) to its tallest child
+                      // during normal layout — no `IntrinsicHeight` needed,
+                      // which is just as well: `CurrencyProgressBar` uses a
+                      // `LayoutBuilder` internally, and `LayoutBuilder`
+                      // can't answer the intrinsic-dimension queries
+                      // `IntrinsicHeight` would make. `SingleChildScrollView`
+                      // passes its child unbounded main-axis space, so the
+                      // hero row is free to size itself to whatever its
+                      // tallest card needs.
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < heroRows.length; i++) ...[
+                              if (i > 0) const SizedBox(width: 12),
+                              CurrencyHeroCard(
+                                row: heroRows[i],
+                                asOf: _today,
+                                onShowContributingFlights:
+                                    _showContributingFlights,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       _HeroPageDots(count: heroRows.length),
@@ -284,26 +294,41 @@ class _Header extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Currency',
-                style: theme.textTheme.displaySmall?.copyWith(fontSize: 27),
+              // #66: `spaceBetween` with two fixed-size children (this
+              // row's earlier shape) overflows once either grows past
+              // what's left at a larger text scale. Both texts are
+              // `Flexible` now, sharing the row's width instead of each
+              // assuming its own unscaled natural width always fits —
+              // `flex: 2` keeps the title the larger of the two, matching
+              // the original visual balance.
+              Flexible(
+                flex: 2,
+                child: Text(
+                  'Currency',
+                  style: theme.textTheme.displaySmall?.copyWith(fontSize: 27),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'as at ',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: ink.muted,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'as at ',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: ink.muted,
+                        ),
                       ),
-                    ),
-                    TextSpan(
-                      text: '$asOf',
-                      style: AppMonoText.value(ink.medium),
-                    ),
-                  ],
+                      TextSpan(
+                        text: '$asOf',
+                        style: AppMonoText.value(ink.medium),
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -313,13 +338,13 @@ class _Header extends StatelessWidget {
             value: selectedJurisdictionId,
             label: selectedJurisdictionId == null
                 ? 'Both'
-                : (_jurisdictionLabels[selectedJurisdictionId] ??
+                : (jurisdictionLabels[selectedJurisdictionId] ??
                       selectedJurisdictionId!),
             options: {
               null: 'Both',
               for (final group in groups)
                 group.jurisdictionId:
-                    _jurisdictionLabels[group.jurisdictionId] ??
+                    jurisdictionLabels[group.jurisdictionId] ??
                     group.jurisdictionId,
             },
             onChanged: onJurisdictionChanged,
@@ -343,7 +368,7 @@ class _LicenceGroupSection extends StatelessWidget {
 
   final CurrencyLicenceGroup group;
   final CalendarDate asOf;
-  final ValueChanged<List<String>> onShowContributingFlights;
+  final ValueChanged<CurrencyDashboardRow> onShowContributingFlights;
 
   @override
   Widget build(BuildContext context) {
@@ -429,8 +454,9 @@ class _LicenceGroupSection extends StatelessWidget {
 }
 
 class _ContributingFlightsSheet extends StatelessWidget {
-  const _ContributingFlightsSheet({required this.flights});
+  const _ContributingFlightsSheet({required this.row, required this.flights});
 
+  final CurrencyDashboardRow row;
   final List<FlightRecord> flights;
 
   @override
@@ -445,7 +471,33 @@ class _ContributingFlightsSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Which flights counted', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
+            // #62: "which rule was applied, with the citation" — kept to
+            // this sheet only (never on the dashboard row itself), a
+            // deliberate choice so the compact list stays uncluttered.
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: row.title,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: ink.muted,
+                    ),
+                  ),
+                  TextSpan(
+                    text: '  ·  ',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: ink.faint,
+                    ),
+                  ),
+                  TextSpan(
+                    text: row.evaluation.citation,
+                    style: AppMonoText.value(ink.muted, size: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             for (final record in flights)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
-import '../../theme/app_typography.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_typography.dart';
 
 /// A label-left, mono-value-right row — the repeating shape almost every
-/// Totals list row is (Function/Conditions/Ops figures, aircraft subtotals).
+/// flat data list in this app is (Totals' Function/Conditions/Ops figures,
+/// aircraft subtotals, a flight detail's raw facts and derived quantities).
 /// [indent] pushes a sub-row in under its parent (a type under its class, an
 /// "of which PIC" line under Cross-country) without a second widget shape.
-class TotalsRow extends StatelessWidget {
-  const TotalsRow({
+class DetailRow extends StatelessWidget {
+  const DetailRow({
     super.key,
     required this.label,
     required this.value,
@@ -58,8 +59,8 @@ class TotalsRow extends StatelessWidget {
 
 /// The small mono-caps section header ("PILOT FUNCTION TIME",
 /// "TAKE-OFFS & LANDINGS"), with an optional trailing subtotal.
-class TotalsSectionHeader extends StatelessWidget {
-  const TotalsSectionHeader({super.key, required this.label, this.trailing});
+class DetailSectionHeader extends StatelessWidget {
+  const DetailSectionHeader({super.key, required this.label, this.trailing});
 
   final String label;
   final String? trailing;

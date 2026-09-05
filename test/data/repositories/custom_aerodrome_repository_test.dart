@@ -36,4 +36,22 @@ void main() {
     await repository.delete(id);
     expect(await repository.find(id), isNull);
   });
+
+  test('watchAll emits every stored custom aerodrome', () async {
+    await repository.upsert(strip);
+    await repository.upsert(
+      Aerodrome(
+        name: 'Second Strip',
+        position: GeoCoordinate(latitude: 1, longitude: 2),
+      ),
+    );
+
+    final all = await repository.watchAll().first;
+
+    expect(all, hasLength(2));
+    expect(
+      all.map((a) => a.name),
+      containsAll(["Wicker's Field", 'Second Strip']),
+    );
+  });
 }

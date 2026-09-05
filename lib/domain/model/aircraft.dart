@@ -91,6 +91,13 @@ abstract class Aircraft with _$Aircraft {
     /// reverse.
     @Default(<String, Set<AircraftQualification>>{})
     Map<String, Set<AircraftQualification>> requiredQualifications,
+
+    /// #61: hidden from the entry-form picker once true, but never deleted
+    /// — a past flight against this registration still needs to resolve it.
+    /// An aircraft is a current reference record (see the class dartdoc), so
+    /// archiving is a plain mutable flag, not a tombstone-with-revision like
+    /// [Flight]'s.
+    @Default(false) bool archived,
   }) = _Aircraft;
 }
 

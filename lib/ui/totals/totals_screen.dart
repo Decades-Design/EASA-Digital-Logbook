@@ -1,114 +1,68 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/jurisdiction/jurisdiction_profile.dart';
-import '../../domain/jurisdiction/jurisdiction_registry.dart';
 import '../../domain/model/aerodrome_directory.dart';
 import '../../domain/model/calendar_date.dart';
 import '../../domain/model/flight_duration.dart';
 import '../../domain/model/flight_times.dart';
 import '../../domain/model/utc_instant.dart';
-import '../../domain/primitives/default_primitives.dart';
 import '../../domain/projection/jurisdiction_projection.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../../domain/totals/totals_summary.dart';
 import '../aerodromes/aerodromes_screen.dart';
-import '../currency/sample_currency_data.dart' show sampleCurrencyLicences;
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
-import '../widgets/jurisdiction_dropdown.dart';
-import 'sample_totals_data.dart';
-import 'widgets/totals_bar_chart.dart';
-import 'widgets/totals_row.dart';
+import '../jurisdiction_display.dart';
+import '../providers/aerodrome_providers.dart';
+import '../providers/flight_records_providers.dart';
+import '../providers/jurisdiction_projection_providers.dart';
+import '../providers/jurisdiction_providers.dart';
+import '../widgets/detail_row.dart';
+import '../widgets/large_title_scaffold.dart';
+import 'widgets/totals_hero.dart';
+import 'widgets/totals_metric_tile.dart';
 
-const _tabLabels = ['Time', 'Aircraft', 'Function', 'Conditions', 'Ops'];
-const _granularityLabels = ['Year', 'Month', 'Week', 'Day'];
-
-const _jurisdictionLabels = {
-  'eu.easa.part-fcl': 'EASA Part-FCL',
-  'us.faa.part61': 'FAA Part 61',
-};
-
-/// Function-tab rows, per jurisdiction — EASA and FAA pilot function time
-/// are genuinely different regulatory concepts (`pic`/`picus`/`spic`/
-/// `copilot`/`dual`/`instructor` vs `actingPic`/`loggedPic`/`dualReceived`/
-/// `sic`), not aliases of each other, so this can't be one shared row list
-/// the way `_jurisdictionLabels` is. `easaPilotFunctionTime`/
-/// `faaPilotFunctionTime` (`lib/domain/primitives/`) are each other's only
-/// source of truth for their own key names.
+/// #85: totals and summary view, now frame 3b of Currency Totals
+/// Settings.dc.html — a collapsing dark hero (headline total + Year/Month/
+/// Week chart, sparkline-only once you scroll) over one continuous
+/// "hairline metric grid" of two-up tiles, replacing the earlier five-tab
+/// layout so nothing sits alone in empty tab space. Defaults to the pilot's
+/// **primary** jurisdiction with an explicit, always-visible dropdown (in
+/// the hero) to view the same figures under any other held licence instead
+/// (CLAUDE.md's multi-jurisdiction UX rule — a switch, never a silent
+/// toggle). Total time of flight, aircraft hours and take-off/landing
+/// counts are jurisdiction-agnostic facts computed directly off `Flight`/
+/// `PilotCapacity`; PIC/dual/night/instrument/cross-country go through the
+/// existing `JurisdictionProjection`, one instance per held licence so
+/// switching jurisdictions is a lookup, not a reload.
 ///
-/// FAA's own `solo` quantity is deliberately excluded — it's the same raw
-/// fact (`PilotCapacity.soleOccupant`) `soloTime()` already renders under
-/// "Other arrangements" below for every jurisdiction; repeating it here
-/// would double it up, not add information.
-const _functionRowsByJurisdiction = {
-  'eu.easa.part-fcl': [
-    ('pic', 'PIC'),
-    ('picus', 'PICUS'),
-    ('spic', 'SPIC'),
-    ('copilot', 'Co-pilot'),
-    ('dual', 'Dual'),
-    ('instructor', 'Instructor'),
-  ],
-  'us.faa.part61': [
-    ('actingPic', 'Acting PIC'),
-    ('loggedPic', 'Logged PIC'),
-    ('dualReceived', 'Dual received'),
-    ('sic', 'SIC'),
-  ],
-};
-
-/// Conditions-tab rows, per jurisdiction — EASA logs IFR as one column
-/// (`easa_instrument_time.dart`'s `ifr`); FAA has no such concept at all and
-/// splits actual/simulated instrument time instead
-/// (`faa_instrument_time.dart`). `crossCountry` and night both exist under
-/// both jurisdictions, but night's own key name still differs
-/// (`night` vs `nightFlightTime`).
-const _conditionRowsByJurisdiction = {
-  'eu.easa.part-fcl': [
-    ('night', 'Night'),
-    ('ifr', 'IFR'),
-    ('crossCountry', 'Cross-country'),
-  ],
-  'us.faa.part61': [
-    ('nightFlightTime', 'Night'),
-    ('actualInstrument', 'Actual instrument'),
-    ('simulatedInstrument', 'Simulated instrument'),
-    ('crossCountry', 'Cross-country'),
-  ],
-};
-
-/// #85: totals and summary view — five sub-tabs over one flight set,
-/// defaulting to the pilot's **primary** jurisdiction with an explicit,
-/// always-visible dropdown to view the same figures under any other held
-/// licence instead (CLAUDE.md's multi-jurisdiction UX rule — a switch, never
-/// a silent toggle). Total time of flight, aircraft hours and take-off/
-/// landing counts are jurisdiction-agnostic facts computed directly off
-/// `Flight`/`PilotCapacity`; PIC/dual/night/instrument/cross-country go
-/// through the existing `JurisdictionProjection`, one instance per held
-/// licence so switching jurisdictions is a lookup, not a reload. Runs
-/// against `sample_totals_data.dart`'s fixture, the same convention Currency
-/// and the entry form already use pending #56's live repository wiring.
-class TotalsScreen extends StatefulWidget {
+/// #56: reads real repository-backed data via
+/// `jurisdictionProjectionsProvider`/`committedFlightRecordsProvider`
+/// rather than `sample_totals_data.dart`'s fixture — held jurisdictions
+/// come from whatever `HeldRating` rows exist (see
+/// `pilot_profile_providers.dart`), so an empty database genuinely shows
+/// zero, not stale sample numbers.
+class TotalsScreen extends ConsumerStatefulWidget {
   const TotalsScreen({super.key});
 
   @override
-  State<TotalsScreen> createState() => _TotalsScreenState();
+  ConsumerState<TotalsScreen> createState() => _TotalsScreenState();
 }
 
-class _TotalsScreenState extends State<TotalsScreen> {
-  int _tabIndex = 0;
+class _TotalsScreenState extends ConsumerState<TotalsScreen> {
   Granularity _granularity = Granularity.year;
 
-  /// Defaults to the pilot's primary licence — CLAUDE.md: Totals *defaults*
-  /// to primary, but an explicit, visible dropdown (never a silent toggle)
-  /// lets the pilot view the same figures under any other held licence.
-  late String _selectedJurisdictionId =
-      samplePilotProfile.primaryJurisdictionId;
+  /// Mirrors the mockup's `exp` state: the chart's full form (bars, value
+  /// and axis labels, the granularity switch) versus a bare sparkline.
+  /// Flipped by scrolling the metric grid ([_handleScroll]) or by tapping
+  /// the chart directly ([_toggleHero]).
+  bool _heroExpanded = true;
+  final _scrollController = ScrollController();
 
-  List<FlightRecord>? _flights;
-  AerodromeDirectory? _aerodromes;
-  Map<String, JurisdictionProjection>? _projections;
+  /// `null` until the pilot explicitly picks a licence from the dropdown —
+  /// the primary jurisdiction is then the default, computed fresh in
+  /// [build] each time rather than copied into state once, since the
+  /// primary licence itself can only be known once the profile has loaded.
+  String? _selectedJurisdictionId;
+
   late final CalendarDate _today;
 
   @override
@@ -117,470 +71,304 @@ class _TotalsScreenState extends State<TotalsScreen> {
     _today = CalendarDate.fromUtcInstant(
       UtcInstant.fromDateTime(DateTime.now().toUtc()),
     );
-    _load();
+    _scrollController.addListener(_handleScroll);
   }
 
-  Future<void> _load() async {
-    // `cache: false` — see `NewFlightScreen._loadJurisdictions`'s own note.
-    final results = await Future.wait([
-      rootBundle.loadString(
-        'assets/jurisdictions/eu.easa.part-fcl.yaml',
-        cache: false,
-      ),
-      rootBundle.loadString(
-        'assets/jurisdictions/us.faa.part61.yaml',
-        cache: false,
-      ),
-      rootBundle.loadString('assets/aerodromes/airports.csv', cache: false),
-    ]);
-    final registry = JurisdictionRegistry([
-      parseJurisdictionProfileYaml(results[0]),
-      parseJurisdictionProfileYaml(results[1]),
-    ]);
-    final aerodromes = AerodromeDirectory.fromOurAirportsCsv(results[2]);
-    // One projection per held licence, not just the primary one, so
-    // switching the dropdown is a cheap lookup rather than a reload.
-    final projections = {
-      for (final licence in sampleCurrencyLicences)
-        licence.jurisdictionId: JurisdictionProjection(
-          registry: registry,
-          primitives: defaultPrimitives,
-          aerodromes: aerodromes,
-          jurisdictionId: licence.jurisdictionId,
-        ),
-    };
-    final flights = sampleTotalsFlights(_today);
-    if (!mounted) return;
-    setState(() {
-      _flights = flights;
-      _aerodromes = aerodromes;
-      _projections = projections;
-    });
+  @override
+  void dispose() {
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  /// The mockup's `onHeroScroll`: collapse once the grid has scrolled past
+  /// 24px, spring back once it's within 8px of the top — a small dead zone
+  /// either side so the chart doesn't flicker at the boundary.
+  void _handleScroll() {
+    final offset = _scrollController.offset;
+    if (_heroExpanded && offset > 24) {
+      setState(() => _heroExpanded = false);
+    } else if (!_heroExpanded && offset < 8) {
+      setState(() => _heroExpanded = true);
+    }
+  }
+
+  /// The mockup's `toggleHero`: tapping the chart flips it by hand, resetting
+  /// the grid to the top first if that's what brings the chart back into its
+  /// expanded form, so the two controls never fight each other.
+  void _toggleHero() {
+    if (!_heroExpanded && _scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    setState(() => _heroExpanded = !_heroExpanded);
   }
 
   @override
   Widget build(BuildContext context) {
-    final flights = _flights;
-    final aerodromes = _aerodromes;
-    final projections = _projections;
-    if (flights == null || aerodromes == null || projections == null) {
+    final projectionsAsync = ref.watch(jurisdictionProjectionsProvider);
+    final aerodromesAsync = ref.watch(aerodromeDirectoryProvider);
+    final primaryIdAsync = ref.watch(primaryJurisdictionIdProvider);
+
+    if (projectionsAsync.isLoading ||
+        aerodromesAsync.isLoading ||
+        primaryIdAsync.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final projection = projections[_selectedJurisdictionId]!;
+    if (projectionsAsync.hasError ||
+        aerodromesAsync.hasError ||
+        primaryIdAsync.hasError) {
+      return const Scaffold(
+        body: EmptyStateMessage(
+          icon: Icons.error_outline,
+          headline: 'Totals could not be loaded',
+          caption: 'Something went wrong reading the logbook.',
+        ),
+      );
+    }
 
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverSafeArea(
+    final projections = projectionsAsync.requireValue;
+    if (projections.isEmpty) {
+      return const Scaffold(
+        body: SafeArea(
+          child: EmptyStateMessage(
+            icon: Icons.query_stats_outlined,
+            headline: 'No licence on file yet',
+            caption: 'Totals appear once at least one jurisdiction is held.',
+          ),
+        ),
+      );
+    }
+    final aerodromes = aerodromesAsync.requireValue;
+    final primaryId = primaryIdAsync.requireValue;
+    final selectedId =
+        _selectedJurisdictionId ??
+        (projections.containsKey(primaryId) ? primaryId : null) ??
+        projections.keys.first;
+    final projection = projections[selectedId]!;
+
+    final flightsAsync = ref.watch(
+      committedFlightRecordsProvider((projection, const FlightQuery())),
+    );
+    return flightsAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (error, stackTrace) => const Scaffold(
+        body: EmptyStateMessage(
+          icon: Icons.error_outline,
+          headline: 'Totals could not be loaded',
+          caption: 'Something went wrong reading the logbook.',
+        ),
+      ),
+      data: (flights) {
+        final total = FlightDuration.sum([
+          for (final record in flights) record.flight.blockTime,
+        ]);
+        final buckets = bucketTotals(flights, _granularity, _today);
+
+        return Scaffold(
+          body: SafeArea(
             bottom: false,
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  _Header(
-                    selectedJurisdictionId: _selectedJurisdictionId,
-                    onJurisdictionChanged: (id) =>
-                        setState(() => _selectedJurisdictionId = id),
+            child: Column(
+              children: [
+                TotalsHero(
+                  expanded: _heroExpanded,
+                  onToggleExpanded: _toggleHero,
+                  granularity: _granularity,
+                  onGranularityChanged: (g) => setState(() => _granularity = g),
+                  buckets: buckets,
+                  totalTime: total.toHoursMinutes(),
+                  flightCount: flights.length,
+                  selectedJurisdictionId: selectedId,
+                  jurisdictionOptions: {
+                    for (final id in projections.keys)
+                      id: jurisdictionLabels[id] ?? id,
+                  },
+                  onJurisdictionChanged: (id) =>
+                      setState(() => _selectedJurisdictionId = id),
+                  onOpenMap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(builder: (_) => const AerodromesScreen()),
                   ),
-                  _MainTabs(
-                    selected: _tabIndex,
-                    onChanged: (i) => setState(() => _tabIndex = i),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: switch (_tabIndex) {
-              0 => _TimeTab(
-                flights: flights,
-                today: _today,
-                granularity: _granularity,
-                onGranularityChanged: (g) => setState(() => _granularity = g),
-              ),
-              1 => _AircraftTab(flights: flights),
-              2 => _FunctionTab(flights: flights, projection: projection),
-              3 => _ConditionsTab(flights: flights, projection: projection),
-              _ => _OpsTab(flights: flights, aerodromes: aerodromes),
-            },
-          ),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
-        ],
-      ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.selectedJurisdictionId,
-    required this.onJurisdictionChanged,
-  });
-
-  final String selectedJurisdictionId;
-  final ValueChanged<String> onJurisdictionChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ink = context.inkTiers;
-    final isPrimary =
-        selectedJurisdictionId == samplePilotProfile.primaryJurisdictionId;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Totals',
-                style: theme.textTheme.displaySmall?.copyWith(fontSize: 27),
-              ),
-              Row(
-                children: [
-                  _HeaderPillButton(
-                    label: 'Map',
-                    onTap: () => Navigator.of(context).push<void>(
-                      MaterialPageRoute(
-                        builder: (_) => const AerodromesScreen(),
+                  // CLAUDE.md requires an explicit jurisdiction choice
+                  // before anything is exported; that flow doesn't exist
+                  // yet either, so this deliberately exports nothing rather
+                  // than exporting without asking.
+                  onExport: () {},
+                ),
+                Expanded(
+                  child: ListView(
+                    controller: _scrollController,
+                    padding: EdgeInsets.zero,
+                    children: [
+                      _RecentSection(flights: flights, today: _today),
+                      _FunctionSection(
+                        flights: flights,
+                        projection: projection,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // CLAUDE.md requires an explicit jurisdiction choice before
-                  // anything is exported; that flow doesn't exist yet
-                  // either, so this deliberately exports nothing rather than
-                  // exporting without asking.
-                  _HeaderPillButton(
-                    label: 'Export',
-                    filled: true,
-                    onTap: () {},
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                'Derived under ',
-                style: theme.textTheme.bodySmall?.copyWith(color: ink.muted),
-              ),
-              JurisdictionDropdown<String>(
-                value: selectedJurisdictionId,
-                label:
-                    _jurisdictionLabels[selectedJurisdictionId] ??
-                    selectedJurisdictionId,
-                options: {
-                  for (final licence in sampleCurrencyLicences)
-                    licence.jurisdictionId:
-                        _jurisdictionLabels[licence.jurisdictionId] ??
-                        licence.jurisdictionId,
-                },
-                onChanged: onJurisdictionChanged,
-              ),
-              Text(
-                isPrimary ? ' — primary licence' : ' — secondary licence',
-                style: theme.textTheme.bodySmall?.copyWith(color: ink.muted),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeaderPillButton extends StatelessWidget {
-  const _HeaderPillButton({
-    required this.label,
-    required this.onTap,
-    this.filled = false,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
-      child: Container(
-        height: 30,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: filled ? scheme.primary : scheme.surface,
-          border: filled ? null : Border.all(color: scheme.outlineVariant),
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Text(
-          label,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: filled ? scheme.onPrimary : scheme.primary,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MainTabs extends StatelessWidget {
-  const _MainTabs({required this.selected, required this.onChanged});
-
-  final int selected;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ink = context.inkTiers;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: theme.colorScheme.outlineVariant),
-        ),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < _tabLabels.length; i++)
-            Expanded(
-              child: InkWell(
-                onTap: () => onChanged(i),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: i == selected
-                            ? theme.colorScheme.primary
-                            : Colors.transparent,
-                        width: 2.5,
+                      _ConditionsSection(
+                        flights: flights,
+                        projection: projection,
                       ),
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    _tabLabels[i],
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: i == selected
-                          ? theme.colorScheme.primary
-                          : ink.medium,
-                      fontWeight: i == selected
-                          ? FontWeight.w700
-                          : FontWeight.w600,
-                    ),
+                      _AircraftSection(flights: flights),
+                      _OpsSection(flights: flights, aerodromes: aerodromes),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ),
-        ],
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
-class _GranularitySwitch extends StatelessWidget {
-  const _GranularitySwitch({required this.selected, required this.onChanged});
-
-  final Granularity selected;
-  final ValueChanged<Granularity> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          for (var i = 0; i < Granularity.values.length; i++)
-            Expanded(
-              child: InkWell(
-                onTap: () => onChanged(Granularity.values[i]),
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Granularity.values[i] == selected
-                        ? scheme.surface
-                        : null,
-                    borderRadius: BorderRadius.circular(6),
-                    boxShadow: Granularity.values[i] == selected
-                        ? [
-                            BoxShadow(
-                              color: scheme.onSurface.withValues(alpha: 0.14),
-                              blurRadius: 3,
-                              offset: const Offset(0, 1),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Text(
-                    _granularityLabels[i],
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: scheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimeTab extends StatelessWidget {
-  const _TimeTab({
-    required this.flights,
-    required this.today,
-    required this.granularity,
-    required this.onGranularityChanged,
-  });
+class _RecentSection extends StatelessWidget {
+  const _RecentSection({required this.flights, required this.today});
 
   final List<FlightRecord> flights;
   final CalendarDate today;
-  final Granularity granularity;
-  final ValueChanged<Granularity> onGranularityChanged;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ink = context.inkTiers;
-    final total = FlightDuration.sum([
-      for (final record in flights) record.flight.blockTime,
-    ]);
-    final buckets = bucketTotals(flights, granularity, today);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _TabDivider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 13),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TOTAL TIME OF FLIGHT',
-                    style: AppMonoText.tag(
-                      ink.muted,
-                    ).copyWith(letterSpacing: 1.1),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    total.toHoursMinutes(),
-                    style: AppMonoText.value(
-                      theme.colorScheme.onSurface,
-                      size: 34,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '${flights.length}',
-                    style: AppMonoText.value(
-                      theme.colorScheme.onSurface,
-                      size: 17,
-                      weight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    'FLIGHTS',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: ink.faint,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        const DetailSectionHeader(label: 'RECENT'),
+        TotalsMetricGrid(
+          tiles: [
+            TotalsMetricTile(
+              label: 'THIS YEAR',
+              value: sumBlockTimeInRange(
+                flights,
+                CalendarDate(today.year, 1, 1),
+                today,
+              ).toHoursMinutes(),
+            ),
+            TotalsMetricTile(
+              label: 'LAST 12 MONTHS',
+              value: sumBlockTimeInRange(
+                flights,
+                today.addDays(-365),
+                today,
+              ).toHoursMinutes(),
+            ),
+            TotalsMetricTile(
+              label: 'LAST 90 DAYS',
+              value: sumBlockTimeInRange(
+                flights,
+                today.addDays(-90),
+                today,
+              ).toHoursMinutes(),
+            ),
+            TotalsMetricTile(
+              label: 'LAST 28 DAYS',
+              value: sumBlockTimeInRange(
+                flights,
+                today.addDays(-28),
+                today,
+              ).toHoursMinutes(),
+            ),
+          ],
         ),
-        const _TabDivider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 11, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _GranularitySwitch(
-                selected: granularity,
-                onChanged: onGranularityChanged,
-              ),
-              const SizedBox(height: 12),
-              TotalsBarChart(buckets: buckets),
-            ],
-          ),
-        ),
-        const _TabDivider(),
-        TotalsRow(
-          label: 'This year',
-          value: sumBlockTimeInRange(
-            flights,
-            CalendarDate(today.year, 1, 1),
-            today,
-          ).toHoursMinutes(),
-        ),
-        const _TabDivider(),
-        TotalsRow(
-          label: 'Last 12 months',
-          value: sumBlockTimeInRange(
-            flights,
-            today.addDays(-365),
-            today,
-          ).toHoursMinutes(),
-        ),
-        const _TabDivider(),
-        TotalsRow(
-          label: 'Last 90 days',
-          value: sumBlockTimeInRange(
-            flights,
-            today.addDays(-90),
-            today,
-          ).toHoursMinutes(),
-        ),
-        const _TabDivider(),
-        TotalsRow(
-          label: 'Last 28 days',
-          value: sumBlockTimeInRange(
-            flights,
-            today.addDays(-28),
-            today,
-          ).toHoursMinutes(),
-        ),
-        const _TabDivider(),
       ],
     );
   }
 }
 
-class _AircraftTab extends StatelessWidget {
-  const _AircraftTab({required this.flights});
+class _FunctionSection extends StatelessWidget {
+  const _FunctionSection({required this.flights, required this.projection});
+
+  final List<FlightRecord> flights;
+  final JurisdictionProjection projection;
+
+  @override
+  Widget build(BuildContext context) {
+    final result = projection.projectAggregate([
+      for (final record in flights) (record.flight, record.aircraft),
+    ]);
+    final rows =
+        functionRowsByJurisdiction[projection.jurisdictionId] ?? const [];
+    final total = FlightDuration.sum([
+      for (final name in rows.map((r) => r.$1))
+        if (result[name] case final quantity? when quantity.creditable)
+          quantity.value,
+    ]);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DetailSectionHeader(
+          label: 'FUNCTION',
+          trailing: total.toHoursMinutes(),
+        ),
+        TotalsMetricGrid(
+          tiles: [
+            for (final name in rows)
+              if (result[name.$1] != null)
+                TotalsMetricTile(
+                  label: name.$2.toUpperCase(),
+                  value: (result[name.$1]?.value ?? FlightDuration.zero)
+                      .toHoursMinutes(),
+                ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ConditionsSection extends StatelessWidget {
+  const _ConditionsSection({required this.flights, required this.projection});
+
+  final List<FlightRecord> flights;
+  final JurisdictionProjection projection;
+
+  @override
+  Widget build(BuildContext context) {
+    final result = projection.projectAggregate([
+      for (final record in flights) (record.flight, record.aircraft),
+    ]);
+    final rows =
+        conditionRowsByJurisdiction[projection.jurisdictionId] ?? const [];
+
+    String valueOf(String name) =>
+        (result[name]?.value ?? FlightDuration.zero).toHoursMinutes();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const DetailSectionHeader(label: 'CONDITIONS'),
+        TotalsMetricGrid(
+          tiles: [
+            for (final name in rows)
+              if (result[name.$1] != null) ...[
+                TotalsMetricTile(
+                  label: name.$2.toUpperCase(),
+                  value: valueOf(name.$1),
+                ),
+                if (name.$1 == 'crossCountry')
+                  TotalsMetricTile(
+                    label: 'OF WHICH PIC',
+                    value: crossCountryOfWhichPic(
+                      flights,
+                      projection,
+                    ).toHoursMinutes(),
+                  ),
+              ],
+            TotalsMetricTile(
+              label: 'LONGEST FLIGHT',
+              value: longestFlight(flights).toHoursMinutes(),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _AircraftSection extends StatelessWidget {
+  const _AircraftSection({required this.flights});
 
   final List<FlightRecord> flights;
 
@@ -591,301 +379,66 @@ class _AircraftTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _TabDivider(),
-        for (final group in groups) ...[
-          TotalsSectionHeader(
-            label: group.multiPilot ? 'MULTI-PILOT' : 'SINGLE-PILOT',
-            trailing: group.total.toHoursMinutes(),
-          ),
-          for (final classTotal in group.classes) ...[
-            const _TabDivider(),
-            if (classTotal.isSingleType)
-              TotalsRow(
-                label: classTotal.classLabel,
-                value: classTotal.total.toHoursMinutes(),
-                emphasis: true,
-              )
-            else ...[
-              TotalsRow(
-                label: classTotal.classLabel,
-                value: classTotal.total.toHoursMinutes(),
-                emphasis: true,
-              ),
-              for (final type in classTotal.types) ...[
-                const _TabDivider(),
-                TotalsRow(
-                  label: type.typeLabel,
-                  value: type.total.toHoursMinutes(),
-                  indent: true,
+        DetailSectionHeader(
+          label: 'AIRCRAFT',
+          trailing: '${distinctAircraftFlown(flights)} flown',
+        ),
+        TotalsMetricGrid(
+          tiles: [
+            for (final group in groups)
+              for (final classTotal in group.classes)
+                TotalsMetricTile(
+                  label: classTotal.classLabel.toUpperCase(),
+                  value: classTotal.total.toHoursMinutes(),
                 ),
-              ],
-            ],
           ],
-        ],
-        const _TabDivider(),
-        TotalsRow(
-          label: 'Aircraft flown',
-          value: '${distinctAircraftFlown(flights)}',
         ),
-        const _TabDivider(),
       ],
     );
   }
 }
 
-class _FunctionTab extends StatelessWidget {
-  const _FunctionTab({required this.flights, required this.projection});
-
-  final List<FlightRecord> flights;
-  final JurisdictionProjection projection;
-
-  @override
-  Widget build(BuildContext context) {
-    final result = projection.projectAggregate([
-      for (final record in flights) (record.flight, record.aircraft),
-    ]);
-    final rows =
-        _functionRowsByJurisdiction[projection.jurisdictionId] ?? const [];
-    final total = FlightDuration.sum([
-      for (final name in rows.map((r) => r.$1))
-        if (result[name] case final quantity? when quantity.creditable)
-          quantity.value,
-    ]);
-
-    String valueOf(String name) =>
-        (result[name]?.value ?? FlightDuration.zero).toHoursMinutes();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _TabDivider(),
-        TotalsSectionHeader(
-          label: 'PILOT FUNCTION TIME',
-          trailing: total.toHoursMinutes(),
-        ),
-        for (final name in rows)
-          if (result[name.$1] != null) ...[
-            const _TabDivider(),
-            TotalsRow(label: name.$2, value: valueOf(name.$1)),
-          ],
-        const _TabDivider(),
-        const TotalsSectionHeader(label: 'OTHER ARRANGEMENTS'),
-        const _TabDivider(),
-        TotalsRow(label: 'Solo', value: soloTime(flights).toHoursMinutes()),
-        const _TabDivider(),
-        Builder(
-          builder: (context) {
-            final awaiting = awaitingCountersignatureTime(flights);
-            return TotalsRow(
-              label: 'Awaiting countersignature',
-              value: awaiting.toHoursMinutes(),
-              valueColor: awaiting == FlightDuration.zero
-                  ? null
-                  : context.semanticColors.currencyWarning,
-            );
-          },
-        ),
-        const _TabDivider(),
-      ],
-    );
-  }
-}
-
-class _ConditionsTab extends StatelessWidget {
-  const _ConditionsTab({required this.flights, required this.projection});
-
-  final List<FlightRecord> flights;
-  final JurisdictionProjection projection;
-
-  @override
-  Widget build(BuildContext context) {
-    final result = projection.projectAggregate([
-      for (final record in flights) (record.flight, record.aircraft),
-    ]);
-    final rows =
-        _conditionRowsByJurisdiction[projection.jurisdictionId] ?? const [];
-
-    String valueOf(String name) =>
-        (result[name]?.value ?? FlightDuration.zero).toHoursMinutes();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const _TabDivider(),
-        const TotalsSectionHeader(label: 'OPERATIONAL CONDITION TIME'),
-        for (final name in rows)
-          if (result[name.$1] != null) ...[
-            const _TabDivider(),
-            TotalsRow(label: name.$2, value: valueOf(name.$1)),
-            if (name.$1 == 'crossCountry') ...[
-              const _TabDivider(),
-              TotalsRow(
-                label: 'of which PIC',
-                value: crossCountryOfWhichPic(
-                  flights,
-                  projection,
-                ).toHoursMinutes(),
-                indent: true,
-              ),
-            ],
-          ],
-        const _TabDivider(),
-        TotalsRow(
-          label: 'Longest flight',
-          value: longestFlight(flights).toHoursMinutes(),
-        ),
-        const _TabDivider(),
-      ],
-    );
-  }
-}
-
-class _OpsTab extends StatelessWidget {
-  const _OpsTab({required this.flights, required this.aerodromes});
+class _OpsSection extends StatelessWidget {
+  const _OpsSection({required this.flights, required this.aerodromes});
 
   final List<FlightRecord> flights;
   final AerodromeDirectory aerodromes;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ink = context.inkTiers;
     final counts = opsCounts(flights);
+    final landings =
+        counts.dayFullStopLandings +
+        counts.dayTouchAndGoLandings +
+        counts.nightFullStopLandings +
+        counts.nightTouchAndGoLandings;
     final visited = aerodromesVisited(flights, aerodromes);
-
-    Widget circuitRow(String label, int takeoffs, int landings) => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
-          SizedBox(
-            width: 46,
-            child: Text(
-              '$takeoffs',
-              textAlign: TextAlign.right,
-              style: AppMonoText.value(theme.colorScheme.onSurface, size: 13.5),
-            ),
-          ),
-          SizedBox(
-            width: 46,
-            child: Text(
-              '$landings',
-              textAlign: TextAlign.right,
-              style: AppMonoText.value(theme.colorScheme.onSurface, size: 13.5),
-            ),
-          ),
-        ],
-      ),
-    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _TabDivider(),
-        Container(
-          color: theme.colorScheme.surfaceContainerLowest,
-          padding: const EdgeInsets.fromLTRB(20, 9, 20, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'TAKE-OFFS & LANDINGS',
-                  style: AppMonoText.tag(
-                    ink.muted,
-                  ).copyWith(letterSpacing: 1.1),
-                ),
-              ),
-              SizedBox(
-                width: 46,
-                child: Text(
-                  'T/O',
-                  textAlign: TextAlign.right,
-                  style: AppMonoText.tag(ink.faint),
-                ),
-              ),
-              SizedBox(
-                width: 46,
-                child: Text(
-                  'LDG',
-                  textAlign: TextAlign.right,
-                  style: AppMonoText.tag(ink.faint),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const _TabDivider(),
-        circuitRow(
-          'Day, full stop',
-          counts.dayFullStopTakeoffs,
-          counts.dayFullStopLandings,
-        ),
-        const _TabDivider(),
-        circuitRow(
-          'Day, touch & go',
-          counts.dayTouchAndGoTakeoffs,
-          counts.dayTouchAndGoLandings,
-        ),
-        const _TabDivider(),
-        circuitRow(
-          'Night, full stop',
-          counts.nightFullStopTakeoffs,
-          counts.nightFullStopLandings,
-        ),
-        const _TabDivider(),
-        circuitRow(
-          'Night, touch & go',
-          counts.nightTouchAndGoTakeoffs,
-          counts.nightTouchAndGoLandings,
-        ),
-        const _TabDivider(),
-        const TotalsSectionHeader(label: 'APPROACHES & FSTD'),
-        const _TabDivider(),
-        TotalsRow(
-          label: 'Instrument approaches',
-          value: '${counts.instrumentApproaches}',
-        ),
-        const _TabDivider(),
-        // FSTD sessions have no persistence or read path yet (#28) --
-        // omitted rather than fabricated.
-        InkWell(
-          onTap: () => Navigator.of(context).push<void>(
-            MaterialPageRoute(builder: (_) => const AerodromesScreen()),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Aerodromes visited', style: theme.textTheme.titleSmall),
-                const SizedBox(height: 2),
-                Text(
-                  '${visited.aerodromes} across ${visited.countries} '
-                  'countries',
-                  style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${visited.aerodromes}',
-                  style: AppMonoText.value(
-                    theme.colorScheme.onSurface,
-                    size: 13.5,
-                  ),
-                ),
-              ],
+        const DetailSectionHeader(label: 'OPS'),
+        TotalsMetricGrid(
+          tiles: [
+            TotalsMetricTile(label: 'LANDINGS', value: '$landings'),
+            TotalsMetricTile(
+              label: 'APPROACHES',
+              value: '${counts.instrumentApproaches}',
             ),
-          ),
+            // FSTD sessions have no persistence or read path yet (#28) --
+            // omitted rather than fabricated, same call the old Ops tab
+            // made.
+            TotalsMetricTile(
+              label: 'AERODROMES',
+              value: '${visited.aerodromes}',
+              valueColor: Theme.of(context).colorScheme.primary,
+              onTap: () => Navigator.of(context).push<void>(
+                MaterialPageRoute(builder: (_) => const AerodromesScreen()),
+              ),
+            ),
+          ],
         ),
-        const _TabDivider(),
       ],
     );
   }
-}
-
-class _TabDivider extends StatelessWidget {
-  const _TabDivider();
-
-  @override
-  Widget build(BuildContext context) =>
-      Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant);
 }

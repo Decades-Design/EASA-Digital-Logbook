@@ -28,7 +28,10 @@ class CurrencyHeroCard extends StatelessWidget {
 
   final CurrencyDashboardRow row;
   final CalendarDate asOf;
-  final ValueChanged<List<String>>? onShowContributingFlights;
+
+  /// Called with [row] itself — see `CurrencyRuleRow`'s own dartdoc on why
+  /// not just the flight ids (#62's citation display needs the whole row).
+  final ValueChanged<CurrencyDashboardRow>? onShowContributingFlights;
 
   @override
   Widget build(BuildContext context) {
@@ -93,19 +96,30 @@ class CurrencyHeroCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   currencyNumericLine(progress, asOf),
                   style: AppMonoText.value(palette.text, size: 11.5),
                 ),
-                if (expiresOn != null)
-                  Text(
-                    'expires $expiresOn',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: palette.text,
+                if (expiresOn != null) ...[
+                  const SizedBox(width: 8),
+                  // #66: `spaceBetween` with two fixed-size children
+                  // overflows once either grows past what's left at a
+                  // larger text scale — `Expanded` (right-aligned within
+                  // it, replicating spaceBetween's look) keeps the numeric
+                  // line (the actual progress figure) always fully visible
+                  // and lets the date give way instead.
+                  Expanded(
+                    child: Text(
+                      'expires $expiresOn',
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: palette.text,
+                      ),
                     ),
                   ),
+                ],
               ],
             ),
           ],
@@ -128,14 +142,21 @@ class CurrencyHeroCard extends StatelessWidget {
               if (contributingFlightIds.isNotEmpty &&
                   onShowContributingFlights != null) ...[
                 const SizedBox(width: 8),
-                InkWell(
-                  onTap: () =>
-                      onShowContributingFlights!(contributingFlightIds),
-                  child: Text(
-                    'Which flights counted →',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      color: palette.accent,
-                      fontWeight: FontWeight.w600,
+                // #66: a fixed-size Row child overflows once "Which flights
+                // counted →" grows past whatever's left beside the
+                // explanation at a larger text scale — Flexible lets it
+                // wrap onto a second line instead, splitting the row's
+                // width with the explanation rather than assuming its own
+                // natural (unscaled) width always fits.
+                Flexible(
+                  child: InkWell(
+                    onTap: () => onShowContributingFlights!(row),
+                    child: Text(
+                      'Which flights counted →',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: palette.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

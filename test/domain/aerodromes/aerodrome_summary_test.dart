@@ -334,4 +334,59 @@ void main() {
       expect(totalDistanceFlownNm(const [], _directory()), 0);
     });
   });
+
+  group('rankAerodromesByRecency', () {
+    test('most-recently-flown-to aerodrome ranks first', () {
+      final flights = [
+        _record(
+          'f1',
+          _flight(date: const CalendarDate(2026, 1, 1), route: ['EGLL']),
+        ),
+        _record(
+          'f2',
+          _flight(date: const CalendarDate(2026, 3, 1), route: ['EGKB']),
+        ),
+      ];
+
+      final ranked = rankAerodromesByRecency(flights);
+      expect(ranked.first, 'EGKB');
+      expect(ranked, contains('EGLL'));
+    });
+
+    test(
+      'a repeat visit to the same aerodrome only counts its latest date',
+      () {
+        final flights = [
+          _record(
+            'f1',
+            _flight(date: const CalendarDate(2026, 1, 1), route: ['EGKA']),
+          ),
+          _record(
+            'f2',
+            _flight(date: const CalendarDate(2026, 6, 1), route: ['EGKA']),
+          ),
+        ];
+
+        expect(rankAerodromesByRecency(flights), ['EGKA']);
+      },
+    );
+
+    test('respects limit', () {
+      final flights = [
+        _record(
+          'f1',
+          _flight(
+            date: const CalendarDate(2026, 1, 1),
+            route: ['EGKA', 'EGLL', 'EGKB'],
+          ),
+        ),
+      ];
+
+      expect(rankAerodromesByRecency(flights, limit: 2).length, 2);
+    });
+
+    test('an empty flight set ranks nothing', () {
+      expect(rankAerodromesByRecency(const []), isEmpty);
+    });
+  });
 }

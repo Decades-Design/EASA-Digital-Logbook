@@ -2,16 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'data/app_database_bootstrap.dart';
+import 'data/seed_sample_data.dart';
 import 'ui/preferences/app_preferences.dart';
+import 'ui/providers/database_provider.dart';
 import 'ui/shell/app_shell.dart';
 import 'ui/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  final database = await openRealAppDatabase();
+  // First-run only — see seed_sample_data.dart's own dartdoc for why.
+  await seedSampleDataIfEmpty(database);
   runApp(
     ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        databaseProvider.overrideWithValue(database),
+      ],
       child: const MainApp(),
     ),
   );

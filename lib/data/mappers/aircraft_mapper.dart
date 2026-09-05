@@ -14,6 +14,7 @@ AircraftRow aircraftToRow(domain.Aircraft aircraft, {required String id}) {
     operatingSurface: aircraft.operatingSurface.name,
     requiresMultiCrew: aircraft.requiresMultiCrew,
     typeRatingDesignator: aircraft.typeRatingDesignator,
+    archived: aircraft.archived,
   );
 }
 
@@ -35,5 +36,6 @@ domain.Aircraft aircraftFromRow(
     requiresMultiCrew: row.requiresMultiCrew,
     typeRatingDesignator: row.typeRatingDesignator,
     requiredQualifications: requiredQualifications,
+    archived: row.archived,
   );
 }

@@ -9,9 +9,11 @@ import '../../domain/currency/rule_set_summary.dart';
 import '../../domain/model/calendar_date.dart';
 import '../../domain/model/utc_instant.dart';
 import '../../domain/totals/totals_summary.dart';
+import '../aircraft/aircraft_list_screen.dart';
 import '../currency/rule_asset_paths.dart';
 import '../currency/sample_currency_data.dart';
 import '../preferences/app_preferences.dart';
+import '../providers/aircraft_providers.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../totals/sample_totals_data.dart';
@@ -123,10 +125,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const _DateFormatRow(),
                 const _SectionHeader('DATA'),
                 const _Divider(),
+                const _AircraftRow(),
+                const _Divider(),
                 _InertRow(
-                  title: 'Aircraft & aerodromes',
+                  title: 'Aerodromes',
                   subtitle:
-                      '$aircraftCount aircraft · $aerodromeCount aerodromes',
+                      '$aerodromeCount visited · no management screen '
+                      'yet (#63)',
                 ),
                 const _Divider(),
                 const _InertRow(
@@ -148,11 +153,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   subtitle: 'Available once live data exists (#56)',
                 ),
                 const _Divider(),
-                // `flight_history.dart`'s replay logic exists; no query
-                // layer or viewer UI has been built to call it from yet.
+                // #60: the viewer itself is real now, but it's reached per
+                // flight (Logbook -> a committed flight's detail screen ->
+                // History), not from a global list here — there is no
+                // "every flight's history in one place" screen to link to.
                 const _InertRow(
                   title: 'Revision history',
-                  subtitle: 'No viewer yet',
+                  subtitle: 'Open a committed flight, then tap History',
                 ),
                 const _SectionHeader('ABOUT'),
                 const _Divider(),
@@ -269,6 +276,54 @@ class _InertRow extends StatelessWidget {
               style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// #61: the one row in "DATA" backed by a real, live repository rather
+/// than the sample fixtures the rest of this screen still runs on —
+/// `aircraftRecordsProvider` reads the actual on-device database.
+class _AircraftRow extends ConsumerWidget {
+  const _AircraftRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final ink = context.inkTiers;
+    final recordsAsync = ref.watch(aircraftRecordsProvider);
+    final subtitle = recordsAsync.when(
+      data: (records) {
+        final active = records.where((r) => !r.aircraft.archived).length;
+        final archived = records.length - active;
+        return archived == 0
+            ? '$active aircraft'
+            : '$active aircraft · $archived archived';
+      },
+      loading: () => 'Loading…',
+      error: (error, stackTrace) => 'Could not load',
+    );
+
+    return InkWell(
+      onTap: () => Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const AircraftListScreen()),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Aircraft', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
+              ),
+            ],
+          ),
         ),
       ),
     );

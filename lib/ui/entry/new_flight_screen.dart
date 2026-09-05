@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/jurisdiction/jurisdiction_profile.dart';
 import '../../domain/jurisdiction/jurisdiction_registry.dart';
@@ -12,20 +15,35 @@ import '../../domain/model/utc_instant.dart';
 import '../../domain/primitives/default_primitives.dart';
 import '../../domain/projection/jurisdiction_projection.dart';
 import '../../domain/projection/projection_result.dart';
+import '../../domain/repository/flight_read_repository.dart';
+import '../aerodromes/aerodrome_picker_screen.dart';
+import '../preferences/app_preferences.dart';
+import '../providers/repository_providers.dart';
+import '../theme/app_colors.dart';
 import 'entry_form_types.dart';
+import 'flight_diff.dart';
 import 'flight_draft_mapper.dart';
+import 'flight_edit_state_mapper.dart';
 import 'sample_fleet_data.dart';
 import 'widgets/aircraft_section.dart';
+import 'widgets/committed_edit_dialog.dart';
 import 'widgets/conditions_section.dart';
 import 'widgets/counters_section.dart';
 import 'widgets/crew/crew_form_data.dart';
 import 'widgets/crew/crew_section.dart';
 import 'widgets/crew/crew_selection.dart';
 import 'widgets/date_route_section.dart';
+import 'widgets/entry_card.dart';
 import 'widgets/entry_footer.dart';
+import 'widgets/entry_section_label.dart';
 import 'widgets/entry_top_bar.dart';
+import 'widgets/qualification_gap_banner.dart';
 import 'widgets/remarks_section.dart';
 import 'widgets/times_section.dart';
+
+/// The exit-confirmation dialog's three choices — see
+/// `_NewFlightScreenState._confirmExit`.
+enum _ExitAction { cancel, discard, save }
 
 /// #58/#129, direction 2a from the mockups (Flight Entry Form.dc.html): one
 /// literal scroll, sections in the exact order docs/entry-form.md §1 lists
@@ -33,14 +51,57 @@ import 'widgets/times_section.dart';
 /// through §7 is built; §8 (overrides) and §9 (FSTD, a different form
 /// entirely) are not — see the dartdoc on `flight_draft_mapper.dart` and
 /// `conditions_section.dart` for exactly which pieces are stubbed and why.
-class NewFlightScreen extends StatefulWidget {
-  const NewFlightScreen({super.key});
+///
+/// #59: also the editor for an existing draft or committed flight, via
+/// [NewFlightScreen.edit] — reopens this same wizard rather than a second,
+/// parallel form. `flight_edit_state_mapper.dart` reconstructs the wizard's
+/// own answers from the stored [Flight]; a flight whose crew arrangement
+/// the wizard has no question for (acting as instructor/examiner, a
+/// refused countersignature, times spanning midnight) is refused before
+/// this screen ever opens — see [FlightDetailScreen]'s Edit action.
+class NewFlightScreen extends ConsumerStatefulWidget {
+  const NewFlightScreen({super.key})
+    : editingRecord = null,
+      editingIsDraft = false,
+      duplicatingFrom = null,
+      reverseRouteOnDuplicate = false;
+
+  const NewFlightScreen.edit({
+    super.key,
+    required FlightRecord record,
+    required bool isDraft,
+  }) : editingRecord = record,
+       editingIsDraft = isDraft,
+       duplicatingFrom = null,
+       reverseRouteOnDuplicate = false;
+
+  /// #65: a fresh, unremarkable new entry (same save flow as the plain
+  /// constructor — [editingRecord] stays null) pre-filled from [record]'s
+  /// aircraft, route and crew arrangement only. Times, landings, instrument
+  /// data and remarks are deliberately left at their normal new-entry
+  /// defaults rather than carried over — see [_prefillForDuplicating].
+  const NewFlightScreen.duplicate({
+    super.key,
+    required FlightRecord record,
+    this.reverseRouteOnDuplicate = false,
+  }) : editingRecord = null,
+       editingIsDraft = false,
+       duplicatingFrom = record;
+
+  /// Null when creating a fresh entry.
+  final FlightRecord? editingRecord;
+  final bool editingIsDraft;
+
+  /// Null unless opened via [NewFlightScreen.duplicate].
+  final FlightRecord? duplicatingFrom;
+  final bool reverseRouteOnDuplicate;
 
   @override
-  State<NewFlightScreen> createState() => _NewFlightScreenState();
+  ConsumerState<NewFlightScreen> createState() => _NewFlightScreenState();
 }
 
-class _NewFlightScreenState extends State<NewFlightScreen> {
+class _NewFlightScreenState extends ConsumerState<NewFlightScreen>
+    with WidgetsBindingObserver {
   // ---- §1 Aircraft.
   final _registrationController = TextEditingController();
   final _fleetSearchController = TextEditingController();
@@ -136,9 +197,28 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
   JurisdictionProjection? _easaProjection;
   JurisdictionProjection? _faaProjection;
 
+  /// The form's field values right after prefill (or, for a fresh entry,
+  /// right at open) — what [_changedFieldCount] diffs the live form
+  /// against to decide whether leaving needs confirming. See
+  /// [_formSnapshot]'s own dartdoc for exactly what's tracked.
+  late final List<Object?> _initialSnapshot;
+
+  /// #58: id of the draft this session's own [_autosaveIfPossible] has
+  /// written, for a *new* entry only (`widget.editingRecord == null`) — set
+  /// on the first background-triggered autosave, then reused so a second
+  /// backgrounding updates the same row rather than creating a duplicate
+  /// draft. An explicit "Save"/"Save draft" tap also reuses it for the same
+  /// reason; an explicit discard deletes it, since the pilot asked for
+  /// none of this to be kept.
+  String? _autosaveDraftId;
+
   @override
   void initState() {
     super.initState();
+    // #58: "draft state preserved if the app is backgrounded mid-entry" —
+    // `didChangeAppLifecycleState` below autosaves on `paused`, the
+    // documented Flutter hook for "the OS might kill this process next."
+    WidgetsBinding.instance.addObserver(this);
     // Every text field below feeds either the draft `Flight` (the
     // derivation strip, `flight_draft_mapper.dart`) or a conditionally-
     // rendered field elsewhere on the screen (aircraft resolution, the
@@ -175,11 +255,369 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
     ]) {
       c.addListener(_rebuild);
     }
+    _prefillForEditing();
+    _prefillForDuplicating();
     _loadJurisdictions();
+    // Captured last — after prefill, so pre-filled edit/duplicate data is
+    // the "starting point" the exit-confirmation diffs against, never
+    // itself counted as a change the pilot made.
+    _initialSnapshot = _formSnapshot();
+  }
+
+  /// #59: reconstructs the wizard's own answers from [NewFlightScreen
+  /// .editingRecord] — see `flight_edit_state_mapper.dart`'s dartdoc for
+  /// why this can't cover every stored [Flight]. [FlightDetailScreen]'s
+  /// Edit action already refuses to open this screen for a shape this
+  /// can't represent; the post-frame pop here is only a defensive second
+  /// check, not the primary guard.
+  void _prefillForEditing() {
+    final record = widget.editingRecord;
+    if (record == null) return;
+
+    final resolution = resolveEditFormState(record.flight, record.aircraft);
+    if (resolution is! EditFormSupported) {
+      final reason = (resolution as EditFormUnsupported).reason;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(reason.message)));
+      });
+      return;
+    }
+
+    final state = resolution.state;
+    _date = DateTime.utc(state.date.year, state.date.month, state.date.day);
+    _registrationController.text = record.aircraft.registration;
+
+    for (var i = 0; i < state.route.length; i++) {
+      if (i < _legControllers.length) {
+        _legControllers[i].text = state.route[i];
+      } else {
+        _legControllers.add(TextEditingController(text: state.route[i]));
+        _legFocusNodes.add(FocusNode());
+      }
+    }
+
+    _offBlocks = _timeOfDay(state.offBlocks);
+    _onBlocks = _timeOfDay(state.onBlocks);
+    _takeoff = state.takeoff == null ? null : _timeOfDay(state.takeoff!);
+    _landing = state.landing == null ? null : _timeOfDay(state.landing!);
+
+    _crew = state.crew;
+    _arrangement = state.arrangement;
+    _instructorNameController.text = state.instructorName;
+    _instructorLicenceController.text = state.instructorLicence;
+    final expiry = state.instructorCredentialExpiry;
+    _instructorCertExpiry = expiry == null
+        ? null
+        : DateTime(expiry.year, expiry.month, expiry.day);
+    _purpose = state.purpose;
+    _instructorSoleManipulator = state.instructorSoleManipulator;
+    _fillDuration(
+      state.instructorManipulationTime,
+      _instructorManipHoursController,
+      _instructorManipMinutesController,
+    );
+    _instructorPassengers = state.instructorPassengers;
+
+    _command = state.command;
+    _flying = state.flying;
+    _otherPilotNameController.text = state.otherPilotName;
+    _otherPilotLicenceController.text = state.otherPilotLicence;
+    _multiPilotOperation = state.multiPilotOperation;
+    _otherPilotRole = state.otherPilotRole;
+    _picusClaimed = state.picusClaimed;
+    _picInterventionNotRequired = state.picInterventionNotRequired;
+    _fillDuration(
+      state.otherManipulationTime,
+      _otherManipHoursController,
+      _otherManipMinutesController,
+    );
+    _otherPilotPassengers = state.otherPilotPassengers;
+
+    _sign = state.sign;
+    _signedAt = state.signedAt == null
+        ? null
+        : DateTime.utc(
+            state.date.year,
+            state.date.month,
+            state.date.day,
+            state.signedAt!.$1,
+            state.signedAt!.$2,
+          );
+
+    _ifrFlightPlanFiled = state.ifrFlightPlanFiled;
+    _fillDuration(
+      state.actualInstrumentTime,
+      _actualInstHoursController,
+      _actualInstMinutesController,
+    );
+    _fillDuration(
+      state.simulatedInstrumentTime,
+      _simInstHoursController,
+      _simInstMinutesController,
+    );
+    _approaches.addAll(state.approaches);
+    for (final approach in state.approaches) {
+      _approachIcaoControllers.add(
+        TextEditingController(text: approach.aerodromeIcao),
+      );
+      _approachRunwayControllers.add(
+        TextEditingController(text: approach.runway),
+      );
+    }
+    _holdingProceduresCount = state.holdingProceduresCount;
+    _trackingPerformed = state.trackingPerformed;
+
+    _takeoffsDay = state.takeoffsDay;
+    _takeoffsNight = state.takeoffsNight;
+    _landingsDay = state.landingsDay;
+    _landingsNight = state.landingsNight;
+
+    _remarksController.text = state.remarks;
+  }
+
+  /// #65: "quick entry" — carries aircraft, route and crew arrangement
+  /// (capacity) over from [NewFlightScreen.duplicatingFrom]; date, times,
+  /// landings, instrument data and remarks stay at this screen's normal
+  /// new-entry defaults rather than being copied, since those describe the
+  /// *specific occurrence* being duplicated away from, not the repeat
+  /// flight about to be logged. Refuses the same way [_prefillForEditing]
+  /// does for a crew arrangement the wizard has no question for — the same
+  /// underlying limitation applies either direction.
+  void _prefillForDuplicating() {
+    final record = widget.duplicatingFrom;
+    if (record == null) return;
+
+    final resolution = resolveEditFormState(record.flight, record.aircraft);
+    if (resolution is! EditFormSupported) {
+      final reason = (resolution as EditFormUnsupported).reason;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(reason.message)));
+      });
+      return;
+    }
+
+    final state = resolution.state;
+    _registrationController.text = record.aircraft.registration;
+
+    final route = widget.reverseRouteOnDuplicate
+        ? state.route.reversed.toList()
+        : state.route;
+    for (var i = 0; i < route.length; i++) {
+      if (i < _legControllers.length) {
+        _legControllers[i].text = route[i];
+      } else {
+        _legControllers.add(TextEditingController(text: route[i]));
+        _legFocusNodes.add(FocusNode());
+      }
+    }
+
+    _crew = state.crew;
+    _arrangement = state.arrangement;
+    _instructorNameController.text = state.instructorName;
+    _instructorLicenceController.text = state.instructorLicence;
+    _instructorCertExpiry = state.instructorCredentialExpiry == null
+        ? null
+        : DateTime(
+            state.instructorCredentialExpiry!.year,
+            state.instructorCredentialExpiry!.month,
+            state.instructorCredentialExpiry!.day,
+          );
+    _purpose = state.purpose;
+    _instructorSoleManipulator = state.instructorSoleManipulator;
+    _instructorPassengers = state.instructorPassengers;
+
+    _command = state.command;
+    _flying = state.flying;
+    _otherPilotNameController.text = state.otherPilotName;
+    _otherPilotLicenceController.text = state.otherPilotLicence;
+    _multiPilotOperation = state.multiPilotOperation;
+    _otherPilotRole = state.otherPilotRole;
+    _picusClaimed = state.picusClaimed;
+    _picInterventionNotRequired = state.picInterventionNotRequired;
+    _otherPilotPassengers = state.otherPilotPassengers;
+  }
+
+  TimeOfDay _timeOfDay(DateTimeComponents components) =>
+      TimeOfDay(hour: components.$1, minute: components.$2);
+
+  /// Leaves both controllers blank (matching `_durationOf`'s own
+  /// `int.tryParse(...) ?? 0` convention for "not entered") when [duration]
+  /// is null or zero, rather than writing a literal "0".
+  void _fillDuration(
+    FlightDuration? duration,
+    TextEditingController hours,
+    TextEditingController minutes,
+  ) {
+    if (duration == null || duration.inMinutes == 0) return;
+    hours.text = '${duration.inMinutes ~/ 60}';
+    minutes.text = '${duration.inMinutes % 60}';
   }
 
   void _rebuild() {
     if (mounted) setState(() {});
+  }
+
+  /// Every field the pilot can actually edit on this screen, in a fixed
+  /// order — compared position-by-position against [_initialSnapshot] to
+  /// decide how many have changed. Deliberately flat rather than nested
+  /// per-section: "2 or more changes" reads naturally as "2 or more edited
+  /// fields," not "2 or more sections touched" (typing a registration and
+  /// picking a date already counts, without needing a third).
+  List<Object?> _formSnapshot() => [
+    _registrationController.text,
+    _date,
+    [for (final c in _legControllers) c.text],
+    _offBlocks,
+    _onBlocks,
+    _takeoff,
+    _landing,
+    _blockOverride,
+    _crew,
+    _soloEndorsementHeld,
+    _endorsingInstructorController.text,
+    _arrangement,
+    _instructorNameController.text,
+    _instructorLicenceController.text,
+    _instructorCertExpiry,
+    _purpose,
+    _instructorSoleManipulator,
+    _instructorManipHoursController.text,
+    _instructorManipMinutesController.text,
+    _instructorPassengers,
+    _command,
+    _flying,
+    _otherPilotNameController.text,
+    _otherPilotLicenceController.text,
+    _multiPilotOperation,
+    _otherManipHoursController.text,
+    _otherManipMinutesController.text,
+    _otherPilotRole,
+    _picusClaimed,
+    _picInterventionNotRequired,
+    _otherPilotPassengers,
+    _sign,
+    _signedAt,
+    _takeoffsDay,
+    _takeoffsNight,
+    _landingsDay,
+    _landingsNight,
+    _fullStop,
+    _nightHoursController.text,
+    _nightMinutesController.text,
+    _ifrFlightPlanFiled,
+    _actualInstHoursController.text,
+    _actualInstMinutesController.text,
+    _simInstHoursController.text,
+    _simInstMinutesController.text,
+    [for (final a in _approaches) (a.type, a.count)],
+    [for (final c in _approachIcaoControllers) c.text],
+    [for (final c in _approachRunwayControllers) c.text],
+    _holdingProceduresCount,
+    _trackingPerformed,
+    _remarksController.text,
+  ];
+
+  /// Structural equality for [_formSnapshot]'s entries — plain `==` alone
+  /// would fail for every list in there (`_legControllers.map(...).toList()`
+  /// is a fresh `List` instance each call, and Dart's `List` doesn't
+  /// override `==`), even when its actual contents are unchanged.
+  bool _snapshotValueEquals(Object? a, Object? b) {
+    if (a is List && b is List) {
+      if (a.length != b.length) return false;
+      for (var i = 0; i < a.length; i++) {
+        if (!_snapshotValueEquals(a[i], b[i])) return false;
+      }
+      return true;
+    }
+    return a == b;
+  }
+
+  /// How many of [_formSnapshot]'s fields differ from [_initialSnapshot] —
+  /// the exit-confirmation's own "2 or more changes" threshold.
+  int _changedFieldCount() {
+    final current = _formSnapshot();
+    var changed = 0;
+    for (var i = 0; i < current.length; i++) {
+      if (!_snapshotValueEquals(current[i], _initialSnapshot[i])) changed++;
+    }
+    return changed;
+  }
+
+  bool get _isEditingCommitted =>
+      widget.editingRecord != null && !widget.editingIsDraft;
+
+  /// Whatever this screen's own primary "save without the full committed-
+  /// edit diff dialog" action is — reused as-is for the exit-confirmation's
+  /// middle button rather than inventing a second save path. There is no
+  /// draft-shaped save for a committed edit (CLAUDE.md rule 4: committed
+  /// entries are never silently rewritten), so that one case falls through
+  /// to the same diff/reason flow the footer's own "Save" already uses.
+  Future<void> _saveFromExitConfirmation() {
+    if (widget.editingRecord == null) return _saveNewDraft();
+    if (_isEditingCommitted) return _saveEditedCommitted();
+    return _saveEditedDraft();
+  }
+
+  String get _exitConfirmationSaveLabel =>
+      _isEditingCommitted ? 'Save changes' : 'Save as draft';
+
+  /// #back-confirmation: 2 or more edited fields and the pilot tries to
+  /// leave (system back, the gesture, or the top bar's own Cancel button —
+  /// all funnel through the same `Navigator.pop`, which is exactly what
+  /// `PopScope` intercepts) — asks rather than silently discarding.
+  Future<void> _confirmExit() async {
+    final action = await showDialog<_ExitAction>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Leave without finishing?'),
+        content: const Text(
+          'You have unsaved changes. You can save what you have as a '
+          'draft, or discard them.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_ExitAction.cancel),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(_ExitAction.discard),
+            child: const Text("Don't save"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(_ExitAction.save),
+            child: Text(_exitConfirmationSaveLabel),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+
+    switch (action) {
+      case null:
+      case _ExitAction.cancel:
+        return;
+      case _ExitAction.discard:
+        // #58: an explicit "don't save" must not leave a background-
+        // triggered autosave draft behind — the pilot asked for none of
+        // this to be kept, not just for the confirmation dialog to close.
+        final autosaveId = _autosaveDraftId;
+        if (autosaveId != null) {
+          await ref.read(flightRepositoryProvider).deleteDraft(autosaveId);
+        }
+        if (mounted) Navigator.of(context).pop();
+      case _ExitAction.save:
+        await _saveFromExitConfirmation();
+    }
   }
 
   Future<void> _loadJurisdictions() async {
@@ -228,6 +666,7 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _registrationController.dispose();
     _fleetSearchController.dispose();
     for (final c in _legControllers) {
@@ -263,6 +702,17 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // Fire-and-forget: there's no user-facing action to await this
+      // against, and the whole point is best-effort — if the OS kills the
+      // process before this completes, that's the same loss autosave can
+      // never fully close, only shrink.
+      unawaited(_autosaveIfPossible());
+    }
+  }
+
   // ---- Derived helpers.
 
   SampleFleetAircraft? get _resolvedAircraft =>
@@ -288,8 +738,18 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
     requiresMultiCrew: false,
   );
 
+  /// Editing always keeps the flight's existing aircraft — see
+  /// `flight_repository_drift.dart`'s `updateDraft`/`updateCommitted`,
+  /// which reuse the row's current `aircraftId` and have no parameter to
+  /// change it. Repicking a different one correctly needs a real,
+  /// repository-backed aircraft picker (#61), not this screen's
+  /// sample-fleet stand-in — so the aircraft field is locked while editing
+  /// rather than letting a picked-but-unpersisted change silently fail to
+  /// take effect.
   Aircraft get _effectiveAircraft =>
-      _resolvedAircraft?.aircraft ?? _fallbackAircraft;
+      widget.editingRecord?.aircraft ??
+      _resolvedAircraft?.aircraft ??
+      _fallbackAircraft;
 
   Duration? get _blockTime {
     final off = _offBlocks;
@@ -493,6 +953,23 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
     });
   }
 
+  /// #63: the aerodrome picker's supplementary way in for a route leg —
+  /// the text field itself stays the fast path for a pilot who already
+  /// knows the code.
+  Future<void> _pickAerodromeForLeg(int index) async {
+    final identifier = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const AerodromePickerScreen()),
+    );
+    if (identifier == null) return;
+    setState(() => _legControllers[index].text = identifier);
+    final next = index + 1 < _legFocusNodes.length
+        ? _legFocusNodes[index + 1]
+        : null;
+    if (next != null && mounted) {
+      FocusScope.of(context).requestFocus(next);
+    }
+  }
+
   void _pickAircraft(SampleFleetAircraft entry) {
     setState(() {
       _registrationController.text = entry.registration;
@@ -526,6 +1003,151 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
       _approachIcaoControllers.removeAt(index).dispose();
       _approachRunwayControllers.removeAt(index).dispose();
     });
+  }
+
+  /// Resolves the picked [SampleFleetAircraft] to a real, persisted
+  /// `aircraftId` — reusing the existing row via `registration` (unique)
+  /// when one's already stored, rather than minting a duplicate every time
+  /// the same tail number is picked for a new flight. The sample fleet list
+  /// itself is still a stand-in for a real search/browse picker (#61); this
+  /// only makes *saving* the picked aircraft correct.
+  Future<String> _resolveAircraftId(Aircraft aircraft) async {
+    final repository = ref.read(aircraftRepositoryProvider);
+    final existingId = await repository.findIdByRegistration(
+      aircraft.registration,
+    );
+    if (existingId != null) return existingId;
+    return repository.upsert(aircraft);
+  }
+
+  /// Writes [flight] as [_autosaveDraftId] if #58's background autosave
+  /// already created one this session, otherwise creates a fresh draft and
+  /// remembers its id — shared by [_saveNewDraft], [_saveNewFlight] and
+  /// [_autosaveIfPossible] so none of the three ever leaves a duplicate
+  /// draft row behind for the same in-progress entry.
+  Future<String> _upsertAutosaveDraft(Flight flight) async {
+    final existingId = _autosaveDraftId;
+    final repository = ref.read(flightRepositoryProvider);
+    if (existingId != null) {
+      await repository.updateDraft(existingId, flight);
+      return existingId;
+    }
+    final aircraftId = await _resolveAircraftId(_effectiveAircraft);
+    final newId = await repository.createDraft(flight, aircraftId: aircraftId);
+    _autosaveDraftId = newId;
+    return newId;
+  }
+
+  /// #58: "draft state preserved if the app is backgrounded mid-entry" —
+  /// called from [didChangeAppLifecycleState] on `paused`. Scoped to a
+  /// brand-new entry only (`widget.editingRecord == null`): silently
+  /// overwriting an *existing* draft/committed flight the pilot is mid-edit
+  /// on, with no easy way to undo it if they then discard, is a bigger risk
+  /// than the loss this guards against — #59 already promises editing an
+  /// existing draft stays unremarkable, without this kind of background
+  /// side effect. Silent and best-effort: no snackbar, no navigation, and
+  /// nothing happens at all until there's a real aircraft and a valid
+  /// [Flight] to save (the same bar [_saveNewDraft] itself uses) — a form
+  /// with only a few characters typed in has nothing worth persisting.
+  Future<void> _autosaveIfPossible() async {
+    if (widget.editingRecord != null) return;
+    final flight = _draftFlight;
+    if (flight == null || _resolvedAircraft == null) return;
+    await _upsertAutosaveDraft(flight);
+  }
+
+  /// #58: creating a fresh entry as a draft — `createDraft` only, left
+  /// uncommitted. Requires an aircraft actually resolved from the fleet
+  /// list; the empty-registration `_fallbackAircraft` used for the
+  /// derivation-strip preview is never a real aircraft to save against.
+  Future<void> _saveNewDraft() async {
+    final flight = _draftFlight;
+    if (flight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fill in the route, times and crew first.'),
+        ),
+      );
+      return;
+    }
+    if (_resolvedAircraft == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pick an aircraft first.')));
+      return;
+    }
+    await _upsertAutosaveDraft(flight);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// #58: creating a fresh entry and committing it immediately — the
+  /// ordinary "logged this after the flight" path. Same validation as
+  /// [_saveNewDraft], then `createDraft` (or reusing this session's own
+  /// autosaved draft) followed straight by `commit`.
+  Future<void> _saveNewFlight() async {
+    final flight = _draftFlight;
+    if (flight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fill in the route, times and crew first.'),
+        ),
+      );
+      return;
+    }
+    if (_resolvedAircraft == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pick an aircraft first.')));
+      return;
+    }
+    final flightId = await _upsertAutosaveDraft(flight);
+    await ref.read(flightRepositoryProvider).commit(flightId);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// #59: editing a draft is unremarkable — open, change, save, no prompt.
+  /// Writes an in-place `updateDraft`, exactly the delta-revision-free path
+  /// CLAUDE.md rule 4 reserves for drafts.
+  Future<void> _saveEditedDraft() async {
+    final flight = _draftFlight;
+    final record = widget.editingRecord;
+    if (flight == null || record == null) return;
+    final finalFlight = preserveWizardBlindSpots(flight, record.flight);
+    await ref
+        .read(flightRepositoryProvider)
+        .updateDraft(record.id, finalFlight);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// #59: editing a committed entry shows a diff of what will change and
+  /// states that the previous version is retained, offers an optional
+  /// free-text reason, and — the first time only — a one-line explanation
+  /// of why this differs from editing a draft. Writes a real delta
+  /// revision via `updateCommitted`.
+  Future<void> _saveEditedCommitted() async {
+    final flight = _draftFlight;
+    final record = widget.editingRecord;
+    if (flight == null || record == null) return;
+    final finalFlight = preserveWizardBlindSpots(flight, record.flight);
+    final changes = diffFlightsForDisplay(record.flight, finalFlight);
+    final hasExplained = ref.read(hasEditedCommittedEntryProvider);
+
+    final reason = await showCommittedEditDialog(
+      context,
+      changes: changes,
+      showFirstTimeExplanation: !hasExplained,
+    );
+    if (reason == null) return; // Cancelled -- nothing written.
+
+    ref.read(hasEditedCommittedEntryProvider.notifier).markSeen();
+    await ref
+        .read(flightRepositoryProvider)
+        .updateCommitted(
+          record.id,
+          finalFlight,
+          reason: reason.isEmpty ? null : reason,
+        );
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -568,8 +1190,7 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
       otherPilotNameController: _otherPilotNameController,
       otherPilotLicenceController: _otherPilotLicenceController,
       multiPilotOperation: _multiPilotOperation,
-      aircraftRequiresMultiCrew:
-          _resolvedAircraft?.aircraft.requiresMultiCrew ?? false,
+      aircraftRequiresMultiCrew: _effectiveAircraft.requiresMultiCrew,
       onToggleMultiPilot: () =>
           setState(() => _multiPilotOperation = !_multiPilotOperation),
       otherManipHoursController: _otherManipHoursController,
@@ -598,155 +1219,238 @@ class _NewFlightScreenState extends State<NewFlightScreen> {
         _crew == CrewSelection.withInstructor &&
         (flightPurposeNotes[_purpose] != null);
 
-    return Scaffold(
-      body: Column(
-        children: [
-          EntryTopBar(title: 'New flight', onSaveDraft: () {}),
-          Expanded(
-            // `padding: zero` — a primary vertical `ListView` otherwise
-            // insets itself by the ambient `MediaQuery.padding` (status bar
-            // height) automatically, on top of what `EntryTopBar`'s own
-            // `SafeArea` already consumed above it. The two together
-            // produced the large blank gap between the top bar and
-            // "Aircraft" reported after the first real-device run.
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                AircraftSection(
-                  controller: _registrationController,
-                  resolved: _resolvedAircraft,
-                  fleetOpen: _fleetOpen,
-                  onToggleFleet: () => setState(() {
-                    _fleetOpen = !_fleetOpen;
-                    if (!_fleetOpen) _fleetSearchController.clear();
-                  }),
-                  onFocusRegistration: () => setState(() => _fleetOpen = true),
-                  onPickAircraft: _pickAircraft,
-                  searchController: _fleetSearchController,
-                ),
-                DateRouteSection(
-                  date: _date,
-                  onTapDate: _pickDate,
-                  legControllers: _legControllers,
-                  legFocusNodes: _legFocusNodes,
-                  onAddStop: _addStop,
-                  onRemoveStop: _removeStop,
-                ),
-                TimesSection(
-                  offBlocks: _offBlocks,
-                  onBlocks: _onBlocks,
-                  onTapOffBlocks: () => _pickTime(
-                    (t) => _offBlocks = t,
-                    _offBlocks,
-                    helpText: '${_startLabel.toUpperCase()} (ZULU)',
+    final editingRecord = widget.editingRecord;
+    final isEditingCommitted = editingRecord != null && !widget.editingIsDraft;
+
+    return PopScope(
+      canPop: _changedFieldCount() < 2,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _confirmExit();
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            EntryTopBar(
+              title: editingRecord == null ? 'New flight' : 'Edit flight',
+              // A committed edit goes through the footer's diff/reason flow
+              // only — no quick shortcut that would skip it. A draft edit
+              // gets a single unified "Save", same as the footer's own.
+              onSaveDraft: editingRecord == null
+                  ? _saveNewDraft
+                  : (isEditingCommitted ? null : _saveEditedDraft),
+              saveLabel: editingRecord == null ? 'Save draft' : 'Save',
+            ),
+            Expanded(
+              // `padding: zero` — a primary vertical `ListView` otherwise
+              // insets itself by the ambient `MediaQuery.padding` (status bar
+              // height) automatically, on top of what `EntryTopBar`'s own
+              // `SafeArea` already consumed above it. The two together
+              // produced the large blank gap between the top bar and
+              // "Aircraft" reported after the first real-device run.
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  if (editingRecord == null)
+                    AircraftSection(
+                      controller: _registrationController,
+                      resolved: _resolvedAircraft,
+                      fleetOpen: _fleetOpen,
+                      onToggleFleet: () => setState(() {
+                        _fleetOpen = !_fleetOpen;
+                        if (!_fleetOpen) _fleetSearchController.clear();
+                      }),
+                      onFocusRegistration: () =>
+                          setState(() => _fleetOpen = true),
+                      onPickAircraft: _pickAircraft,
+                      searchController: _fleetSearchController,
+                    )
+                  else
+                    _LockedAircraftSection(aircraft: editingRecord.aircraft),
+                  QualificationGapBanner(
+                    aircraft:
+                        _resolvedAircraft?.aircraft ?? editingRecord?.aircraft,
                   ),
-                  onTapOnBlocks: () => _pickTime(
-                    (t) => _onBlocks = t,
-                    _onBlocks,
-                    helpText: '${_endLabel.toUpperCase()} (ZULU)',
+                  DateRouteSection(
+                    date: _date,
+                    onTapDate: _pickDate,
+                    legControllers: _legControllers,
+                    legFocusNodes: _legFocusNodes,
+                    onAddStop: _addStop,
+                    onRemoveStop: _removeStop,
+                    onPickLeg: _pickAerodromeForLeg,
                   ),
-                  blockTime: _blockTime,
-                  blockOverrideText: _blockOverride,
-                  onBlockOverrideChanged: (v) =>
-                      setState(() => _blockOverride = v),
-                  startLabel: _startLabel,
-                  endLabel: _endLabel,
-                  takeoff: _takeoff,
-                  landing: _landing,
-                  onTapTakeoff: () => _pickTime(
-                    (t) => _takeoff = t,
-                    _takeoff,
-                    helpText: 'TAKE-OFF (ZULU)',
-                  ),
-                  onTapLanding: () => _pickTime(
-                    (t) => _landing = t,
-                    _landing,
-                    helpText: 'LANDING (ZULU)',
-                  ),
-                ),
-                CrewSection(data: crewData),
-                CountersSection(
-                  takeoffsDay: _takeoffsDay,
-                  takeoffsNight: _takeoffsNight,
-                  landingsDay: _landingsDay,
-                  landingsNight: _landingsNight,
-                  onChangeTakeoffsDay: (v) => setState(() => _takeoffsDay = v),
-                  onChangeTakeoffsNight: (v) =>
-                      setState(() => _takeoffsNight = v),
-                  onChangeLandingsDay: (v) => setState(() => _landingsDay = v),
-                  onChangeLandingsNight: (v) =>
-                      setState(() => _landingsNight = v),
-                  showFullStop: _hasFaaLicence && _landingsNight > 0,
-                  fullStop: _fullStop,
-                  onChangeFullStop: (v) => setState(() => _fullStop = v),
-                ),
-                ConditionsSection(
-                  blockTime: _blockTime,
-                  nightHoursController: _nightHoursController,
-                  nightMinutesController: _nightMinutesController,
-                  hasEasaLicence: _hasEasaLicence,
-                  ifrFlightPlanFiled: _ifrFlightPlanFiled,
-                  onToggleIfrFlightPlanFiled: () => setState(
-                    () => _ifrFlightPlanFiled = !_ifrFlightPlanFiled,
-                  ),
-                  hasFaaLicence: _hasFaaLicence,
-                  actualInstHoursController: _actualInstHoursController,
-                  actualInstMinutesController: _actualInstMinutesController,
-                  simInstHoursController: _simInstHoursController,
-                  simInstMinutesController: _simInstMinutesController,
-                  approaches: _approaches,
-                  approachIcaoControllers: _approachIcaoControllers,
-                  approachRunwayControllers: _approachRunwayControllers,
-                  onApproachTypeChanged: (i, t) => setState(
-                    () => _approaches[i] = _approaches[i].copyWith(type: t),
-                  ),
-                  onApproachIcaoChanged: (i, v) => setState(
-                    () => _approaches[i] = _approaches[i].copyWith(
-                      aerodromeIcao: v,
+                  TimesSection(
+                    offBlocks: _offBlocks,
+                    onBlocks: _onBlocks,
+                    onTapOffBlocks: () => _pickTime(
+                      (t) => _offBlocks = t,
+                      _offBlocks,
+                      helpText: '${_startLabel.toUpperCase()} (ZULU)',
+                    ),
+                    onTapOnBlocks: () => _pickTime(
+                      (t) => _onBlocks = t,
+                      _onBlocks,
+                      helpText: '${_endLabel.toUpperCase()} (ZULU)',
+                    ),
+                    blockTime: _blockTime,
+                    blockOverrideText: _blockOverride,
+                    onBlockOverrideChanged: (v) =>
+                        setState(() => _blockOverride = v),
+                    startLabel: _startLabel,
+                    endLabel: _endLabel,
+                    takeoff: _takeoff,
+                    landing: _landing,
+                    onTapTakeoff: () => _pickTime(
+                      (t) => _takeoff = t,
+                      _takeoff,
+                      helpText: 'TAKE-OFF (ZULU)',
+                    ),
+                    onTapLanding: () => _pickTime(
+                      (t) => _landing = t,
+                      _landing,
+                      helpText: 'LANDING (ZULU)',
                     ),
                   ),
-                  onApproachRunwayChanged: (i, v) => setState(
-                    () => _approaches[i] = _approaches[i].copyWith(runway: v),
+                  CrewSection(data: crewData),
+                  CountersSection(
+                    takeoffsDay: _takeoffsDay,
+                    takeoffsNight: _takeoffsNight,
+                    landingsDay: _landingsDay,
+                    landingsNight: _landingsNight,
+                    onChangeTakeoffsDay: (v) =>
+                        setState(() => _takeoffsDay = v),
+                    onChangeTakeoffsNight: (v) =>
+                        setState(() => _takeoffsNight = v),
+                    onChangeLandingsDay: (v) =>
+                        setState(() => _landingsDay = v),
+                    onChangeLandingsNight: (v) =>
+                        setState(() => _landingsNight = v),
+                    showFullStop: _hasFaaLicence && _landingsNight > 0,
+                    fullStop: _fullStop,
+                    onChangeFullStop: (v) => setState(() => _fullStop = v),
                   ),
-                  onApproachCountChanged: (i, c) => setState(
-                    () => _approaches[i] = _approaches[i].copyWith(count: c),
+                  ConditionsSection(
+                    blockTime: _blockTime,
+                    nightHoursController: _nightHoursController,
+                    nightMinutesController: _nightMinutesController,
+                    hasEasaLicence: _hasEasaLicence,
+                    ifrFlightPlanFiled: _ifrFlightPlanFiled,
+                    onToggleIfrFlightPlanFiled: () => setState(
+                      () => _ifrFlightPlanFiled = !_ifrFlightPlanFiled,
+                    ),
+                    hasFaaLicence: _hasFaaLicence,
+                    actualInstHoursController: _actualInstHoursController,
+                    actualInstMinutesController: _actualInstMinutesController,
+                    simInstHoursController: _simInstHoursController,
+                    simInstMinutesController: _simInstMinutesController,
+                    approaches: _approaches,
+                    approachIcaoControllers: _approachIcaoControllers,
+                    approachRunwayControllers: _approachRunwayControllers,
+                    onApproachTypeChanged: (i, t) => setState(
+                      () => _approaches[i] = _approaches[i].copyWith(type: t),
+                    ),
+                    onApproachIcaoChanged: (i, v) => setState(
+                      () => _approaches[i] = _approaches[i].copyWith(
+                        aerodromeIcao: v,
+                      ),
+                    ),
+                    onApproachRunwayChanged: (i, v) => setState(
+                      () => _approaches[i] = _approaches[i].copyWith(runway: v),
+                    ),
+                    onApproachCountChanged: (i, c) => setState(
+                      () => _approaches[i] = _approaches[i].copyWith(count: c),
+                    ),
+                    onApproachRemoved: _removeApproach,
+                    onApproachAdded: _addApproach,
+                    holdingProceduresCount: _holdingProceduresCount,
+                    onHoldingProceduresChanged: (v) =>
+                        setState(() => _holdingProceduresCount = v),
+                    trackingPerformed: _trackingPerformed,
+                    onToggleTracking: () => setState(
+                      () => _trackingPerformed = !_trackingPerformed,
+                    ),
                   ),
-                  onApproachRemoved: _removeApproach,
-                  onApproachAdded: _addApproach,
-                  holdingProceduresCount: _holdingProceduresCount,
-                  onHoldingProceduresChanged: (v) =>
-                      setState(() => _holdingProceduresCount = v),
-                  trackingPerformed: _trackingPerformed,
-                  onToggleTracking: () =>
-                      setState(() => _trackingPerformed = !_trackingPerformed),
-                ),
-                RemarksSection(
-                  controller: _remarksController,
-                  remarksRequiredNote: needsRemarks
-                      ? flightPurposeNotes[_purpose]
-                      : null,
-                  showCountersignature: showCountersignature,
-                  sign: _sign,
-                  onSignChanged: (v) => setState(() {
-                    _sign = v;
-                    if (v == SignChoice.now) _signedAt = DateTime.now();
-                  }),
-                  signedAt: _signedAt,
-                  signatoryName: signatoryName,
-                ),
-                const SizedBox(height: 24),
-              ],
+                  RemarksSection(
+                    controller: _remarksController,
+                    remarksRequiredNote: needsRemarks
+                        ? flightPurposeNotes[_purpose]
+                        : null,
+                    showCountersignature: showCountersignature,
+                    sign: _sign,
+                    onSignChanged: (v) => setState(() {
+                      _sign = v;
+                      if (v == SignChoice.now) _signedAt = DateTime.now();
+                    }),
+                    signedAt: _signedAt,
+                    signatoryName: signatoryName,
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
             ),
+            EntryFooter(
+              blockTimeText: _blockTimeText,
+              easaResult: _easaResult,
+              faaResult: _faaResult,
+              hasFaaLicence: _hasFaaLicence,
+              onSaveDraft: editingRecord == null ? _saveNewDraft : null,
+              onSave: editingRecord == null
+                  ? _saveNewFlight
+                  : (isEditingCommitted
+                        ? _saveEditedCommitted
+                        : _saveEditedDraft),
+              saveLabel: editingRecord == null
+                  ? 'Save flight'
+                  : (isEditingCommitted ? 'Save changes' : 'Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The aircraft field while editing — read-only, since changing it needs a
+/// real, repository-backed picker (#61) this screen doesn't have; see
+/// `_effectiveAircraft`'s own dartdoc for why silently allowing a pick here
+/// would look like it worked and then not persist.
+class _LockedAircraftSection extends StatelessWidget {
+  const _LockedAircraftSection({required this.aircraft});
+
+  final Aircraft aircraft;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = context.inkTiers;
+    return EntrySection(
+      label: 'Aircraft',
+      child: EntryCard(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      aircraft.registration,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      '${aircraft.manufacturer} ${aircraft.model}',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: ink.muted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.lock_outline, size: 16, color: ink.faint),
+            ],
           ),
-          EntryFooter(
-            blockTimeText: _blockTimeText,
-            easaResult: _easaResult,
-            faaResult: _faaResult,
-            hasFaaLicence: _hasFaaLicence,
-            onSaveDraft: () {},
-            onSave: () {},
-          ),
-        ],
+        ),
       ),
     );
   }

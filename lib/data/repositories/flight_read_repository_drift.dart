@@ -1,9 +1,12 @@
 import 'package:drift/drift.dart';
 
 import '../../domain/model/calendar_date.dart';
+import '../../domain/model/flight.dart';
+import '../../domain/model/utc_instant.dart';
 import '../../domain/projection/projection.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../database.dart';
+import '../flight_history.dart';
 import '../mappers/flight_mapper.dart';
 import '../tables/flight_tables.dart';
 import 'aircraft_repository.dart';
@@ -114,6 +117,10 @@ class DriftFlightReadRepository implements FlightReadRepository {
     }
   }
 
+  UtcInstant _fromEpochMs(int ms) => UtcInstant.fromDateTime(
+    DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true),
+  );
+
   int _startOfDayUtcMs(CalendarDate date) =>
       DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch;
 
@@ -157,6 +164,124 @@ class DriftFlightReadRepository implements FlightReadRepository {
     return ProjectedFlight(
       record: record,
       projection: projection.project(record.flight, record.aircraft),
+    );
+  }
+
+  @override
+  Future<FlightHistory?> revisionHistory(String flightId) async {
+    final row = await (_db.select(
+      _db.flightsTable,
+    )..where((t) => t.id.equals(flightId))).getSingleOrNull();
+    if (row == null || row.committedAt == null) {
+      return null;
+    }
+
+    final aircraft = await _aircraft.find(row.aircraftId);
+    if (aircraft == null) {
+      throw StateError(
+        'Flight ${row.id} references aircraft ${row.aircraftId}, which no '
+        'longer exists',
+      );
+    }
+
+    final currentLegs = await (_db.select(
+      _db.flightRouteLegsTable,
+    )..where((t) => t.flightId.equals(flightId))).get();
+    currentLegs.sort((a, b) => a.sequence.compareTo(b.sequence));
+    final currentRoute = [for (final leg in currentLegs) leg.identifier];
+
+    final currentApproachRows = await (_db.select(
+      _db.flightApproachesTable,
+    )..where((t) => t.flightId.equals(flightId))).get();
+    final currentApproaches = [
+      for (final a in currentApproachRows)
+        <String, Object?>{
+          'type': a.type,
+          'aerodromeIcao': a.aerodromeIcao,
+          'runway': a.runway,
+          'count': a.count,
+        },
+    ];
+
+    final revisions =
+        await (_db.select(_db.flightRevisionsTable)
+              ..where((t) => t.flightId.equals(flightId))
+              ..orderBy([(t) => OrderingTerm.asc(t.recordedAt)]))
+            .get();
+
+    Flight buildFlightAsOf(int asOfEpochMs) {
+      final map = reconstructRowAsOf(
+        row,
+        revisions,
+        asOfEpochMs,
+        currentRoute: currentRoute,
+        currentApproaches: currentApproaches,
+      );
+      final reconstructedRow = FlightRow.fromJson(map);
+      final route = (map['route'] as List).cast<Object?>();
+      final approaches = (map['approaches'] as List).cast<Object?>();
+
+      final legs = [
+        for (var i = 0; i < route.length; i++)
+          FlightRouteLegRow(
+            id: '',
+            flightId: flightId,
+            sequence: i,
+            identifier: route[i] as String,
+          ),
+      ];
+      final approachRows = [
+        for (final entry in approaches)
+          () {
+            final a = Map<String, Object?>.from(entry as Map);
+            return FlightApproachRow(
+              id: '',
+              flightId: flightId,
+              type: a['type'] as String,
+              aerodromeIcao: a['aerodromeIcao'] as String,
+              runway: a['runway'] as String,
+              count: a['count'] as int,
+            );
+          }(),
+      ];
+
+      return flightFromRow(
+        reconstructedRow,
+        legs,
+        approachRows,
+        aircraftRegistration: aircraft.registration,
+      );
+    }
+
+    // The state right after commit — undoing every revision, since every
+    // real one happens after the commit instant by construction.
+    final committedFlight = buildFlightAsOf(row.committedAt!);
+
+    final entries = <FlightRevisionEntry>[
+      FlightRevisionEntry(
+        kind: FlightRevisionKind.commit,
+        recordedAt: _fromEpochMs(row.committedAt!),
+        after: committedFlight,
+      ),
+    ];
+
+    for (final revision in revisions) {
+      final after = buildFlightAsOf(revision.recordedAt);
+      final before = buildFlightAsOf(revision.recordedAt - 1);
+      entries.add(
+        FlightRevisionEntry(
+          kind: FlightRevisionKind.values.byName(revision.kind),
+          recordedAt: _fromEpochMs(revision.recordedAt),
+          after: after,
+          before: before,
+          reason: revision.reason,
+        ),
+      );
+    }
+
+    return FlightHistory(
+      isTombstoned: row.tombstonedAt != null,
+      entries: entries.reversed.toList(),
     );
   }
 

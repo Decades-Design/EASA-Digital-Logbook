@@ -241,6 +241,7 @@ class ConditionsSection extends StatelessWidget {
                     CounterStepper(
                       width: 128,
                       value: holdingProceduresCount,
+                      label: 'holding procedures',
                       onIncrement: () => onHoldingProceduresChanged(
                         holdingProceduresCount + 1,
                       ),

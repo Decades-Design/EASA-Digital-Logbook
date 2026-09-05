@@ -62,6 +62,7 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       body: IndexedStack(index: _index, children: _screens),
       floatingActionButton: FloatingActionButton(
+        tooltip: 'New flight',
         onPressed: () => Navigator.of(context).push<void>(
           MaterialPageRoute(builder: (_) => const NewFlightScreen()),
         ),

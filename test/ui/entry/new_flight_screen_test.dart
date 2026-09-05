@@ -1,17 +1,85 @@
+import 'package:drift/native.dart';
+import 'package:easa_digital_log/data/database.dart';
+import 'package:easa_digital_log/data/repositories/flight_read_repository_drift.dart';
+import 'package:easa_digital_log/data/repositories/held_aircraft_qualification_repository.dart';
+import 'package:easa_digital_log/data/repositories/held_rating_repository.dart';
+import 'package:easa_digital_log/domain/model/aircraft.dart';
+import 'package:easa_digital_log/domain/model/calendar_date.dart';
+import 'package:easa_digital_log/domain/model/flight.dart';
+import 'package:easa_digital_log/domain/model/flight_duration.dart';
+import 'package:easa_digital_log/domain/model/pilot_capacity.dart';
+import 'package:easa_digital_log/domain/model/utc_instant.dart';
+import 'package:easa_digital_log/domain/pilot_record/held_aircraft_qualification.dart';
+import 'package:easa_digital_log/domain/pilot_record/held_rating.dart';
+import 'package:easa_digital_log/domain/repository/flight_read_repository.dart';
 import 'package:easa_digital_log/ui/entry/new_flight_screen.dart';
 import 'package:easa_digital_log/ui/entry/widgets/approach_row.dart';
 import 'package:easa_digital_log/ui/entry/widgets/conditions_section.dart';
 import 'package:easa_digital_log/ui/entry/widgets/times_section.dart';
+import 'package:easa_digital_log/ui/providers/database_provider.dart';
 import 'package:easa_digital_log/ui/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+const _picCapacity = PilotCapacity(
+  commandAuthority: true,
+  soleManipulator: true,
+  soleOccupant: true,
+  multiPilotOperation: false,
+  additionalCrewRequiredByRule: false,
+  actingAsInstructor: false,
+  actingAsExaminer: false,
+  picusClaimed: false,
+  picInterventionNotRequired: false,
+);
+
+const _duplicateAircraft = Aircraft(
+  registration: 'G-DUPE',
+  manufacturer: 'Piper',
+  model: 'PA-28',
+  category: AircraftCategory.aeroplane,
+  engineType: EngineType.piston,
+  engineCount: 1,
+  operatingSurface: OperatingSurface.land,
+  requiresMultiCrew: false,
+);
+
+FlightRecord _duplicateSourceRecord() {
+  final offBlocks = UtcInstant.utc(2026, 6, 1, 9);
+  return FlightRecord(
+    id: 'source-flight',
+    aircraft: _duplicateAircraft,
+    flight: Flight(
+      aircraftRegistration: _duplicateAircraft.registration,
+      route: const ['EGKA', 'EGTB'],
+      prePlannedNavigation: false,
+      offBlocks: offBlocks,
+      onBlocks: offBlocks.add(const Duration(hours: 1)),
+      capacity: _picCapacity,
+      carryingPassengers: false,
+      takeoffs: const CircuitCounts(dayFullStop: 1),
+      landings: const CircuitCounts(dayFullStop: 1),
+      ifrFlightPlanFiled: false,
+      actualInstrumentTime: FlightDuration.zero,
+      simulatedInstrumentTime: FlightDuration.zero,
+      approaches: const [],
+      holdingProceduresCount: 0,
+      trackingPerformed: false,
+      remarks: 'Diverted for weather en route',
+    ),
+  );
+}
 
 /// Smoke coverage for the rebuilt Flight Entry Form (#58/#129,
 /// `Flight Entry Form.dc.html`). Not a full interaction suite — just enough
 /// to catch a render crash, a missing section, a layout overflow, or a
 /// jurisdiction-loading regression before it reaches a device.
 void main() {
-  Future<void> pumpScreen(WidgetTester tester) async {
+  Future<AppDatabase> pumpScreen(
+    WidgetTester tester, {
+    Future<void> Function(AppDatabase db)? seed,
+  }) async {
     // The default 800x600 test surface only builds the `ListView` children
     // inside its viewport (Sliver lazy-list semantics) — a tall surface
     // means every section builds, so `find.text` can see all of them and
@@ -22,16 +90,36 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    // The #58 qualification-gap banner reads real repository providers
+    // (`heldRatingsProvider`/`heldAircraftQualificationsProvider`), which
+    // need a working `databaseProvider` override — `NewFlightScreen` is a
+    // `ConsumerStatefulWidget`, so it needs a `ProviderScope` ancestor
+    // regardless of whether an individual test cares about held
+    // qualifications. An empty in-memory database is enough for every test
+    // that doesn't pass its own qualification-related [overrides]: no held
+    // ratings means the banner has nothing to compare against and stays
+    // hidden, exactly like before this provider existed.
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    if (seed != null) await seed(db);
+
     // `_pickTime` (new_flight_screen.dart) already forces 24-hour entry on
     // its own `showTimePicker` calls now — Zulu entry only makes sense in
     // 24-hour form — so `setTime` below can drive values like hour 21
     // without a test-side MediaQuery override to match.
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.light(), home: const NewFlightScreen()),
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const NewFlightScreen(),
+        ),
+      ),
     );
     // Lets the async assets/jurisdictions/*.yaml load (see
     // `_loadJurisdictions`) settle before assertions run.
     await tester.pumpAndSettle();
+    return db;
   }
 
   testWidgets('renders every section in docs/entry-form.md §1 order', (
@@ -63,6 +151,232 @@ void main() {
     expect(find.textContaining('Piper PA-28-161 Warrior'), findsOneWidget);
     expect(find.text('SEP land'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group('#58/#105 qualification-gap warning', () {
+    // N456BD (sample_fleet_data.dart) is the one sample aircraft with a
+    // `requiredQualifications` entry: FAA high-performance, under
+    // 'us.faa.part61'.
+    Future<void> seedFaaClassRating(AppDatabase db) =>
+        HeldRatingRepository(db).upsert(
+          const HeldRating(
+            kind: HeldRatingKind.classRating,
+            designator: 'SEP land',
+            jurisdictionId: 'us.faa.part61',
+            issueDate: CalendarDate(2020, 1, 1),
+          ),
+        );
+
+    testWidgets(
+      'warns when the picked aircraft needs a qualification held under no '
+      'licence',
+      (tester) async {
+        await pumpScreen(tester, seed: seedFaaClassRating);
+
+        await tester.enterText(find.byType(TextField).first, 'N456BD');
+        // The banner reads `FutureProvider`s backed by a real (in-memory)
+        // database query — a single `pump()` isn't enough for that Future
+        // to resolve and trigger the rebuild.
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('needs a qualification you have no record'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('FAA Part 61: High performance'),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('stays silent once the missing qualification is granted', (
+      tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        seed: (db) async {
+          await seedFaaClassRating(db);
+          await HeldAircraftQualificationRepository(db).upsert(
+            const HeldAircraftQualification(
+              qualification: AircraftQualification.faaHighPerformance,
+              jurisdictionId: 'us.faa.part61',
+              dateGranted: CalendarDate(2021, 6, 1),
+            ),
+          );
+        },
+      );
+
+      await tester.enterText(find.byType(TextField).first, 'N456BD');
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('needs a qualification you have no record'),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+      'stays silent with no held licence to compare against — never a '
+      'false positive from absent data',
+      (tester) async {
+        await pumpScreen(tester);
+
+        await tester.enterText(find.byType(TextField).first, 'N456BD');
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('needs a qualification you have no record'),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'stays silent for an aircraft with no configured qualifications',
+      (tester) async {
+        await pumpScreen(tester, seed: seedFaaClassRating);
+
+        await tester.enterText(find.byType(TextField).first, 'G-ARRW');
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('needs a qualification you have no record'),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  });
+
+  group('#58 background autosave', () {
+    Future<void> fillEnoughToBuildAFlight(WidgetTester tester) async {
+      await tester.enterText(find.byType(TextField).first, 'G-ARRW');
+      await tester.tap(find.text('--:--').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Switch to text input mode'));
+      await tester.pumpAndSettle();
+      var fields = find.descendant(
+        of: find.byType(Dialog),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(fields.at(0), '09');
+      await tester.enterText(fields.at(1), '15');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('--:--').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Switch to text input mode'));
+      await tester.pumpAndSettle();
+      fields = find.descendant(
+        of: find.byType(Dialog),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(fields.at(0), '11');
+      await tester.enterText(fields.at(1), '30');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Just me'));
+      await tester.pumpAndSettle();
+    }
+
+    // `watchDrafts()` is a reactive drift stream — its first emission is
+    // scheduled via a real `Timer`, which a widget test's fake clock never
+    // advances on its own. `tester.runAsync` briefly steps outside that
+    // fake clock so a real, one-off read like this actually resolves,
+    // instead of hanging until the test framework's own global timeout.
+    Future<List<FlightRecord>> currentDrafts(
+      WidgetTester tester,
+      AppDatabase db,
+    ) async {
+      return (await tester.runAsync(
+        () => DriftFlightReadRepository(db).watchDrafts().first,
+      ))!;
+    }
+
+    testWidgets(
+      'autosaves a new entry as a draft once there is enough to build a '
+      'flight, and reuses the same draft on a second backgrounding rather '
+      'than duplicating it',
+      (tester) async {
+        final db = await pumpScreen(tester);
+        await fillEnoughToBuildAFlight(tester);
+
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        await tester.pumpAndSettle();
+
+        final drafts = await currentDrafts(tester, db);
+        expect(drafts, hasLength(1));
+        expect(drafts.single.aircraft.registration, 'G-ARRW');
+
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        await tester.pumpAndSettle();
+
+        final draftsAfterSecondBackground = await currentDrafts(tester, db);
+        expect(draftsAfterSecondBackground, hasLength(1));
+        expect(draftsAfterSecondBackground.single.id, drafts.single.id);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'does not autosave before there is enough to build a valid flight',
+      (tester) async {
+        final db = await pumpScreen(tester);
+
+        await tester.enterText(find.byType(TextField).first, 'G-ARRW');
+        await tester.pumpAndSettle();
+
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        await tester.pumpAndSettle();
+
+        expect(await currentDrafts(tester, db), isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'an explicit "Don\'t save" deletes the autosaved draft rather than '
+      'leaving it behind',
+      (tester) async {
+        final db = await pumpScreen(tester);
+        await fillEnoughToBuildAFlight(tester);
+
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        await tester.pumpAndSettle();
+        expect(await currentDrafts(tester, db), hasLength(1));
+
+        // Simulates the pilot bringing the app back to the foreground
+        // before hitting back — `handlePopRoute` is the system back-button
+        // handler, which Flutter doesn't dispatch while still `paused`.
+        // `AppLifecycleListener` enforces the real transition graph: paused
+        // can only go back to resumed via hidden, then inactive.
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.text('Leave without finishing?'), findsOneWidget);
+        await tester.tap(find.text("Don't save"));
+        await tester.pumpAndSettle();
+
+        expect(await currentDrafts(tester, db), isEmpty);
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 
   testWidgets(
@@ -491,4 +805,168 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  group('#65 duplicate', () {
+    Future<void> pumpDuplicate(
+      WidgetTester tester, {
+      bool reverseRouteOnDuplicate = false,
+    }) async {
+      tester.view.physicalSize = const Size(390, 9000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [databaseProvider.overrideWithValue(db)],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: NewFlightScreen.duplicate(
+              record: _duplicateSourceRecord(),
+              reverseRouteOnDuplicate: reverseRouteOnDuplicate,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'carries aircraft, route and crew, but clears times, landings and '
+      'remarks',
+      (tester) async {
+        await pumpDuplicate(tester);
+
+        // Aircraft and route carried over.
+        expect(find.text('G-DUPE'), findsOneWidget);
+        expect(find.text('EGKA'), findsOneWidget);
+        expect(find.text('EGTB'), findsOneWidget);
+
+        // Times, landings and remarks are NOT carried over — this is a
+        // new, unremarkable entry, not a copy of the specific occurrence.
+        expect(find.text('--:--'), findsNWidgets(2));
+        expect(find.text('Diverted for weather en route'), findsNothing);
+
+        // Crew arrangement carried over — "Just me" is pre-selected, not
+        // left as an unanswered wizard question. The derivation strip
+        // needs block times to show anything at all (see this file's own
+        // "stays a placeholder until block times are set" test), so
+        // filling them in is what actually proves crew defaulted
+        // correctly here, not just that the buttons render.
+        await setTime(tester, '09', '00');
+        await setTime(tester, '10', '00');
+        expect(find.textContaining('EASA:'), findsOneWidget);
+
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('reverses the route when asked for the return leg', (
+      tester,
+    ) async {
+      await pumpDuplicate(tester, reverseRouteOnDuplicate: true);
+
+      final route = tester
+          .widgetList<TextField>(find.byType(TextField))
+          .map((f) => f.controller?.text)
+          .where((t) => t == 'EGKA' || t == 'EGTB')
+          .toList();
+      expect(route, ['EGTB', 'EGKA']);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('exit confirmation', () {
+    Future<void> pumpNewFlight(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 9000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [databaseProvider.overrideWithValue(db)],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const NewFlightScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a single change leaves the back button free to pop', (
+      tester,
+    ) async {
+      await pumpNewFlight(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'G-ARRW');
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Leave without finishing?'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+      '2 or more changes prompts before leaving, and "Cancel" stays on '
+      'the form',
+      (tester) async {
+        await pumpNewFlight(tester);
+
+        await tester.enterText(find.byType(TextField).first, 'G-ARRW');
+        await tester.pump();
+        await tester.tap(find.text('Just me'));
+        await tester.pump();
+
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+
+        expect(find.text('Leave without finishing?'), findsOneWidget);
+
+        // The dialog's own "Cancel" — the top bar's identically-labelled
+        // button is still in the tree underneath the dialog overlay.
+        await tester.tap(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.text('Cancel'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('New flight'), findsOneWidget);
+        expect(find.text('G-ARRW'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('"Don\'t save" discards and leaves', (tester) async {
+      await pumpNewFlight(tester);
+
+      await tester.enterText(find.byType(TextField).first, 'G-ARRW');
+      await tester.pump();
+      await tester.tap(find.text('Just me'));
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text('Leave without finishing?'), findsOneWidget);
+
+      await tester.tap(find.text("Don't save"));
+      await tester.pumpAndSettle();
+
+      // NewFlightScreen was `home:` — actually leaving pops it with
+      // nothing to replace it, so its own top bar is simply gone.
+      expect(find.text('New flight'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }
