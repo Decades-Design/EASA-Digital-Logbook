@@ -12,6 +12,7 @@ import '../../domain/totals/totals_summary.dart';
 import '../aircraft/aircraft_list_screen.dart';
 import '../currency/rule_asset_paths.dart';
 import '../currency/sample_currency_data.dart';
+import '../../io/supported_import_formats.dart';
 import '../preferences/app_preferences.dart';
 import '../providers/aircraft_providers.dart';
 import '../theme/app_colors.dart';
@@ -137,7 +138,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const _InertRow(
                   title: 'Import',
                   subtitle:
-                      'ForeFlight or Garmin CSV · preview before applying',
+                      '$supportedImportFormatsLabel · preview before applying',
                 ),
                 const _Divider(),
                 // `exportDatabaseBackup`/`isBackupOverdue`

@@ -32,5 +32,9 @@ Write-Host "pre-commit: checking for networking (#67)..."
 dart run tool/check_no_networking.dart
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "pre-commit: checking io/ vendor leakage (#68)..."
+dart run tool/check_io_vendor_leak.dart
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "pre-commit: all checks passed."
 exit 0

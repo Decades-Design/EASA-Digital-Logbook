@@ -65,6 +65,9 @@ jobs:
       - name: Check no networking (#67)
         run: dart run tool/check_no_networking.dart
 
+      - name: Check io/ vendor leakage (#68)
+        run: dart run tool/check_io_vendor_leak.dart
+
       - name: Test
         run: flutter test --coverage
 
