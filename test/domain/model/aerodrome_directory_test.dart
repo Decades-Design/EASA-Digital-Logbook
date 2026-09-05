@@ -126,7 +126,10 @@ void main() {
 
     test('byIata finds an aerodrome by IATA code case-insensitively', () {
       expect(directory.byIata('xyz')?.name, 'Remote Island Strip');
-      expect(directory.byIata('jfk')?.name, 'John F Kennedy International Airport');
+      expect(
+        directory.byIata('jfk')?.name,
+        'John F Kennedy International Airport',
+      );
     });
 
     test('byIata returns null for an unknown code', () {
@@ -151,10 +154,7 @@ void main() {
 
     test('an exact IATA match is found even with no ICAO code', () {
       final results = directory.search('XYZ');
-      expect(
-        results.any((a) => a.name == 'Remote Island Strip'),
-        isTrue,
-      );
+      expect(results.any((a) => a.name == 'Remote Island Strip'), isTrue);
     });
 
     test('a prefix match on ICAO ranks before a name substring match', () {

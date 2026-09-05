@@ -117,8 +117,9 @@ class DriftFlightReadRepository implements FlightReadRepository {
     }
   }
 
-  UtcInstant _fromEpochMs(int ms) =>
-      UtcInstant.fromDateTime(DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true));
+  UtcInstant _fromEpochMs(int ms) => UtcInstant.fromDateTime(
+    DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true),
+  );
 
   int _startOfDayUtcMs(CalendarDate date) =>
       DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch;
@@ -168,10 +169,9 @@ class DriftFlightReadRepository implements FlightReadRepository {
 
   @override
   Future<FlightHistory?> revisionHistory(String flightId) async {
-    final row =
-        await (_db.select(_db.flightsTable)
-              ..where((t) => t.id.equals(flightId)))
-            .getSingleOrNull();
+    final row = await (_db.select(
+      _db.flightsTable,
+    )..where((t) => t.id.equals(flightId))).getSingleOrNull();
     if (row == null || row.committedAt == null) {
       return null;
     }
@@ -184,17 +184,15 @@ class DriftFlightReadRepository implements FlightReadRepository {
       );
     }
 
-    final currentLegs =
-        await (_db.select(_db.flightRouteLegsTable)
-              ..where((t) => t.flightId.equals(flightId)))
-            .get();
+    final currentLegs = await (_db.select(
+      _db.flightRouteLegsTable,
+    )..where((t) => t.flightId.equals(flightId))).get();
     currentLegs.sort((a, b) => a.sequence.compareTo(b.sequence));
     final currentRoute = [for (final leg in currentLegs) leg.identifier];
 
-    final currentApproachRows =
-        await (_db.select(_db.flightApproachesTable)
-              ..where((t) => t.flightId.equals(flightId)))
-            .get();
+    final currentApproachRows = await (_db.select(
+      _db.flightApproachesTable,
+    )..where((t) => t.flightId.equals(flightId))).get();
     final currentApproaches = [
       for (final a in currentApproachRows)
         <String, Object?>{

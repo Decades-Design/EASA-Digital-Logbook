@@ -15,9 +15,7 @@ final customAerodromesProvider = StreamProvider<List<Aerodrome>>((ref) {
 
 /// ICAO codes touched by the pilot's own flights, most-recently-flown-to
 /// first (#63's "recent" ranking).
-final recentAerodromeCodesProvider = FutureProvider<List<String>>((
-  ref,
-) async {
+final recentAerodromeCodesProvider = FutureProvider<List<String>>((ref) async {
   final flights = await ref.watch(allFlightRecordsProvider.future);
   return rankAerodromesByRecency(flights);
 });

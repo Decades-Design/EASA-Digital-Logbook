@@ -186,10 +186,7 @@ class _TopBar extends StatelessWidget {
           ],
           if (onHistory != null)
             TextButton(onPressed: onHistory, child: const Text('History')),
-          TextButton(
-            onPressed: onDuplicate,
-            child: const Text('Duplicate'),
-          ),
+          TextButton(onPressed: onDuplicate, child: const Text('Duplicate')),
           TextButton(onPressed: onEdit, child: const Text('Edit')),
         ],
       ),

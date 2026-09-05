@@ -23,7 +23,10 @@ const _capacity = PilotCapacity(
   picInterventionNotRequired: false,
 );
 
-Flight _flight({List<String> route = const ['EGKA', 'EGKB'], String remarks = ''}) {
+Flight _flight({
+  List<String> route = const ['EGKA', 'EGKB'],
+  String remarks = '',
+}) {
   return Flight(
     aircraftRegistration: 'G-ABCD',
     route: route,
@@ -97,83 +100,83 @@ void main() {
     },
   );
 
+  test('an edit to a flat field appears newest-first, with the reason and '
+      'exact before/after values', () async {
+    final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
+    await writes.commit(id);
+    await writes.updateCommitted(
+      id,
+      _flight(remarks: 'landed long'),
+      reason: 'forgot to note it at the time',
+    );
+
+    final history = await reads.revisionHistory(id);
+
+    expect(history!.entries, hasLength(2));
+    final edit = history.entries[0];
+    final commit = history.entries[1];
+
+    expect(edit.kind, FlightRevisionKind.edit);
+    expect(edit.reason, 'forgot to note it at the time');
+    expect(edit.before, _flight());
+    expect(edit.after, _flight(remarks: 'landed long'));
+
+    expect(commit.kind, FlightRevisionKind.commit);
+    expect(commit.after, _flight());
+  });
+
+  test('a route-only edit is captured in history — the gap where '
+      '_diffRows alone never sees child-table changes', () async {
+    final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
+    await writes.commit(id);
+    await writes.updateCommitted(
+      id,
+      _flight(route: const ['EGKA', 'EGTB', 'EGKB']),
+    );
+
+    final history = await reads.revisionHistory(id);
+
+    expect(history!.entries, hasLength(2));
+    final edit = history.entries[0];
+    expect(edit.before!.route, ['EGKA', 'EGKB']);
+    expect(edit.after.route, ['EGKA', 'EGTB', 'EGKB']);
+  });
+
   test(
-    'an edit to a flat field appears newest-first, with the reason and '
-    'exact before/after values',
+    'chains two edits, each reconstructing the correct intermediate state',
     () async {
       final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
       await writes.commit(id);
-      await writes.updateCommitted(
-        id,
-        _flight(remarks: 'landed long'),
-        reason: 'forgot to note it at the time',
-      );
+      await writes.updateCommitted(id, _flight(remarks: 'first edit'));
+      await writes.updateCommitted(id, _flight(remarks: 'second edit'));
 
       final history = await reads.revisionHistory(id);
 
-      expect(history!.entries, hasLength(2));
-      final edit = history.entries[0];
-      final commit = history.entries[1];
-
-      expect(edit.kind, FlightRevisionKind.edit);
-      expect(edit.reason, 'forgot to note it at the time');
-      expect(edit.before, _flight());
-      expect(edit.after, _flight(remarks: 'landed long'));
-
-      expect(commit.kind, FlightRevisionKind.commit);
-      expect(commit.after, _flight());
+      expect(history!.entries, hasLength(3));
+      expect(history.entries[0].after.remarks, 'second edit');
+      expect(history.entries[0].before!.remarks, 'first edit');
+      expect(history.entries[1].after.remarks, 'first edit');
+      expect(history.entries[1].before!.remarks, '');
+      expect(history.entries[2].kind, FlightRevisionKind.commit);
+      expect(history.entries[2].after.remarks, '');
     },
   );
 
   test(
-    'a route-only edit is captured in history — the gap where '
-    '_diffRows alone never sees child-table changes',
+    'a tombstoned flight reports isTombstoned and a tombstone entry',
     () async {
       final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
       await writes.commit(id);
-      await writes.updateCommitted(
-        id,
-        _flight(route: const ['EGKA', 'EGTB', 'EGKB']),
-      );
+      await writes.tombstone(id, reason: 'duplicate entry');
 
       final history = await reads.revisionHistory(id);
 
-      expect(history!.entries, hasLength(2));
-      final edit = history.entries[0];
-      expect(edit.before!.route, ['EGKA', 'EGKB']);
-      expect(edit.after.route, ['EGKA', 'EGTB', 'EGKB']);
+      expect(history!.isTombstoned, isTrue);
+      expect(history.entries, hasLength(2));
+      expect(history.entries[0].kind, FlightRevisionKind.tombstone);
+      expect(history.entries[0].reason, 'duplicate entry');
     },
   );
-
-  test('chains two edits, each reconstructing the correct intermediate state', () async {
-    final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
-    await writes.commit(id);
-    await writes.updateCommitted(id, _flight(remarks: 'first edit'));
-    await writes.updateCommitted(id, _flight(remarks: 'second edit'));
-
-    final history = await reads.revisionHistory(id);
-
-    expect(history!.entries, hasLength(3));
-    expect(history.entries[0].after.remarks, 'second edit');
-    expect(history.entries[0].before!.remarks, 'first edit');
-    expect(history.entries[1].after.remarks, 'first edit');
-    expect(history.entries[1].before!.remarks, '');
-    expect(history.entries[2].kind, FlightRevisionKind.commit);
-    expect(history.entries[2].after.remarks, '');
-  });
-
-  test('a tombstoned flight reports isTombstoned and a tombstone entry', () async {
-    final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
-    await writes.commit(id);
-    await writes.tombstone(id, reason: 'duplicate entry');
-
-    final history = await reads.revisionHistory(id);
-
-    expect(history!.isTombstoned, isTrue);
-    expect(history.entries, hasLength(2));
-    expect(history.entries[0].kind, FlightRevisionKind.tombstone);
-    expect(history.entries[0].reason, 'duplicate entry');
-  });
 
   test('restoring a tombstoned flight clears isTombstoned', () async {
     final id = await writes.createDraft(_flight(), aircraftId: aircraftId);

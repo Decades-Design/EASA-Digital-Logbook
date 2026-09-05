@@ -150,21 +150,24 @@ class _AddCustomAerodromeScreenState
                                 label: 'ICAO code',
                                 controller: _icaoController,
                                 hint: 'optional',
-                                textCapitalization: TextCapitalization.characters,
+                                textCapitalization:
+                                    TextCapitalization.characters,
                               ),
                               const EntryCardDivider(),
                               _TextRow(
                                 label: 'IATA code',
                                 controller: _iataController,
                                 hint: 'optional',
-                                textCapitalization: TextCapitalization.characters,
+                                textCapitalization:
+                                    TextCapitalization.characters,
                               ),
                               const EntryCardDivider(),
                               _TextRow(
                                 label: 'Country',
                                 controller: _countryController,
                                 hint: 'GB (optional)',
-                                textCapitalization: TextCapitalization.characters,
+                                textCapitalization:
+                                    TextCapitalization.characters,
                               ),
                             ],
                           ),
@@ -186,29 +189,32 @@ class _AddCustomAerodromeScreenState
                                 label: 'Latitude',
                                 controller: _latController,
                                 hint: '51.4706',
-                                keyboardType: const TextInputType.numberWithOptions(
-                                  signed: true,
-                                  decimal: true,
-                                ),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      signed: true,
+                                      decimal: true,
+                                    ),
                               ),
                               const EntryCardDivider(),
                               _TextRow(
                                 label: 'Longitude',
                                 controller: _lonController,
                                 hint: '-0.461941',
-                                keyboardType: const TextInputType.numberWithOptions(
-                                  signed: true,
-                                  decimal: true,
-                                ),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      signed: true,
+                                      decimal: true,
+                                    ),
                               ),
                               const EntryCardDivider(),
                               _TextRow(
                                 label: 'Elevation (ft)',
                                 controller: _elevationController,
                                 hint: 'optional',
-                                keyboardType: const TextInputType.numberWithOptions(
-                                  signed: true,
-                                ),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      signed: true,
+                                    ),
                               ),
                             ],
                           ),

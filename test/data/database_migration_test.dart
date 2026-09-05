@@ -463,23 +463,20 @@ void main() {
     );
   });
 
-  test(
-    '#61: migrating a real v6 database to v7 preserves an existing aircraft '
-    'and backfills archived to false',
-    () async {
-      _seedV6Database(dbFile.path);
+  test('#61: migrating a real v6 database to v7 preserves an existing aircraft '
+      'and backfills archived to false', () async {
+    _seedV6Database(dbFile.path);
 
-      final db = await openWithBackup(dbFile, () async {
-        final database = AppDatabase(NativeDatabase(dbFile));
-        await database.customStatement('SELECT 1');
-        return database;
-      });
-      addTearDown(db.close);
+    final db = await openWithBackup(dbFile, () async {
+      final database = AppDatabase(NativeDatabase(dbFile));
+      await database.customStatement('SELECT 1');
+      return database;
+    });
+    addTearDown(db.close);
 
-      final aircraftRows = await db.select(db.aircraftsTable).get();
-      expect(aircraftRows, hasLength(1));
-      expect(aircraftRows.single.registration, 'G-ABCD');
-      expect(aircraftRows.single.archived, isFalse);
-    },
-  );
+    final aircraftRows = await db.select(db.aircraftsTable).get();
+    expect(aircraftRows, hasLength(1));
+    expect(aircraftRows.single.registration, 'G-ABCD');
+    expect(aircraftRows.single.archived, isFalse);
+  });
 }

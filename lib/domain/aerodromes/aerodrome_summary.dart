@@ -70,7 +70,10 @@ List<AerodromeVisit> rankAerodromesByVisits(
 /// alongside [rankAerodromesByVisits]'s "frequent" one. A flight visiting
 /// the same aerodrome twice in one route only counts its most recent visit
 /// once, same de-duplication as [rankAerodromesByVisits].
-List<String> rankAerodromesByRecency(List<FlightRecord> flights, {int limit = 8}) {
+List<String> rankAerodromesByRecency(
+  List<FlightRecord> flights, {
+  int limit = 8,
+}) {
   final lastFlown = <String, UtcInstant>{};
   for (final record in flights) {
     for (final icao in record.flight.route.toSet()) {

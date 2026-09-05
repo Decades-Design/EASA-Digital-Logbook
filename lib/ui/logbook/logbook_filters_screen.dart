@@ -58,10 +58,13 @@ class _LogbookFiltersScreenState extends ConsumerState<LogbookFiltersScreen> {
   Future<void> _pickAircraft() async {
     final recordsAsync = ref.read(aircraftRecordsProvider);
     final records = recordsAsync.value ?? const [];
-    final active = [
-      for (final r in records)
-        if (!r.aircraft.archived) r,
-    ]..sort((a, b) => a.aircraft.registration.compareTo(b.aircraft.registration));
+    final active =
+        [
+          for (final r in records)
+            if (!r.aircraft.archived) r,
+        ]..sort(
+          (a, b) => a.aircraft.registration.compareTo(b.aircraft.registration),
+        );
 
     final selected = await showModalBottomSheet<String?>(
       context: context,
@@ -104,9 +107,7 @@ class _LogbookFiltersScreenState extends ConsumerState<LogbookFiltersScreen> {
       MaterialPageRoute(builder: (_) => const AerodromePickerScreen()),
     );
     if (identifier == null) return;
-    setState(
-      () => _filter = _filter.copyWith(aerodromeIdentifier: identifier),
-    );
+    setState(() => _filter = _filter.copyWith(aerodromeIdentifier: identifier));
   }
 
   @override
@@ -223,9 +224,7 @@ class _LogbookFiltersScreenState extends ConsumerState<LogbookFiltersScreen> {
                                 onChanged: (v) => setState(
                                   () => _filter = v == null
                                       ? _filter.copyWith(clearIfr: true)
-                                      : _filter.copyWith(
-                                          ifrFlightPlanFiled: v,
-                                        ),
+                                      : _filter.copyWith(ifrFlightPlanFiled: v),
                                 ),
                               ),
                             ],
@@ -406,8 +405,18 @@ class _TriStateRow extends StatelessWidget {
 }
 
 const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 String _formatDate(CalendarDate? date) {

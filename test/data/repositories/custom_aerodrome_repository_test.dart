@@ -49,6 +49,9 @@ void main() {
     final all = await repository.watchAll().first;
 
     expect(all, hasLength(2));
-    expect(all.map((a) => a.name), containsAll(["Wicker's Field", 'Second Strip']));
+    expect(
+      all.map((a) => a.name),
+      containsAll(["Wicker's Field", 'Second Strip']),
+    );
   });
 }

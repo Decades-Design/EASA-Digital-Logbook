@@ -129,7 +129,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const _Divider(),
                 _InertRow(
                   title: 'Aerodromes',
-                  subtitle: '$aerodromeCount visited · no management screen '
+                  subtitle:
+                      '$aerodromeCount visited · no management screen '
                       'yet (#63)',
                 ),
                 const _Divider(),

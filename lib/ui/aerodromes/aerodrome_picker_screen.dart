@@ -32,8 +32,7 @@ class AerodromePickerScreen extends ConsumerStatefulWidget {
       _AerodromePickerScreenState();
 }
 
-class _AerodromePickerScreenState
-    extends ConsumerState<AerodromePickerScreen> {
+class _AerodromePickerScreenState extends ConsumerState<AerodromePickerScreen> {
   final _searchController = TextEditingController();
   String _query = '';
 
@@ -54,8 +53,7 @@ class _AerodromePickerScreenState
   Future<void> _addCustom() async {
     final created = await Navigator.of(context).push<Aerodrome>(
       MaterialPageRoute(
-        builder: (_) =>
-            AddCustomAerodromeScreen(prefillName: _query.trim()),
+        builder: (_) => AddCustomAerodromeScreen(prefillName: _query.trim()),
       ),
     );
     if (created != null && mounted) {
@@ -110,8 +108,7 @@ class _AerodromePickerScreenState
             ),
             Expanded(
               child: directoryAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stackTrace) => const Padding(
                   padding: EdgeInsets.all(20),
                   child: Text('The aerodrome dataset could not be loaded.'),
@@ -180,18 +177,12 @@ class _BrowseList extends ConsumerWidget {
               if (recent.isNotEmpty) ...[
                 const _SectionHeader('RECENT'),
                 for (final icao in recent)
-                  _AerodromeRow(
-                    icao: icao,
-                    aerodrome: directory.byIcao(icao),
-                  ),
+                  _AerodromeRow(icao: icao, aerodrome: directory.byIcao(icao)),
               ],
               if (frequentOnly.isNotEmpty) ...[
                 const _SectionHeader('FREQUENT'),
                 for (final icao in frequentOnly)
-                  _AerodromeRow(
-                    icao: icao,
-                    aerodrome: directory.byIcao(icao),
-                  ),
+                  _AerodromeRow(icao: icao, aerodrome: directory.byIcao(icao)),
               ],
             ],
           );

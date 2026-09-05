@@ -125,44 +125,41 @@ void main() {
     expect(changed['remarks'], 'first');
   });
 
-  test(
-    'updateCommitted captures a route-only change too, which _diffRows '
-    'alone (flat FlightsTable columns only) never sees',
-    () async {
-      final id = await flights.createDraft(_draft(), aircraftId: aircraftId);
-      await flights.commit(id);
+  test('updateCommitted captures a route-only change too, which _diffRows '
+      'alone (flat FlightsTable columns only) never sees', () async {
+    final id = await flights.createDraft(_draft(), aircraftId: aircraftId);
+    await flights.commit(id);
 
-      await flights.updateCommitted(
-        id,
-        Flight(
-          aircraftRegistration: 'G-ABCD',
-          route: const ['EGKA', 'EGTB', 'EGKB'],
-          prePlannedNavigation: false,
-          offBlocks: UtcInstant.utc(2026, 6, 1, 10),
-          onBlocks: UtcInstant.utc(2026, 6, 1, 11),
-          capacity: _capacity,
-          carryingPassengers: false,
-          takeoffs: const CircuitCounts(dayFullStop: 1),
-          landings: const CircuitCounts(dayFullStop: 1),
-          ifrFlightPlanFiled: false,
-          actualInstrumentTime: FlightDuration.zero,
-          simulatedInstrumentTime: FlightDuration.zero,
-          approaches: const [],
-          holdingProceduresCount: 0,
-          trackingPerformed: false,
-          remarks: '',
-        ),
-      );
+    await flights.updateCommitted(
+      id,
+      Flight(
+        aircraftRegistration: 'G-ABCD',
+        route: const ['EGKA', 'EGTB', 'EGKB'],
+        prePlannedNavigation: false,
+        offBlocks: UtcInstant.utc(2026, 6, 1, 10),
+        onBlocks: UtcInstant.utc(2026, 6, 1, 11),
+        capacity: _capacity,
+        carryingPassengers: false,
+        takeoffs: const CircuitCounts(dayFullStop: 1),
+        landings: const CircuitCounts(dayFullStop: 1),
+        ifrFlightPlanFiled: false,
+        actualInstrumentTime: FlightDuration.zero,
+        simulatedInstrumentTime: FlightDuration.zero,
+        approaches: const [],
+        holdingProceduresCount: 0,
+        trackingPerformed: false,
+        remarks: '',
+      ),
+    );
 
-      final revisions = await (db.select(
-        db.flightRevisionsTable,
-      )..where((t) => t.flightId.equals(id))).get();
-      expect(revisions, hasLength(1));
-      final changed =
-          jsonDecode(revisions.single.changedFields) as Map<String, dynamic>;
-      expect(changed['route'], ['EGKA', 'EGKB']);
-    },
-  );
+    final revisions = await (db.select(
+      db.flightRevisionsTable,
+    )..where((t) => t.flightId.equals(id))).get();
+    expect(revisions, hasLength(1));
+    final changed =
+        jsonDecode(revisions.single.changedFields) as Map<String, dynamic>;
+    expect(changed['route'], ['EGKA', 'EGKB']);
+  });
 
   test(
     'two edits recorded back-to-back never tie on recordedAt, even though '
@@ -174,10 +171,11 @@ void main() {
       await flights.updateCommitted(id, _draft(remarks: 'first'));
       await flights.updateCommitted(id, _draft(remarks: 'second'));
 
-      final revisions = await (db.select(db.flightRevisionsTable)
-            ..where((t) => t.flightId.equals(id))
-            ..orderBy([(t) => OrderingTerm.asc(t.recordedAt)]))
-          .get();
+      final revisions =
+          await (db.select(db.flightRevisionsTable)
+                ..where((t) => t.flightId.equals(id))
+                ..orderBy([(t) => OrderingTerm.asc(t.recordedAt)]))
+              .get();
       expect(revisions, hasLength(2));
       expect(revisions[0].recordedAt, lessThan(revisions[1].recordedAt));
     },

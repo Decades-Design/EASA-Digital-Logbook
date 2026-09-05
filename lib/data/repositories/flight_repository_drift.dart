@@ -174,20 +174,18 @@ class DriftFlightRepository implements FlightRepository {
   ) async {
     final changed = <String, Object?>{};
 
-    final oldLegs =
-        await (_db.select(_db.flightRouteLegsTable)
-              ..where((t) => t.flightId.equals(flightId)))
-            .get();
+    final oldLegs = await (_db.select(
+      _db.flightRouteLegsTable,
+    )..where((t) => t.flightId.equals(flightId))).get();
     oldLegs.sort((a, b) => a.sequence.compareTo(b.sequence));
     final oldRoute = [for (final leg in oldLegs) leg.identifier];
     if (!_listEquals(oldRoute, newFlight.route)) {
       changed['route'] = oldRoute;
     }
 
-    final oldApproachRows =
-        await (_db.select(_db.flightApproachesTable)
-              ..where((t) => t.flightId.equals(flightId)))
-            .get();
+    final oldApproachRows = await (_db.select(
+      _db.flightApproachesTable,
+    )..where((t) => t.flightId.equals(flightId))).get();
     final oldApproaches = [
       for (final row in oldApproachRows)
         Approach(
@@ -243,11 +241,8 @@ class DriftFlightRepository implements FlightRepository {
               }),
             ),
           );
-      await (_db.update(
-        _db.flightsTable,
-      )..where((t) => t.id.equals(flightId))).write(
-        FlightsTableCompanion(tombstonedAt: Value(recordedAt)),
-      );
+      await (_db.update(_db.flightsTable)..where((t) => t.id.equals(flightId)))
+          .write(FlightsTableCompanion(tombstonedAt: Value(recordedAt)));
     });
   }
 

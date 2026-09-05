@@ -50,29 +50,30 @@ class AircraftListScreen extends ConsumerWidget {
             ),
             Expanded(
               child: recordsAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stackTrace) => const Padding(
                   padding: EdgeInsets.all(20),
                   child: Text('Aircraft could not be loaded.'),
                 ),
                 data: (records) {
-                  final active = [
-                    for (final r in records)
-                      if (!r.aircraft.archived) r,
-                  ]..sort(
-                    (a, b) => a.aircraft.registration.compareTo(
-                      b.aircraft.registration,
-                    ),
-                  );
-                  final archived = [
-                    for (final r in records)
-                      if (r.aircraft.archived) r,
-                  ]..sort(
-                    (a, b) => a.aircraft.registration.compareTo(
-                      b.aircraft.registration,
-                    ),
-                  );
+                  final active =
+                      [
+                        for (final r in records)
+                          if (!r.aircraft.archived) r,
+                      ]..sort(
+                        (a, b) => a.aircraft.registration.compareTo(
+                          b.aircraft.registration,
+                        ),
+                      );
+                  final archived =
+                      [
+                        for (final r in records)
+                          if (r.aircraft.archived) r,
+                      ]..sort(
+                        (a, b) => a.aircraft.registration.compareTo(
+                          b.aircraft.registration,
+                        ),
+                      );
 
                   if (active.isEmpty && archived.isEmpty) {
                     return Padding(
@@ -89,8 +90,7 @@ class AircraftListScreen extends ConsumerWidget {
                   return ListView(
                     padding: const EdgeInsets.only(bottom: 32),
                     children: [
-                      for (final record in active)
-                        _AircraftRow(record: record),
+                      for (final record in active) _AircraftRow(record: record),
                       if (archived.isNotEmpty) ...[
                         const _SectionHeader('ARCHIVED'),
                         for (final record in archived)
@@ -144,9 +144,7 @@ class _AircraftRow extends StatelessWidget {
 
     return InkWell(
       onTap: () => Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          builder: (_) => AircraftEditScreen(existing: record),
-        ),
+        MaterialPageRoute(builder: (_) => AircraftEditScreen(existing: record)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

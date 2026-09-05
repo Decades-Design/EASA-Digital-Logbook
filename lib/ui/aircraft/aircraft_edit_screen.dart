@@ -22,8 +22,7 @@ class AircraftEditScreen extends ConsumerStatefulWidget {
   final AircraftRecord? existing;
 
   @override
-  ConsumerState<AircraftEditScreen> createState() =>
-      _AircraftEditScreenState();
+  ConsumerState<AircraftEditScreen> createState() => _AircraftEditScreenState();
 }
 
 class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
@@ -66,7 +65,8 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
     _operatingSurface = aircraft?.operatingSurface ?? OperatingSurface.land;
     _requiresMultiCrew = aircraft?.requiresMultiCrew ?? false;
     _requiredQualifications = {
-      for (final entry in (aircraft?.requiredQualifications ?? const {}).entries)
+      for (final entry
+          in (aircraft?.requiredQualifications ?? const {}).entries)
         entry.key: Set.of(entry.value),
     };
     _archived = aircraft?.archived ?? false;
@@ -99,18 +99,18 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
     final duplicateId = await repository.findIdByRegistration(registration);
     if (duplicateId != null && duplicateId != existingId) {
       setState(
-        () => _error = '$registration is already registered to another '
+        () => _error =
+            '$registration is already registered to another '
             'aircraft in this logbook.',
       );
       return;
     }
 
     if (existingId != null) {
-      final qualificationsChanged =
-          !_mapEquals(
-            _requiredQualifications,
-            widget.existing!.aircraft.requiredQualifications,
-          );
+      final qualificationsChanged = !_mapEquals(
+        _requiredQualifications,
+        widget.existing!.aircraft.requiredQualifications,
+      );
       if (qualificationsChanged) {
         final confirmed = await _confirmQualificationChange();
         if (confirmed != true) return;
@@ -168,9 +168,7 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
   Future<void> _toggleArchived() async {
     final id = widget.existing?.id;
     if (id == null) return;
-    await ref
-        .read(aircraftRepositoryProvider)
-        .setArchived(id, !_archived);
+    await ref.read(aircraftRepositoryProvider).setArchived(id, !_archived);
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -332,9 +330,7 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
                                       icon: const Icon(Icons.remove, size: 18),
                                       tooltip: 'Decrease engine count',
                                       onPressed: _engineCount > 1
-                                          ? () => setState(
-                                              () => _engineCount--,
-                                            )
+                                          ? () => setState(() => _engineCount--)
                                           : null,
                                     ),
                                     Text(
@@ -366,9 +362,8 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
                                         child: Text(_surfaceLabel(s)),
                                       ),
                                   ],
-                                  onChanged: (v) => setState(
-                                    () => _operatingSurface = v!,
-                                  ),
+                                  onChanged: (v) =>
+                                      setState(() => _operatingSurface = v!),
                                 ),
                               ),
                               const EntryCardDivider(),
@@ -393,8 +388,7 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
                       configured: _requiredQualifications.containsKey(
                         jurisdictionId,
                       ),
-                      held:
-                          _requiredQualifications[jurisdictionId] ?? const {},
+                      held: _requiredQualifications[jurisdictionId] ?? const {},
                       onToggleConfigured: (configured) => setState(() {
                         if (configured) {
                           _requiredQualifications[jurisdictionId] = {};
@@ -404,15 +398,15 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
                       }),
                       onToggleQualification: (qualification, held) =>
                           setState(() {
-                        final set =
-                            _requiredQualifications[jurisdictionId] ?? {};
-                        if (held) {
-                          set.add(qualification);
-                        } else {
-                          set.remove(qualification);
-                        }
-                        _requiredQualifications[jurisdictionId] = set;
-                      }),
+                            final set =
+                                _requiredQualifications[jurisdictionId] ?? {};
+                            if (held) {
+                              set.add(qualification);
+                            } else {
+                              set.remove(qualification);
+                            }
+                            _requiredQualifications[jurisdictionId] = set;
+                          }),
                     ),
                   if (isEditing) ...[
                     const SizedBox(height: 22),
@@ -425,9 +419,7 @@ class _AircraftEditScreenState extends ConsumerState<AircraftEditScreen> {
                               ? theme.colorScheme.primary
                               : context.semanticColors.currencyWarning,
                         ),
-                        child: Text(
-                          _archived ? 'Unarchive' : 'Archive',
-                        ),
+                        child: Text(_archived ? 'Unarchive' : 'Archive'),
                       ),
                     ),
                   ],
@@ -571,7 +563,10 @@ class _QualificationSection extends StatelessWidget {
               children: [
                 EntryCardRow(
                   label: 'Configured for $label',
-                  child: Switch(value: configured, onChanged: onToggleConfigured),
+                  child: Switch(
+                    value: configured,
+                    onChanged: onToggleConfigured,
+                  ),
                 ),
                 if (!configured)
                   Padding(

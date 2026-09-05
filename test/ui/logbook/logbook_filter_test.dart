@@ -80,26 +80,26 @@ void main() {
     });
 
     test('false once any field is set', () {
-      expect(
-        const LogbookFilter(searchText: 'x').isEmpty,
-        isFalse,
-      );
-      expect(
-        const LogbookFilter(ifrFlightPlanFiled: true).isEmpty,
-        isFalse,
-      );
+      expect(const LogbookFilter(searchText: 'x').isEmpty, isFalse);
+      expect(const LogbookFilter(ifrFlightPlanFiled: true).isEmpty, isFalse);
     });
   });
 
   group('LogbookFilter.matches — date range', () {
     test('excludes a flight before "from"', () {
       const filter = LogbookFilter(from: CalendarDate(2026, 6, 15));
-      expect(filter.matches(_record(date: const CalendarDate(2026, 6, 1))), isFalse);
+      expect(
+        filter.matches(_record(date: const CalendarDate(2026, 6, 1))),
+        isFalse,
+      );
     });
 
     test('excludes a flight after "to"', () {
       const filter = LogbookFilter(to: CalendarDate(2026, 6, 15));
-      expect(filter.matches(_record(date: const CalendarDate(2026, 7, 1))), isFalse);
+      expect(
+        filter.matches(_record(date: const CalendarDate(2026, 7, 1))),
+        isFalse,
+      );
     });
 
     test('includes a flight within the range, inclusive of both ends', () {
@@ -107,8 +107,14 @@ void main() {
         from: CalendarDate(2026, 6, 1),
         to: CalendarDate(2026, 6, 30),
       );
-      expect(filter.matches(_record(date: const CalendarDate(2026, 6, 1))), isTrue);
-      expect(filter.matches(_record(date: const CalendarDate(2026, 6, 30))), isTrue);
+      expect(
+        filter.matches(_record(date: const CalendarDate(2026, 6, 1))),
+        isTrue,
+      );
+      expect(
+        filter.matches(_record(date: const CalendarDate(2026, 6, 30))),
+        isTrue,
+      );
     });
   });
 
@@ -181,10 +187,7 @@ void main() {
 
     test('every set dimension must match (ANDed)', () {
       const filter = LogbookFilter(
-        capacity: CapacityFilter(
-          commandAuthority: true,
-          picusClaimed: true,
-        ),
+        capacity: CapacityFilter(commandAuthority: true, picusClaimed: true),
       );
       // commandAuthority true, picusClaimed false (default) — fails the AND.
       expect(filter.matches(_record()), isFalse);
@@ -227,10 +230,7 @@ void main() {
 
     test('matches a crew name (other pilot)', () {
       const filter = LogbookFilter(searchText: 'smith');
-      expect(
-        filter.matches(_record(otherPilotName: 'J. Smith')),
-        isTrue,
-      );
+      expect(filter.matches(_record(otherPilotName: 'J. Smith')), isTrue);
     });
 
     test('matches an instructor name', () {

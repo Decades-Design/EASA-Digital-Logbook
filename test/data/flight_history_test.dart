@@ -127,33 +127,30 @@ void main() {
     expect(result['remarks'], 'current');
   });
 
-  test(
-    'seeds route/approaches from the current values when provided, and '
-    'a revision can undo them like any flat column',
-    () {
-      final withoutRevisions = reconstructRowAsOf(
-        _row(),
-        [],
-        5000,
-        currentRoute: const ['EGKA', 'EGKB'],
-        currentApproaches: const [
-          {'type': 'rnav', 'aerodromeIcao': 'EGKB', 'runway': '20', 'count': 1},
-        ],
-      );
-      expect(withoutRevisions['route'], ['EGKA', 'EGKB']);
+  test('seeds route/approaches from the current values when provided, and '
+      'a revision can undo them like any flat column', () {
+    final withoutRevisions = reconstructRowAsOf(
+      _row(),
+      [],
+      5000,
+      currentRoute: const ['EGKA', 'EGKB'],
+      currentApproaches: const [
+        {'type': 'rnav', 'aerodromeIcao': 'EGKB', 'runway': '20', 'count': 1},
+      ],
+    );
+    expect(withoutRevisions['route'], ['EGKA', 'EGKB']);
 
-      final revisions = [
-        _revision(3000, 'edit', {
-          'route': ['EGKA', 'EGTB', 'EGKB'],
-        }),
-      ];
-      final undone = reconstructRowAsOf(
-        _row(),
-        revisions,
-        2000,
-        currentRoute: const ['EGKA', 'EGKB'],
-      );
-      expect(undone['route'], ['EGKA', 'EGTB', 'EGKB']);
-    },
-  );
+    final revisions = [
+      _revision(3000, 'edit', {
+        'route': ['EGKA', 'EGTB', 'EGKB'],
+      }),
+    ];
+    final undone = reconstructRowAsOf(
+      _row(),
+      revisions,
+      2000,
+      currentRoute: const ['EGKA', 'EGKB'],
+    );
+    expect(undone['route'], ['EGKA', 'EGTB', 'EGKB']);
+  });
 }

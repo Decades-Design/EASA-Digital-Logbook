@@ -80,8 +80,7 @@ class RevisionHistoryScreen extends ConsumerWidget {
             ),
             Expanded(
               child: historyAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stackTrace) => const Padding(
                   padding: EdgeInsets.all(20),
                   child: Text('History could not be loaded.'),
@@ -210,7 +209,9 @@ class _RevisionCard extends StatelessWidget {
             ),
             FlightRevisionKind.edit => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [for (final change in changes) _ChangeRow(change: change)],
+              children: [
+                for (final change in changes) _ChangeRow(change: change),
+              ],
             ),
           },
         ],
@@ -275,8 +276,18 @@ String _kindLabel(FlightRevisionKind kind) => switch (kind) {
 String _formatUtcDateTime(UtcInstant instant) {
   final d = instant.asUtcDateTime;
   final months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   final hh = d.hour.toString().padLeft(2, '0');
   final mm = d.minute.toString().padLeft(2, '0');

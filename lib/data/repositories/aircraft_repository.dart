@@ -72,10 +72,9 @@ class AircraftRepository {
   /// hitting the `registration` unique-constraint violation a blind
   /// `upsert` with a fresh id would throw.
   Future<String?> findIdByRegistration(String registration) async {
-    final row =
-        await (_db.select(_db.aircraftsTable)
-              ..where((t) => t.registration.equals(registration)))
-            .getSingleOrNull();
+    final row = await (_db.select(
+      _db.aircraftsTable,
+    )..where((t) => t.registration.equals(registration))).getSingleOrNull();
     return row?.id;
   }
 
@@ -95,12 +94,15 @@ class AircraftRepository {
   /// out is the entry-form picker's own concern (#58/#61), not this
   /// repository's.
   Stream<List<AircraftRecord>> watchAll() {
-    return _db.select(_db.aircraftsTable).watch().asyncMap(
-      (rows) async => [
-        for (final row in rows)
-          AircraftRecord(id: row.id, aircraft: await _fromRow(row)),
-      ],
-    );
+    return _db
+        .select(_db.aircraftsTable)
+        .watch()
+        .asyncMap(
+          (rows) async => [
+            for (final row in rows)
+              AircraftRecord(id: row.id, aircraft: await _fromRow(row)),
+          ],
+        );
   }
 
   /// A plain flag flip, not a full [upsert] — an archive/unarchive action
@@ -108,11 +110,8 @@ class AircraftRepository {
   /// upsert's delete-and-reinsert of the qualification child rows for no
   /// reason.
   Future<void> setArchived(String id, bool archived) {
-    return (_db.update(
-      _db.aircraftsTable,
-    )..where((t) => t.id.equals(id))).write(
-      AircraftsTableCompanion(archived: Value(archived)),
-    );
+    return (_db.update(_db.aircraftsTable)..where((t) => t.id.equals(id)))
+        .write(AircraftsTableCompanion(archived: Value(archived)));
   }
 
   Future<domain.Aircraft> _fromRow(AircraftRow row) async {
