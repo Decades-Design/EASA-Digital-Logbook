@@ -95,10 +95,11 @@ void main() {
       };
 
       booleans.forEach((field, read) {
-        expect(capacities.map(read).toSet(), <bool>{
-          true,
-          false,
-        }, reason: '$field never varies across the fixtures');
+        expect(
+          capacities.map(read).toSet(),
+          <bool>{true, false},
+          reason: '$field never varies across the fixtures',
+        );
       });
 
       final optionals = <String, Object? Function(PilotCapacity)>{
