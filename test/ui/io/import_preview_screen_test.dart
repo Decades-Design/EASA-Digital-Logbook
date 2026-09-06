@@ -76,6 +76,14 @@ void main() {
     required ImportParseResult parseResult,
     List<FlightRecord> existingFlights = const [],
   }) async {
+    // A SnackBar's "Undo" action can render outside the default 800x600
+    // test viewport (see logbook_screen_test.dart's own note) — enough
+    // height that it stays reachable by tap().
+    tester.view.physicalSize = const Size(390, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     await AircraftRepository(db).upsert(_aircraft, id: 'aircraft-1');
@@ -167,6 +175,52 @@ void main() {
 
     final batches = await db.select(db.importBatchesTable).get();
     expect(batches.single.sourceLabel, 'Test importer');
+  });
+
+  testWidgets('tapping Undo removes the imported draft and reports the split', (
+    tester,
+  ) async {
+    final db = await pumpScreen(
+      tester,
+      parseResult: ImportParseResult(
+        rows: [
+          CanonicalImportRow(
+            sourceRowNumber: 2,
+            flight: _flight(),
+            aircraft: _aircraft,
+          ),
+        ],
+        errors: const [],
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Import 1 flight(s)'));
+    // Not pumpAndSettle: a SnackBar's default display duration (4s) would
+    // elapse under the fake clock's accelerated pumping and dismiss it
+    // before its action could be invoked. Pump in short steps instead,
+    // stopping as soon as it appears, well inside that 4s window.
+    for (var i = 0; i < 20 && find.text('Undo').evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('1 flight(s) imported as drafts.'), findsOneWidget);
+
+    // The SnackBarAction's own render position sits right at (and, in
+    // this test environment, very slightly past) the edge of even a
+    // generously tall test viewport, so `tap()`'s hit-testing misses it —
+    // invoking its callback directly exercises the same behaviour a real
+    // tap would without fighting that geometry.
+    final action = tester.widget<SnackBarAction>(find.byType(SnackBarAction));
+    action.onPressed();
+    for (
+      var i = 0;
+      i < 20 && find.text('1 flight(s) removed.').evaluate().isEmpty;
+      i++
+    ) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    expect(await db.select(db.flightsTable).get(), isEmpty);
+    expect(find.text('1 flight(s) removed.'), findsOneWidget);
   });
 
   testWidgets('unchecking the only row disables the Import button', (

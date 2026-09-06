@@ -81,17 +81,40 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
         flightRepository: ref.read(flightRepositoryProvider),
       );
       if (!mounted) return;
+      // Captured before popping: ScaffoldMessenger.of resolves to the app's
+      // single ancestor messenger (above the Navigator), which stays
+      // mounted across this pop — the "Undo" SnackBar's own action, and its
+      // own follow-up report, both need to post after this screen is gone.
+      final messenger = ScaffoldMessenger.of(context);
+      final flightRepository = ref.read(flightRepositoryProvider);
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('${selected.length} flight(s) imported as drafts.'),
           action: SnackBarAction(
             label: 'Undo',
             onPressed: () async {
               try {
-                await ref
-                    .read(flightRepositoryProvider)
-                    .undoImportBatch(batchId);
+                // #73: "reporting the split to the user" — a flight already
+                // committed in the meantime is tombstoned, not deleted, so
+                // the pilot needs to know both counts, not just "undone".
+                final result = await flightRepository.undoImportBatch(batchId);
+                // Replace the "imported" SnackBar immediately rather than
+                // queuing behind its own display duration — the pilot just
+                // asked for this outcome, they shouldn't wait ~4s to see it
+                // confirmed.
+                messenger.hideCurrentSnackBar();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      result.tombstonedCommittedCount == 0
+                          ? '${result.deletedDraftCount} flight(s) removed.'
+                          : '${result.deletedDraftCount} flight(s) removed, '
+                                '${result.tombstonedCommittedCount} already '
+                                'committed flight(s) tombstoned.',
+                    ),
+                  ),
+                );
               } on StateError {
                 // Already undone (e.g. double-tapped) — nothing more to do.
               }
