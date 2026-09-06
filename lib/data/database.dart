@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 
 import 'open_with_backup.dart';
 import 'tables/aircraft_tables.dart';
+import 'tables/csv_mapping_profile_table.dart';
 import 'tables/custom_aerodrome_table.dart';
 import 'tables/export_record_table.dart';
 import 'tables/flight_tables.dart';
@@ -30,13 +31,14 @@ part 'database.g.dart';
     HeldRatingsTable,
     ImportBatchesTable,
     ExportRecordsTable,
+    CsvMappingProfilesTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -116,6 +118,11 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(importBatchesTable);
         await m.createTable(exportRecordsTable);
         await m.addColumn(flightsTable, flightsTable.importBatchId);
+      }
+      // #72: adds csv_mapping_profiles. References nothing and nothing
+      // references it, so a plain CREATE TABLE with no ordering concerns.
+      if (from < 9) {
+        await m.createTable(csvMappingProfilesTable);
       }
     },
     beforeOpen: (details) async {

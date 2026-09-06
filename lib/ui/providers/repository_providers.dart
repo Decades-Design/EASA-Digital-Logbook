@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/aircraft_repository.dart';
+import '../../data/repositories/csv_mapping_profile_repository.dart';
 import '../../data/repositories/custom_aerodrome_repository.dart';
 import '../../data/repositories/export_record_repository_drift.dart';
 import '../../data/repositories/flight_read_repository_drift.dart';
@@ -54,3 +55,8 @@ final customAerodromeRepositoryProvider = Provider<CustomAerodromeRepository>(
 final exportRecordRepositoryProvider = Provider<ExportRecordRepository>(
   (ref) => DriftExportRecordRepository(ref.watch(databaseProvider)),
 );
+
+final csvMappingProfileRepositoryProvider =
+    Provider<CsvMappingProfileRepository>(
+      (ref) => CsvMappingProfileRepository(ref.watch(databaseProvider)),
+    );
