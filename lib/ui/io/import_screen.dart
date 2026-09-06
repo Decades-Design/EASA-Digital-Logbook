@@ -3,9 +3,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../../io/foreflight/foreflight_adapter.dart';
-import '../../io/garmin/garmin_adapter.dart';
 import '../../io/import_adapter.dart';
+import '../../io/import_formats.dart';
 import '../theme/app_colors.dart';
 import 'generic_csv_mapping_screen.dart';
 import 'import_preview_screen.dart';
@@ -67,27 +66,22 @@ class _ImportScreenState extends State<ImportScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _importForeFlight() => _run('ForeFlight', () async {
-    final csv = await _pickCsv(dialogTitle: 'Select logbook_template.csv');
-    if (csv == null) return null;
-    return ForeFlightAdapter().parse({ForeFlightAdapter.logbookKey: csv});
-  });
+  Future<void> _importSingleFile(SingleFileImportFormat format) =>
+      _run(format.label, () async {
+        final source = await _pickCsv(dialogTitle: format.dialogTitle);
+        if (source == null) return null;
+        return format.parse(source);
+      });
 
-  Future<void> _importGarmin() => _run('Garmin Pilot', () async {
-    final aircraftTypesCsv = await _pickCsv(
-      dialogTitle: 'Select the aircraft-types export',
-    );
-    if (aircraftTypesCsv == null) return null;
-    if (!mounted) return null;
-    final logEntriesCsv = await _pickCsv(
-      dialogTitle: 'Select the logbook export',
-    );
-    if (logEntriesCsv == null) return null;
-    return GarminAdapter().parse({
-      GarminAdapter.aircraftTypesKey: aircraftTypesCsv,
-      GarminAdapter.logEntriesKey: logEntriesCsv,
-    });
-  });
+  Future<void> _importTwoFiles(TwoFileImportFormat format) =>
+      _run(format.label, () async {
+        final first = await _pickCsv(dialogTitle: format.firstDialogTitle);
+        if (first == null) return null;
+        if (!mounted) return null;
+        final second = await _pickCsv(dialogTitle: format.secondDialogTitle);
+        if (second == null) return null;
+        return format.parse(first, second);
+      });
 
   Future<void> _startGenericCsv() async {
     setState(() => _busy = true);
@@ -138,15 +132,17 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
             if (_busy) const LinearProgressIndicator(),
             _FormatRow(
-              title: 'ForeFlight',
-              subtitle: 'logbook_template.csv',
-              onTap: _busy ? null : _importForeFlight,
+              title: foreFlightImportFormat.label,
+              subtitle: foreFlightImportFormat.subtitle,
+              onTap: _busy
+                  ? null
+                  : () => _importSingleFile(foreFlightImportFormat),
             ),
             const Divider(height: 1),
             _FormatRow(
-              title: 'Garmin Pilot',
-              subtitle: 'Aircraft types + logbook CSV (two files)',
-              onTap: _busy ? null : _importGarmin,
+              title: garminImportFormat.label,
+              subtitle: garminImportFormat.subtitle,
+              onTap: _busy ? null : () => _importTwoFiles(garminImportFormat),
             ),
             const Divider(height: 1),
             _FormatRow(

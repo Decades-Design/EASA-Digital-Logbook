@@ -53,10 +53,18 @@ class VendorLeak {
   String toString() => '$filePath:$line  names "$vendorName"';
 }
 
-/// Whether [filePath] sits inside the exempt `lib/io/` tree.
+/// Whether [filePath] sits inside the exempt `lib/io/` tree — the path's
+/// first two segments must be exactly `lib/io`, not merely contain an `io`
+/// segment anywhere. #70 caught the difference the hard way: `lib/ui/io/`
+/// (this app's import/export *screens*, not adapters) has its own `io`
+/// segment too, and a bare `segments.contains('io')` check exempted it
+/// right along with the real `lib/io/` adapter tree — silently un-checking
+/// every vendor-name string literal those screens happen to show a pilot.
 bool _isExempt(String filePath) {
   final segments = filePath.replaceAll(r'\', '/').split('/');
-  return segments.contains(_ioSegment);
+  return segments.length >= 2 &&
+      segments[0] == _sourceTarget &&
+      segments[1] == _ioSegment;
 }
 
 /// Returns every banned vendor name [source] mentions, outside comments.
