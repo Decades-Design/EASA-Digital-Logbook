@@ -43,6 +43,7 @@ const Set<String> allowedPackages = {
   'json_annotation',
   'package_info_plus',
   'path_provider',
+  'pdf',
   'shared_preferences',
   'sqlite3_flutter_libs',
   'yaml',
@@ -168,6 +169,22 @@ const Set<String> allowedPackages = {
   'petitparser',
   'windows_file_picker',
   'xml',
+
+  // ---- pdf (#76's AMC1 FCL.050 layout) and its own transitive tree — pure
+  // document/image generation, no I/O of its own. `image`/`archive` decode
+  // and encode bitmaps (`archive` is `image`'s own zip/deflate support for
+  // formats like PNG); `path_parsing` parses SVG path data for vector
+  // drawing; `posix`, `qr` and `barcode` are the pdf package's own
+  // dependencies for POSIX font-directory lookups, QR codes and barcode
+  // generation; `bidi` supports right-to-left text shaping. None of it is
+  // reachable on this app's targets (iOS/Android) or used by this codebase.
+  'archive',
+  'barcode',
+  'bidi',
+  'image',
+  'path_parsing',
+  'posix',
+  'qr',
 
   // ---- Genuinely networking-capable packages, present but dead code on
   // this app's targets.
