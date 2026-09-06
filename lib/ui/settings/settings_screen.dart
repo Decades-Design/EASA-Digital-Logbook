@@ -12,6 +12,7 @@ import '../../domain/totals/totals_summary.dart';
 import '../aircraft/aircraft_list_screen.dart';
 import '../currency/rule_asset_paths.dart';
 import '../currency/sample_currency_data.dart';
+import '../io/import_screen.dart';
 import '../../io/supported_import_formats.dart';
 import '../preferences/app_preferences.dart';
 import '../providers/aircraft_providers.dart';
@@ -135,11 +136,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       'yet (#63)',
                 ),
                 const _Divider(),
-                const _InertRow(
-                  title: 'Import',
-                  subtitle:
-                      '$supportedImportFormatsLabel · preview before applying',
-                ),
+                const _ImportRow(),
                 const _Divider(),
                 // `exportDatabaseBackup`/`isBackupOverdue`
                 // (lib/data/database_backup.dart) are real and tested, but
@@ -286,6 +283,39 @@ class _InertRow extends StatelessWidget {
 /// #61: the one row in "DATA" backed by a real, live repository rather
 /// than the sample fixtures the rest of this screen still runs on —
 /// `aircraftRecordsProvider` reads the actual on-device database.
+class _ImportRow extends StatelessWidget {
+  const _ImportRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ink = context.inkTiers;
+
+    return InkWell(
+      onTap: () => Navigator.of(
+        context,
+      ).push<void>(MaterialPageRoute(builder: (_) => const ImportScreen())),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Import', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 2),
+              Text(
+                '$supportedImportFormatsLabel · preview before applying',
+                style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AircraftRow extends ConsumerWidget {
   const _AircraftRow();
 
