@@ -143,10 +143,43 @@ void main() {
 
     expect(find.textContaining('bad row'), findsOneWidget);
 
+    // Two per-row checkboxes plus the "reviewed the unreadable rows"
+    // acknowledgment checkbox #74 requires before Import enables.
     final checkboxes = tester.widgetList<Checkbox>(find.byType(Checkbox));
-    expect(checkboxes, hasLength(2));
-    expect(checkboxes.map((c) => c.value), [false, true]);
+    expect(checkboxes, hasLength(3));
+    expect(checkboxes.map((c) => c.value), [false, true, false]);
   });
+
+  testWidgets(
+    'Import stays disabled until the unreadable rows are acknowledged, '
+    'even with a valid row selected',
+    (tester) async {
+      await pumpScreen(
+        tester,
+        parseResult: ImportParseResult(
+          rows: [
+            CanonicalImportRow(
+              sourceRowNumber: 2,
+              flight: _flight(),
+              aircraft: _aircraft,
+            ),
+          ],
+          errors: const [ImportRowError(rowNumber: 3, message: 'bad row')],
+        ),
+      );
+
+      final button = tester.widget<FilledButton>(find.byType(FilledButton));
+      expect(button.onPressed, isNull);
+
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pumpAndSettle();
+
+      final buttonAfter = tester.widget<FilledButton>(
+        find.byType(FilledButton),
+      );
+      expect(buttonAfter.onPressed, isNotNull);
+    },
+  );
 
   testWidgets('pressing Import writes the selected flight as a draft', (
     tester,

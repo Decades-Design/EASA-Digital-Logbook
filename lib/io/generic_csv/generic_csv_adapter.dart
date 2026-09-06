@@ -259,10 +259,12 @@ GenericCsvRowMapping mapGenericCsvRow(
     mapping.dateFormat,
   );
   if (offBlocks == null || onBlocks == null) {
-    return const GenericCsvRowMapping.error(
-      'Date, off-blocks time or on-blocks time is missing or unparseable '
-      'for the mapping\'s configured formats — every flight needs both '
-      'block times.',
+    return GenericCsvRowMapping.error(
+      'Date "$dateRaw", off-blocks time '
+      '"${_value(row, mapping, GenericCsvField.offBlocksTime)}" or on-blocks '
+      'time "${_value(row, mapping, GenericCsvField.onBlocksTime)}" is '
+      "missing or unparseable for the mapping's configured formats — every "
+      'flight needs both block times.',
     );
   }
   if (onBlocks < offBlocks) onBlocks = onBlocks.add(const Duration(days: 1));

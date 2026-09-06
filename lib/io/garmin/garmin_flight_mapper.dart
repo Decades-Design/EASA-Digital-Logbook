@@ -81,7 +81,7 @@ UtcInstant? _dateStart(String dateRaw) {
     return (
       offBlocks: null,
       onBlocks: null,
-      error: 'Date is missing or unparseable.',
+      error: 'Date "${row['Date']}" is missing or unparseable.',
     );
   }
   final dateEnd = dateStart.add(const Duration(days: 1));

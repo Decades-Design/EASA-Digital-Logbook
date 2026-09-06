@@ -381,9 +381,10 @@ ForeFlightFlightMapping mapForeFlightFlight({
   final offBlocks = _parseDateTime(row['Date'] ?? '', row['TimeOut'] ?? '');
   var onBlocks = _parseDateTime(row['Date'] ?? '', row['TimeIn'] ?? '');
   if (offBlocks == null || onBlocks == null) {
-    return const ForeFlightFlightMapping.error(
-      'Date, TimeOut or TimeIn is missing or unparseable — every flight '
-      'needs both block times.',
+    return ForeFlightFlightMapping.error(
+      'Date "${row['Date']}", TimeOut "${row['TimeOut']}" or TimeIn '
+      '"${row['TimeIn']}" is missing or unparseable — every flight needs '
+      'both block times.',
     );
   }
   // A flight landing after midnight Zulu has an earlier time-of-day than

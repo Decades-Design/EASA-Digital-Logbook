@@ -1,4 +1,5 @@
 import '../../domain/model/aircraft.dart';
+import '../icao_type_designator.dart';
 
 /// One aircraft-table row mapped to this app's own [Aircraft] model, plus
 /// any notes about assumptions the mapping had to make.
@@ -163,14 +164,20 @@ ForeFlightAircraftMapping? mapForeFlightAircraft(Map<String, String> row) {
     }
   }
 
+  final typeCode = row['TypeCode'] ?? '';
+  if (typeCode.isNotEmpty && !looksLikeIcaoTypeDesignator(typeCode)) {
+    notes.add(
+      'TypeCode "$typeCode" does not look like a real ICAO type designator '
+      '— kept as entered, verify under Aircraft management.',
+    );
+  }
+
   return ForeFlightAircraftMapping(
     aircraft: Aircraft(
       registration: registration,
       manufacturer: manufacturer,
       model: model,
-      icaoTypeDesignator: (row['TypeCode'] ?? '').isEmpty
-          ? null
-          : row['TypeCode'],
+      icaoTypeDesignator: typeCode.isEmpty ? null : typeCode,
       category: category,
       engineType: engineType ?? EngineType.none,
       engineCount: engineCount,
