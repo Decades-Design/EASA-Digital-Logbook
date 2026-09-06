@@ -20,11 +20,20 @@ import 'foreflight_tables.dart';
 /// judgement calls that makes and why every one of them appends a
 /// [CanonicalImportRow.reviewNotes] entry rather than staying silent.
 class ForeFlightAdapter implements ImportAdapter {
+  /// The only key [parse] reads — see [ImportAdapter.parse].
+  static const logbookKey = 'logbook';
+
   @override
   String get displayName => 'ForeFlight (logbook_template.csv)';
 
   @override
-  ImportParseResult parse(String source) {
+  ImportParseResult parse(Map<String, String> sources) {
+    final source = sources[logbookKey];
+    if (source == null) {
+      throw ArgumentError(
+        'ForeFlightAdapter.parse requires a "$logbookKey" entry in sources.',
+      );
+    }
     final tables = parseForeFlightTables(source);
 
     final aircraftByRegistration = <String, ForeFlightAircraftMapping>{};
