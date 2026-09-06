@@ -78,6 +78,71 @@ const String _createFlightsTableV1ThroughV3 = '''
   )
 ''';
 
+/// As [_createFlightsTableV1ThroughV3], plus `alternative_compliance_events`
+/// (#121's v4 addition) -- the shape a real v4-v6 database's `flights` table
+/// has. Needed by [_seedV5Database]/[_seedV6Database]: #73's own `from < 8`
+/// step touches `flights` unconditionally (adding `import_batch_id`), the
+/// same way #61's `from < 7` step touches `aircraft` unconditionally, so any
+/// fixture the migration chain runs through needs the table even when it
+/// isn't what that fixture's own test is isolating.
+const String _createFlightsTableV4ThroughV6 = '''
+  CREATE TABLE flights (
+    id TEXT NOT NULL,
+    aircraft_id TEXT NOT NULL REFERENCES aircraft (id),
+    pre_planned_navigation INTEGER NOT NULL,
+    off_blocks INTEGER NOT NULL,
+    on_blocks INTEGER NOT NULL,
+    takeoff INTEGER NULL,
+    landing INTEGER NULL,
+    other_pilot_name TEXT NULL,
+    other_pilot_credential_number TEXT NULL,
+    carrying_passengers INTEGER NOT NULL,
+    takeoffs_day_full_stop INTEGER NOT NULL,
+    takeoffs_day_touch_and_go INTEGER NOT NULL,
+    takeoffs_night_full_stop INTEGER NOT NULL,
+    takeoffs_night_touch_and_go INTEGER NOT NULL,
+    landings_day_full_stop INTEGER NOT NULL,
+    landings_day_touch_and_go INTEGER NOT NULL,
+    landings_night_full_stop INTEGER NOT NULL,
+    landings_night_touch_and_go INTEGER NOT NULL,
+    ifr_flight_plan_filed INTEGER NOT NULL,
+    actual_instrument_minutes INTEGER NOT NULL,
+    simulated_instrument_minutes INTEGER NOT NULL,
+    holding_procedures_count INTEGER NOT NULL,
+    tracking_performed INTEGER NOT NULL,
+    series_group_id TEXT NULL,
+    airworthiness_basis TEXT NULL,
+    remarks TEXT NOT NULL,
+    alternative_compliance_events TEXT NOT NULL DEFAULT '',
+    capacity_command_authority INTEGER NOT NULL,
+    capacity_sole_manipulator INTEGER NOT NULL,
+    capacity_sole_occupant INTEGER NOT NULL,
+    capacity_multi_pilot_operation INTEGER NOT NULL,
+    capacity_additional_crew_required_by_rule INTEGER NOT NULL,
+    capacity_acting_as_instructor INTEGER NOT NULL,
+    capacity_acting_as_examiner INTEGER NOT NULL,
+    capacity_picus_claimed INTEGER NOT NULL,
+    capacity_pic_intervention_not_required INTEGER NOT NULL,
+    capacity_manipulation_time_minutes INTEGER NULL,
+    capacity_solo_endorsement_held INTEGER NULL,
+    capacity_endorsing_instructor_name TEXT NULL,
+    capacity_instructor_capacity TEXT NULL,
+    capacity_instructor_influenced_flight INTEGER NULL,
+    capacity_instructor_name TEXT NULL,
+    capacity_instructor_credential_number TEXT NULL,
+    capacity_instructor_credential_expiry TEXT NULL,
+    capacity_other_pilot_role TEXT NULL,
+    capacity_countersignature_status TEXT NULL,
+    capacity_countersignature_signatory_name TEXT NULL,
+    capacity_countersignature_signatory_credential_number TEXT NULL,
+    capacity_countersignature_signatory_credential_expiry TEXT NULL,
+    capacity_countersignature_signed_at INTEGER NULL,
+    committed_at INTEGER NULL,
+    tombstoned_at INTEGER NULL,
+    PRIMARY KEY (id)
+  )
+''';
+
 /// The `aircraft` table's shape from v1 through v6 -- unchanged until #61
 /// (v7) adds `archived`. Column names mirror
 /// `lib/data/tables/aircraft_tables.dart`'s drift-generated snake_case.
@@ -271,8 +336,9 @@ void _seedV3Database(String path) {
 /// test here, the same way [_seedV3Database] isolates v3->v4. Proves the new
 /// step adds `home_base_icao` and backfills it to null rather than guessing a
 /// value, and leaves the pre-existing `primary_jurisdiction_id` untouched.
-/// Still carries `aircraft` (empty) — #61's `from < 7` step alters it
-/// regardless of starting version, same reasoning as `_seedV2Database`'s.
+/// Still carries `aircraft` (empty) and `flights` (empty) — #61's
+/// `from < 7` step and #73's `from < 8` step each alter one of those
+/// unconditionally, same reasoning as `_seedV2Database`'s.
 void _seedV5Database(String path) {
   final db = sqlite3.sqlite3.open(path);
   try {
@@ -290,6 +356,7 @@ void _seedV5Database(String path) {
       ['singleton', '1990-01-01', 'us.faa.part61'],
     );
     db.execute(_createAircraftTableV1ThroughV6);
+    db.execute(_createFlightsTableV4ThroughV6);
     db.execute('PRAGMA user_version = 5');
   } finally {
     db.close();
@@ -298,7 +365,9 @@ void _seedV5Database(String path) {
 
 /// As [_seedV5Database], but at v6 with `home_base_icao` already present —
 /// isolates the v6->v7 step under test here: #61's `archived` column on
-/// `aircraft`, backfilled to `false` for a pre-existing registration.
+/// `aircraft`, backfilled to `false` for a pre-existing registration. Still
+/// carries `flights` (empty) for #73's `from < 8` step, same reasoning as
+/// [_seedV5Database]'s.
 void _seedV6Database(String path) {
   final db = sqlite3.sqlite3.open(path);
   try {
@@ -333,6 +402,7 @@ void _seedV6Database(String path) {
         0,
       ],
     );
+    db.execute(_createFlightsTableV4ThroughV6);
     db.execute('PRAGMA user_version = 6');
   } finally {
     db.close();
