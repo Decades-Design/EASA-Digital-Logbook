@@ -25,11 +25,14 @@ const _capacity = PilotCapacity(
 /// canonical rows, report a per-row error without touching the rows
 /// already parsed, and never reach for a database.
 class _TestFixtureAdapter implements ImportAdapter {
+  static const sourceKey = 'source';
+
   @override
   String get displayName => 'Test fixture';
 
   @override
-  ImportParseResult parse(String source) {
+  ImportParseResult parse(Map<String, String> sources) {
+    final source = sources[sourceKey]!;
     final rows = <CanonicalImportRow>[];
     final errors = <ImportRowError>[];
     final lines = source.split('\n').where((l) => l.trim().isNotEmpty).toList();
@@ -93,9 +96,9 @@ class _TestFixtureAdapter implements ImportAdapter {
 
 void main() {
   test('a working adapter maps every clean row to a canonical row', () {
-    final result = _TestFixtureAdapter().parse(
-      'N12345,KABC-KDEF\nN67890,KGHI-KGHI',
-    );
+    final result = _TestFixtureAdapter().parse({
+      _TestFixtureAdapter.sourceKey: 'N12345,KABC-KDEF\nN67890,KGHI-KGHI',
+    });
 
     expect(result.rows, hasLength(2));
     expect(result.errors, isEmpty);
@@ -107,9 +110,10 @@ void main() {
   test(
     'a malformed row becomes an error, and does not block the rows around it',
     () {
-      final result = _TestFixtureAdapter().parse(
-        'N12345,KABC-KDEF\nmalformed\nN67890,KGHI-KGHI',
-      );
+      final result = _TestFixtureAdapter().parse({
+        _TestFixtureAdapter.sourceKey:
+            'N12345,KABC-KDEF\nmalformed\nN67890,KGHI-KGHI',
+      });
 
       expect(result.rows, hasLength(2));
       expect(result.hasErrors, isTrue);
@@ -122,9 +126,9 @@ void main() {
   );
 
   test('unmapped vendor fields survive onto the canonical row, not lost', () {
-    final result = _TestFixtureAdapter().parse(
-      'N12345,KABC-KDEF,some vendor note',
-    );
+    final result = _TestFixtureAdapter().parse({
+      _TestFixtureAdapter.sourceKey: 'N12345,KABC-KDEF,some vendor note',
+    });
 
     expect(result.rows.single.unmappedFields, {'extra': 'some vendor note'});
     expect(

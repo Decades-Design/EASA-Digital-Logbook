@@ -1,0 +1,6 @@
+Name,Simulator,Manufacturer,FAA Category,FAA Class,FAA Simulator Type,EASA Category,EASA Class,EASA Simulator Type,TCCA Category,TCCA Class,TCCA Simulator Type,Engine Type,Engine Count,Tail Wheel,Retractable Landing Gear,FAA Complex,FAA High Performance,FAA Type Rating Required,FAA Large,EASA Complex,EASA High Performance,EASA Type Rating Required,TCCA Complex,TCCA High Performance,Military,EFIS,Pressurized,Cost Per Hour
+C152,false,Cessna,,,,Aeroplane,SEP Land,,,,,Piston,1,,,,,,,,,,,,,,,
+M20J-201,false,Mooney,,,,Aeroplane,SEP Land,,,,,Piston,1,,true,,,,,true,,,,,,,,
+BEECH V35B TN,false,Beechcraft,Airplane,ASEL,,Aeroplane,SEP Land,,,,,Piston,1,,true,true,true,,,true,true,,,,,true,,
+GHOSTTYPE,false,,,,,Aeroplane,SEP Land,,,,,Piston,1,,,,,,,,,,,,,,,
+SIM01,true,Redbird,,,,Aeroplane,SEP Land,,,,,Piston,1,,,,,,,,,,,,,,,

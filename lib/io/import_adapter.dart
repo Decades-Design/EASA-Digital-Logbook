@@ -43,5 +43,13 @@ abstract class ImportAdapter {
   /// picker UI — e.g. "ForeFlight (logbook_template.csv)".
   String get displayName;
 
-  ImportParseResult parse(String source);
+  /// Keyed by a per-adapter logical file role, not positionally — see the
+  /// adapter's own dartdoc for which keys it expects and exposes as named
+  /// constants. ForeFlight's whole export is one file, so its adapter reads
+  /// a single key; Garmin's aircraft-types data and flight log are two
+  /// separate exports (#71), so its adapter reads two. A `Map` rather than
+  /// a second positional `String` keeps every adapter's call site uniform
+  /// regardless of how many files its vendor format happens to split
+  /// across.
+  ImportParseResult parse(Map<String, String> sources);
 }
