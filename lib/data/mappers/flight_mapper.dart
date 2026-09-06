@@ -16,6 +16,7 @@ FlightRow flightToRow(
   required String aircraftId,
   int? committedAt,
   int? tombstonedAt,
+  String? importBatchId,
 }) {
   final capacity = flight.capacity;
   final instructor = capacity.instructor;
@@ -82,6 +83,7 @@ FlightRow flightToRow(
         : _epoch(countersignature!.signedAt!),
     committedAt: committedAt,
     tombstonedAt: tombstonedAt,
+    importBatchId: importBatchId,
   );
 }
 

@@ -6,8 +6,10 @@ import 'package:drift/native.dart';
 import 'open_with_backup.dart';
 import 'tables/aircraft_tables.dart';
 import 'tables/custom_aerodrome_table.dart';
+import 'tables/export_record_table.dart';
 import 'tables/flight_tables.dart';
 import 'tables/held_qualification_tables.dart';
+import 'tables/import_batch_table.dart';
 import 'tables/pilot_record_tables.dart';
 
 part 'database.g.dart';
@@ -26,13 +28,15 @@ part 'database.g.dart';
     MedicalCertificatesTable,
     HeldAircraftQualificationsTable,
     HeldRatingsTable,
+    ImportBatchesTable,
+    ExportRecordsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -103,6 +107,15 @@ class AppDatabase extends _$AppDatabase {
       // backfills every existing aircraft row to "not archived".
       if (from < 7) {
         await m.addColumn(aircraftsTable, aircraftsTable.archived);
+      }
+      // #73: adds import_batches and export_records (folded in from #70's
+      // own leftover "warn about overlap" criterion), plus importBatchId
+      // on flights. import_batches must exist before the column that
+      // references it is added.
+      if (from < 8) {
+        await m.createTable(importBatchesTable);
+        await m.createTable(exportRecordsTable);
+        await m.addColumn(flightsTable, flightsTable.importBatchId);
       }
     },
     beforeOpen: (details) async {

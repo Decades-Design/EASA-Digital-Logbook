@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../domain/model/flight.dart';
+import '../../domain/model/utc_instant.dart';
 import '../../domain/repository/flight_repository.dart';
 import '../database.dart';
 import '../mappers/flight_mapper.dart';
@@ -14,12 +15,23 @@ class DriftFlightRepository implements FlightRepository {
   final AppDatabase _db;
 
   @override
-  Future<String> createDraft(Flight flight, {required String aircraftId}) {
+  Future<String> createDraft(
+    Flight flight, {
+    required String aircraftId,
+    String? importBatchId,
+  }) {
     final id = generateUlid();
     return _db.transaction(() async {
       await _db
           .into(_db.flightsTable)
-          .insert(flightToRow(flight, id: id, aircraftId: aircraftId));
+          .insert(
+            flightToRow(
+              flight,
+              id: id,
+              aircraftId: aircraftId,
+              importBatchId: importBatchId,
+            ),
+          );
       await _writeChildren(id, flight);
       return id;
     });
@@ -39,7 +51,12 @@ class DriftFlightRepository implements FlightRepository {
       await (_db.update(
         _db.flightsTable,
       )..where((t) => t.id.equals(flightId))).write(
-        flightToRow(flight, id: flightId, aircraftId: current.aircraftId),
+        flightToRow(
+          flight,
+          id: flightId,
+          aircraftId: current.aircraftId,
+          importBatchId: current.importBatchId,
+        ),
       );
       await _replaceChildren(flightId, flight);
     });
@@ -130,6 +147,7 @@ class DriftFlightRepository implements FlightRepository {
         aircraftId: current.aircraftId,
         committedAt: current.committedAt,
         tombstonedAt: current.tombstonedAt,
+        importBatchId: current.importBatchId,
       );
       final changed = _diffRows(current, newRow);
       changed.addAll(await _diffChildren(flightId, flight));
@@ -275,6 +293,110 @@ class DriftFlightRepository implements FlightRepository {
           .write(const FlightsTableCompanion(tombstonedAt: Value(null)));
     });
   }
+
+  @override
+  Future<String> applyImportBatch({
+    required String sourceLabel,
+    required List<ImportBatchFlight> flights,
+  }) {
+    final batchId = generateUlid();
+    return _db.transaction(() async {
+      await _db
+          .into(_db.importBatchesTable)
+          .insert(
+            ImportBatchRow(
+              id: batchId,
+              sourceLabel: sourceLabel,
+              importedAt: DateTime.now().toUtc().millisecondsSinceEpoch,
+            ),
+          );
+      for (final entry in flights) {
+        await createDraft(
+          entry.flight,
+          aircraftId: entry.aircraftId,
+          importBatchId: batchId,
+        );
+      }
+      return batchId;
+    });
+  }
+
+  @override
+  Future<List<ImportBatchSummary>> listImportBatches() async {
+    final batchRows = await (_db.select(
+      _db.importBatchesTable,
+    )..orderBy([(t) => OrderingTerm.desc(t.importedAt)])).get();
+
+    final summaries = <ImportBatchSummary>[];
+    for (final batch in batchRows) {
+      final flightCount = await (_db.select(
+        _db.flightsTable,
+      )..where((t) => t.importBatchId.equals(batch.id))).get();
+      summaries.add(
+        ImportBatchSummary(
+          id: batch.id,
+          sourceLabel: batch.sourceLabel,
+          importedAt: _fromEpoch(batch.importedAt),
+          flightCount: flightCount.length,
+          undoneAt: batch.undoneAt == null ? null : _fromEpoch(batch.undoneAt!),
+        ),
+      );
+    }
+    return summaries;
+  }
+
+  @override
+  Future<ImportUndoResult> undoImportBatch(String batchId, {String? reason}) {
+    return _db.transaction(() async {
+      final batch = await (_db.select(
+        _db.importBatchesTable,
+      )..where((t) => t.id.equals(batchId))).getSingleOrNull();
+      if (batch == null) {
+        throw StateError('No import batch with id $batchId');
+      }
+      if (batch.undoneAt != null) {
+        throw StateError('Import batch $batchId is already undone');
+      }
+
+      final batchFlights = await (_db.select(
+        _db.flightsTable,
+      )..where((t) => t.importBatchId.equals(batchId))).get();
+
+      var deletedDrafts = 0;
+      var tombstonedCommitted = 0;
+      for (final flight in batchFlights) {
+        if (flight.committedAt == null) {
+          await deleteDraft(flight.id);
+          deletedDrafts++;
+        } else if (flight.tombstonedAt == null) {
+          await tombstone(
+            flight.id,
+            reason: reason ?? 'Import batch $batchId undone',
+          );
+          tombstonedCommitted++;
+        }
+        // A flight already tombstoned independently before this undo ran
+        // is left exactly as it is — it isn't this undo's to report.
+      }
+
+      await (_db.update(
+        _db.importBatchesTable,
+      )..where((t) => t.id.equals(batchId))).write(
+        ImportBatchesTableCompanion(
+          undoneAt: Value(DateTime.now().toUtc().millisecondsSinceEpoch),
+        ),
+      );
+
+      return ImportUndoResult(
+        deletedDraftCount: deletedDrafts,
+        tombstonedCommittedCount: tombstonedCommitted,
+      );
+    });
+  }
+
+  UtcInstant _fromEpoch(int epochMs) => UtcInstant.fromDateTime(
+    DateTime.fromMillisecondsSinceEpoch(epochMs, isUtc: true),
+  );
 
   /// Guarantees each flight's revision chain has strictly increasing
   /// `recordedAt` values, regardless of wall-clock resolution — two edits

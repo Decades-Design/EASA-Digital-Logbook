@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'aircraft_tables.dart';
+import 'import_batch_table.dart';
 
 /// One row per flight, current state only. `committedAt`/`tombstonedAt`
 /// double as both the state flag and the instant of that state change — see
@@ -85,6 +86,14 @@ class FlightsTable extends Table {
 
   IntColumn get committedAt => integer().nullable()();
   IntColumn get tombstonedAt => integer().nullable()();
+
+  /// The import batch this flight was created by (#73), if any — null for
+  /// a flight entered by hand. Kept even after `undoImportBatch` tombstones
+  /// this flight (a committed flight can't be deleted — rule 4), so its
+  /// provenance survives the undo; only a still-draft flight's row (and
+  /// this reference along with it) actually disappears on undo.
+  TextColumn get importBatchId =>
+      text().nullable().references(ImportBatchesTable, #id)();
 
   @override
   Set<Column> get primaryKey => {id};
