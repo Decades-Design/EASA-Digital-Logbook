@@ -49,6 +49,7 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
   ImportPreview? _preview;
   Set<int> _excludedRowNumbers = {};
   bool _importing = false;
+  bool _unreadableRowsAcknowledged = false;
 
   ImportPreview _buildPreview(List<FlightRecord> existingFlights) {
     final preview = buildImportPreview(
@@ -171,8 +172,11 @@ class _ImportPreviewScreenState extends ConsumerState<ImportPreviewScreen> {
                     preview: preview,
                     excludedRowNumbers: _excludedRowNumbers,
                     importing: _importing,
+                    unreadableRowsAcknowledged: _unreadableRowsAcknowledged,
                     onExcludedChanged: (updated) =>
                         setState(() => _excludedRowNumbers = updated),
+                    onUnreadableRowsAcknowledgedChanged: (value) =>
+                        setState(() => _unreadableRowsAcknowledged = value),
                     onImport: () => _import(preview),
                   );
                 },
@@ -190,14 +194,18 @@ class _PreviewBody extends StatelessWidget {
     required this.preview,
     required this.excludedRowNumbers,
     required this.importing,
+    required this.unreadableRowsAcknowledged,
     required this.onExcludedChanged,
+    required this.onUnreadableRowsAcknowledgedChanged,
     required this.onImport,
   });
 
   final ImportPreview preview;
   final Set<int> excludedRowNumbers;
   final bool importing;
+  final bool unreadableRowsAcknowledged;
   final ValueChanged<Set<int>> onExcludedChanged;
+  final ValueChanged<bool> onUnreadableRowsAcknowledgedChanged;
   final VoidCallback onImport;
 
   int get _selectedCount => preview.rows
@@ -275,6 +283,17 @@ class _PreviewBody extends StatelessWidget {
                   ),
                 ),
                 for (final error in preview.errors) _ErrorRowTile(error: error),
+                CheckboxListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                  value: unreadableRowsAcknowledged,
+                  onChanged: (value) =>
+                      onUnreadableRowsAcknowledgedChanged(value ?? false),
+                  title: Text(
+                    "I've reviewed the ${preview.errors.length} row(s) "
+                    "above that won't be imported",
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
               ],
             ],
           ),
@@ -286,7 +305,13 @@ class _PreviewBody extends StatelessWidget {
             child: SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: (_selectedCount == 0 || importing) ? null : onImport,
+                onPressed:
+                    (_selectedCount == 0 ||
+                        importing ||
+                        (preview.errors.isNotEmpty &&
+                            !unreadableRowsAcknowledged))
+                    ? null
+                    : onImport,
                 child: importing
                     ? const SizedBox(
                         width: 20,
