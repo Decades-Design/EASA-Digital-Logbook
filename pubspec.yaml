@@ -23,6 +23,7 @@ dependencies:
   # during the Currency-screen scoping pass rather than hand-rolling bars,
   # since later screens may need richer charts too.
   fl_chart: ^1.1.1
+  file_picker: ^12.2.0
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.4.2

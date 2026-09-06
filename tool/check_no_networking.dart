@@ -35,6 +35,7 @@ const Set<String> allowedPackages = {
   // "dependencies:").
   'csv',
   'drift',
+  'file_picker',
   'fl_chart',
   'flutter',
   'flutter_riverpod',
@@ -150,6 +151,23 @@ const Set<String> allowedPackages = {
   'web',
   'win32',
   'xdg_directories',
+
+  // ---- file_picker (#72's import flow) and its own transitive tree —
+  // every one of these opens a native document/file picker or supports
+  // one; none opens a socket. `dbus` is Linux desktop-portal IPC (the
+  // GTK/KDE file-open dialog), not network I/O, and irrelevant on this
+  // app's actual targets regardless (iOS/Android). `xml`/`petitparser`
+  // back `file_picker`'s Windows/macOS metadata parsing.
+  'android_file_picker',
+  'cross_file',
+  'dbus',
+  'file_picker_darwin',
+  'file_picker_linux',
+  'file_picker_platform_interface',
+  'file_picker_web',
+  'petitparser',
+  'windows_file_picker',
+  'xml',
 
   // ---- Genuinely networking-capable packages, present but dead code on
   // this app's targets.
