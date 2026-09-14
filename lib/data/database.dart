@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   // SQLite does not enforce foreign keys — including this schema's
   // `onDelete: KeyAction.cascade` on the flight/aircraft child tables —
@@ -123,6 +123,32 @@ class AppDatabase extends _$AppDatabase {
       // references it, so a plain CREATE TABLE with no ordering concerns.
       if (from < 9) {
         await m.createTable(csvMappingProfilesTable);
+      }
+      // #83: adds sealedByExportId to flights (which export, if any,
+      // sealed this flight to committed — separate from committedAt,
+      // since #58's "log this flight now" can commit a flight with no
+      // export involved). flights is never freshly created by an earlier
+      // step in this chain (unlike pilot_profile below), so this needs no
+      // `from >= N` guard.
+      if (from < 10) {
+        await m.addColumn(flightsTable, flightsTable.sealedByExportId);
+      }
+      // Adds holderName/primaryLicenceNumber to pilot_profile (group 1 of
+      // the AMC1 FCL.050 front matter — never defaulted, same as
+      // homeBaseIcao).
+      //
+      // Guarded to `from >= 2`, same reasoning as the `primaryJurisdictionId`/
+      // `homeBaseIcao` steps above: a database upgrading from v1 hits the
+      // `from < 2` branch first, and `createTable` always builds from
+      // *today's* Dart schema — which already includes these two columns —
+      // so running `addColumn` again on the same upgrade would fail with
+      // "duplicate column name".
+      if (from >= 2 && from < 10) {
+        await m.addColumn(pilotProfileTable, pilotProfileTable.holderName);
+        await m.addColumn(
+          pilotProfileTable,
+          pilotProfileTable.primaryLicenceNumber,
+        );
       }
     },
     beforeOpen: (details) async {
