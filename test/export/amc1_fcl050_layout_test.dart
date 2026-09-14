@@ -326,4 +326,69 @@ void main() {
       );
     },
   );
+
+  // #80's row-height budget boundary. `sampleRow()`'s own short remark
+  // ('Local flight.') never wraps, so every row here is exactly
+  // _dataRowHeight tall — empirically confirmed (not just computed by
+  // hand) that 25 such rows exactly fill one spread's own row budget on
+  // this page format/margins, and a 26th overflows it. A change to page
+  // geometry that moves this boundary is expected to need this test
+  // updated; that is the point of pinning it.
+
+  test(
+    '25 uniform-height rows exactly fill one spread\'s row budget (#80)',
+    () async {
+      final spreads = await amc1Fcl050SpreadTotals(
+        List.generate(25, (_) => sampleRow()),
+      );
+
+      expect(spreads, hasLength(1));
+      expect(spreads.single.rows, hasLength(25));
+    },
+  );
+
+  test('a 26th row past the budget starts a new spread instead of overflowing '
+      'the page (#80)', () async {
+    final spreads = await amc1Fcl050SpreadTotals(
+      List.generate(26, (_) => sampleRow()),
+    );
+
+    expect(spreads, hasLength(2));
+    expect(spreads[0].rows, hasLength(25));
+    expect(spreads[1].rows, hasLength(1));
+  });
+
+  test('a remark so long it alone exceeds an entire spread\'s budget still '
+      'gets a spread of its own, never split or dropped (#80)', () async {
+    final longRemark = List.filled(300, 'word').join(' ');
+    final row = Amc1Fcl050Row(
+      date: '01/06/26',
+      departurePlace: 'EGKA',
+      departureTime: '09:00',
+      arrivalPlace: 'EGKA',
+      arrivalTime: '10:30',
+      aircraftMakeModelVariant: 'Cessna 152',
+      aircraftRegistration: 'G-ABCD',
+      singlePilotSingleEngine: const FlightDuration(90),
+      singlePilotMultiEngine: FlightDuration.zero,
+      multiPilotTime: FlightDuration.zero,
+      totalTimeOfFlight: const FlightDuration(90),
+      namesPic: 'SELF',
+      landingsDay: 1,
+      landingsNight: 0,
+      operationalNight: FlightDuration.zero,
+      operationalIfr: FlightDuration.zero,
+      pilotFunctionPic: const FlightDuration(90),
+      pilotFunctionCoPilot: FlightDuration.zero,
+      pilotFunctionDual: FlightDuration.zero,
+      pilotFunctionInstructor: FlightDuration.zero,
+      remarks: longRemark,
+    );
+
+    final spreads = await amc1Fcl050SpreadTotals([row]);
+
+    expect(spreads, hasLength(1));
+    expect(spreads.single.rows, hasLength(1));
+    expect(spreads.single.rows.single.remarks, longRemark);
+  });
 }
