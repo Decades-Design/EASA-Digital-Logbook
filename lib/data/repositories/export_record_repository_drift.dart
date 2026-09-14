@@ -12,22 +12,24 @@ class DriftExportRecordRepository implements ExportRecordRepository {
   final AppDatabase _db;
 
   @override
-  Future<void> recordExport({
+  Future<String> recordExport({
     required String format,
     required CalendarDate from,
     required CalendarDate to,
   }) async {
+    final id = generateUlid();
     await _db
         .into(_db.exportRecordsTable)
         .insert(
           ExportRecordRow(
-            id: generateUlid(),
+            id: id,
             format: format,
             rangeFrom: from.toString(),
             rangeTo: to.toString(),
             exportedAt: DateTime.now().toUtc().millisecondsSinceEpoch,
           ),
         );
+    return id;
   }
 
   @override
