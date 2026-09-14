@@ -327,6 +327,27 @@ void main() {
     },
   );
 
+  test('an opening balance seeds the first spread\'s brought-forward instead '
+      'of zero (#83)', () async {
+    final opening = Amc1Fcl050Totals.fromRows([sampleRow()]);
+
+    final spreads = await amc1Fcl050SpreadTotals([
+      sampleRow(),
+    ], openingBalance: opening);
+
+    expect(spreads, hasLength(1));
+    expect(
+      amc1Fcl050PageOneTotalsValues(spreads.single.broughtForward),
+      amc1Fcl050PageOneTotalsValues(opening),
+    );
+    // total-to-date = opening balance + this page's own flight.
+    final expectedTotal = opening + Amc1Fcl050Totals.fromRows([sampleRow()]);
+    expect(
+      amc1Fcl050PageOneTotalsValues(spreads.single.totalToDate),
+      amc1Fcl050PageOneTotalsValues(expectedTotal),
+    );
+  });
+
   // #80's row-height budget boundary. `sampleRow()`'s own short remark
   // ('Local flight.') never wraps, so every row here is exactly
   // _dataRowHeight tall — empirically confirmed (not just computed by

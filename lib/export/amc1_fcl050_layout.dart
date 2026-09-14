@@ -896,8 +896,11 @@ class Amc1Fcl050SpreadTotals {
 /// (see [Amc1Fcl050SpreadTotals]) becomes the very next spread's
 /// `broughtForward`, rather than being re-derived and checked after the
 /// fact.
-List<Amc1Fcl050SpreadTotals> _spreadTotals(List<_EntrySpread> spreads) {
-  var broughtForward = Amc1Fcl050Totals.zero;
+List<Amc1Fcl050SpreadTotals> _spreadTotals(
+  List<_EntrySpread> spreads, {
+  Amc1Fcl050Totals openingBalance = Amc1Fcl050Totals.zero,
+}) {
+  var broughtForward = openingBalance;
   final results = <Amc1Fcl050SpreadTotals>[];
   for (final spread in spreads) {
     final thisPage = Amc1Fcl050Totals.fromRows(spread.rows);
@@ -921,13 +924,14 @@ List<Amc1Fcl050SpreadTotals> _spreadTotals(List<_EntrySpread> spreads) {
 /// for remarks text-wrap measurement, exactly like [_packEntrySpreads]
 /// itself; this function does not render or return any PDF bytes.
 Future<List<Amc1Fcl050SpreadTotals>> amc1Fcl050SpreadTotals(
-  List<Amc1Fcl050Row> rows,
-) async {
+  List<Amc1Fcl050Row> rows, {
+  Amc1Fcl050Totals openingBalance = Amc1Fcl050Totals.zero,
+}) async {
   final document = pw.Document();
   final monospaceFont = PdfFont.courier(document.document);
   final remarksColumnWidth = _columnWidths(_pageTwoGroups).last;
   final spreads = _packEntrySpreads(rows, monospaceFont, remarksColumnWidth);
-  return _spreadTotals(spreads);
+  return _spreadTotals(spreads, openingBalance: openingBalance);
 }
 
 /// Groups 1–4's seven physical columns (DATE, DEPARTURE, ARRIVAL,
@@ -1463,6 +1467,7 @@ Future<pw.Document> buildAmc1Fcl050Logbook({
   required String holderName,
   required String holderLicenceNumber,
   required List<Amc1Fcl050Row> rows,
+  Amc1Fcl050Totals openingBalance = Amc1Fcl050Totals.zero,
 }) async {
   final fonts = await _loadFonts();
   final document = pw.Document();
@@ -1475,7 +1480,7 @@ Future<pw.Document> buildAmc1Fcl050Logbook({
   final monospaceFont = PdfFont.courier(document.document);
   final remarksColumnWidth = _columnWidths(_pageTwoGroups).last;
   final spreads = _packEntrySpreads(rows, monospaceFont, remarksColumnWidth);
-  final spreadTotals = _spreadTotals(spreads);
+  final spreadTotals = _spreadTotals(spreads, openingBalance: openingBalance);
   // Front matter + address, then two pages per spread (#78) — known up
   // front since every spread is already packed before any page is built.
   final totalPages = 2 + spreads.length * 2;
