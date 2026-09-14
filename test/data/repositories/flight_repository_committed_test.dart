@@ -75,6 +75,22 @@ void main() {
     return id;
   }
 
+  // sealedByExportId references exportRecordsTable (#83), so sealForExport
+  // tests need a real row there for the FK to accept — an id that only
+  // exists as a bare string would fail with a foreign key constraint error
+  // regardless of sealForExport's own logic.
+  Future<void> insertExportRecord(String id) => db
+      .into(db.exportRecordsTable)
+      .insert(
+        ExportRecordRow(
+          id: id,
+          format: 'test',
+          rangeFrom: '2026-06-01',
+          rangeTo: '2026-06-30',
+          exportedAt: DateTime.now().toUtc().millisecondsSinceEpoch,
+        ),
+      );
+
   test('commit sets committedAt and nothing else changes', () async {
     final id = await flights.createDraft(
       _draft(remarks: 'first'),
@@ -247,4 +263,60 @@ void main() {
     final id = await committedFlight();
     expect(() => flights.restore(id), throwsStateError);
   });
+
+  test('sealForExport commits every draft flight passed and sets '
+      'sealedByExportId, leaving an already-committed flight in the list '
+      'untouched', () async {
+    final draftId = await flights.createDraft(_draft(), aircraftId: aircraftId);
+    final alreadyCommittedId = await committedFlight();
+    await insertExportRecord('export-1');
+
+    await flights.sealForExport(
+      flightIds: [draftId, alreadyCommittedId],
+      exportRecordId: 'export-1',
+    );
+
+    final draftRow = await (db.select(
+      db.flightsTable,
+    )..where((t) => t.id.equals(draftId))).getSingle();
+    expect(draftRow.committedAt, isNotNull);
+    expect(draftRow.sealedByExportId, 'export-1');
+
+    final alreadyCommittedRow = await (db.select(
+      db.flightsTable,
+    )..where((t) => t.id.equals(alreadyCommittedId))).getSingle();
+    expect(
+      alreadyCommittedRow.sealedByExportId,
+      isNull,
+      reason: 'this flight was committed before the export, not by it',
+    );
+  });
+
+  test(
+    'sealForExport is atomic: nothing is sealed if any flight id is unknown',
+    () async {
+      final draftId = await flights.createDraft(
+        _draft(),
+        aircraftId: aircraftId,
+      );
+      await insertExportRecord('export-1');
+
+      await expectLater(
+        () => flights.sealForExport(
+          flightIds: [draftId, 'no-such-flight'],
+          exportRecordId: 'export-1',
+        ),
+        throwsA(anything),
+      );
+
+      final draftRow = await (db.select(
+        db.flightsTable,
+      )..where((t) => t.id.equals(draftId))).getSingle();
+      expect(
+        draftRow.committedAt,
+        isNull,
+        reason: 'the whole transaction must roll back, sealing nothing',
+      );
+    },
+  );
 }
