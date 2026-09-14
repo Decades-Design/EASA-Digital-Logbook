@@ -28,6 +28,7 @@ class Amc1Fcl050Row {
     required this.namesPic,
     required this.landingsDay,
     required this.landingsNight,
+    this.countersignature,
     required this.operationalNight,
     required this.operationalIfr,
     required this.pilotFunctionPic,
@@ -95,4 +96,13 @@ class Amc1Fcl050Row {
   /// layout.md` §5 is explicit the printed sheet has no structured field
   /// for either.
   final String remarks;
+
+  /// A printable line for `PilotCapacity.countersignature` (#78) — null
+  /// when none is required or expected, the ordinary case. Shares group
+  /// 12's free-text cell with [remarks] rather than getting a structural
+  /// space of its own, per the same §5 note: naming *why* a countersign-
+  /// ature applies (SPIC, PICUS, instruction received) is a projection
+  /// concern this row does not attempt, only its current status and
+  /// signatory.
+  final String? countersignature;
 }
