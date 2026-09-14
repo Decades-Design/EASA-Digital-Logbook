@@ -348,6 +348,23 @@ void main() {
     );
   });
 
+  test(
+    'isDraftPreview still generates valid, non-empty PDF bytes (#83)',
+    () async {
+      final document = await buildAmc1Fcl050Logbook(
+        holderName: 'Jane Pilot',
+        holderLicenceNumber: 'UK.FCL.123456',
+        rows: [sampleRow()],
+        isDraftPreview: true,
+      );
+
+      final bytes = await document.save();
+
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+    },
+  );
+
   // #80's row-height budget boundary. `sampleRow()`'s own short remark
   // ('Local flight.') never wraps, so every row here is exactly
   // _dataRowHeight tall — empirically confirmed (not just computed by

@@ -1188,6 +1188,45 @@ pw.Widget _bottomBand(
 String amc1Fcl050PageFooterText(int pageNumber, int totalPages) =>
     'Page $pageNumber of $totalPages';
 
+/// A large, rotated, semi-transparent "DRAFT - NOT SEALED" overlay for
+/// preview mode (#83) — unmistakable on screen or print that this copy
+/// hasn't sealed anything and carries no legal weight yet. A plain
+/// hyphen, not an em dash: this text renders with the default core
+/// Helvetica font (no `_Fonts` embedded font is threaded into this
+/// widget), which has no glyph for U+2014 — the same reason [_tick]
+/// prints `X` rather than a Unicode check mark. Confirmed empirically
+/// during this task's own visual-verification step: an em dash produced
+/// a "Unable to find a font to draw" warning and a missing glyph.
+pw.Widget _draftWatermark() => pw.Center(
+  child: pw.Transform.rotate(
+    angle: 0.5,
+    child: pw.Opacity(
+      opacity: 0.15,
+      child: pw.Text(
+        'DRAFT - NOT SEALED',
+        style: pw.TextStyle(fontSize: 60, fontWeight: pw.FontWeight.bold),
+      ),
+    ),
+  ),
+);
+
+/// Wraps [content] with [_draftWatermark] when [isDraftPreview] — shared
+/// by every one of this file's four page-building functions so the
+/// overlay looks identical everywhere rather than four slightly
+/// different copies.
+pw.Widget _withDraftWatermark(
+  pw.Widget content, {
+  required bool isDraftPreview,
+}) {
+  if (!isDraftPreview) return content;
+  return pw.Stack(
+    children: [
+      content,
+      pw.Positioned.fill(child: _draftWatermark()),
+    ],
+  );
+}
+
 pw.Widget _pageNumberFooter(int pageNumber, int totalPages) => pw.Align(
   alignment: pw.Alignment.bottomRight,
   child: pw.Padding(
@@ -1208,39 +1247,43 @@ pw.Page _buildFrontMatterPage({
   required String holderLicenceNumber,
   required int pageNumber,
   required int totalPages,
+  required bool isDraftPreview,
 }) => pw.Page(
   pageFormat: _pageFormat.landscape,
   margin: const pw.EdgeInsets.all(40),
-  build: (context) => pw.Column(
-    children: [
-      pw.Expanded(
-        child: pw.Center(
-          child: pw.Column(
-            mainAxisAlignment: pw.MainAxisAlignment.center,
-            children: [
-              pw.Text(
-                'PILOT LOGBOOK',
-                style: pw.TextStyle(
-                  fontSize: 20,
-                  fontWeight: pw.FontWeight.bold,
+  build: (context) => _withDraftWatermark(
+    pw.Column(
+      children: [
+        pw.Expanded(
+          child: pw.Center(
+            child: pw.Column(
+              mainAxisAlignment: pw.MainAxisAlignment.center,
+              children: [
+                pw.Text(
+                  'PILOT LOGBOOK',
+                  style: pw.TextStyle(
+                    fontSize: 20,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
-              ),
-              pw.SizedBox(height: 60),
-              pw.Text(
-                "Holder's name(s)          $holderName",
-                style: const pw.TextStyle(fontSize: 12),
-              ),
-              pw.SizedBox(height: 40),
-              pw.Text(
-                "Holder's licence number          $holderLicenceNumber",
-                style: const pw.TextStyle(fontSize: 12),
-              ),
-            ],
+                pw.SizedBox(height: 60),
+                pw.Text(
+                  "Holder's name(s)          $holderName",
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+                pw.SizedBox(height: 40),
+                pw.Text(
+                  "Holder's licence number          $holderLicenceNumber",
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      _pageNumberFooter(pageNumber, totalPages),
-    ],
+        _pageNumberFooter(pageNumber, totalPages),
+      ],
+    ),
+    isDraftPreview: isDraftPreview,
   ),
 );
 
@@ -1274,49 +1317,55 @@ pw.Widget _addressBlock({required bool showChangeCaption}) => pw.Padding(
 
 /// Page 2: `HOLDER'S ADDRESS`, six blocks in a 2×3 grid — a career-long
 /// address history the printed template absorbs without a reissue.
-pw.Page _buildAddressPage({required int pageNumber, required int totalPages}) =>
-    pw.Page(
-      pageFormat: _pageFormat.landscape,
-      margin: const pw.EdgeInsets.all(30),
-      build: (context) => pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          pw.Text(
-            "HOLDER'S ADDRESS:",
-            style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Table(
-            columnWidths: const {
-              0: pw.FlexColumnWidth(),
-              1: pw.FlexColumnWidth(),
-            },
-            children: [
-              pw.TableRow(
-                children: [
-                  _addressBlock(showChangeCaption: false),
-                  _addressBlock(showChangeCaption: true),
-                ],
-              ),
-              pw.TableRow(
-                children: [
-                  _addressBlock(showChangeCaption: true),
-                  _addressBlock(showChangeCaption: true),
-                ],
-              ),
-              pw.TableRow(
-                children: [
-                  _addressBlock(showChangeCaption: true),
-                  _addressBlock(showChangeCaption: true),
-                ],
-              ),
-            ],
-          ),
-          pw.Expanded(child: pw.SizedBox()),
-          _pageNumberFooter(pageNumber, totalPages),
-        ],
-      ),
-    );
+pw.Page _buildAddressPage({
+  required int pageNumber,
+  required int totalPages,
+  required bool isDraftPreview,
+}) => pw.Page(
+  pageFormat: _pageFormat.landscape,
+  margin: const pw.EdgeInsets.all(30),
+  build: (context) => _withDraftWatermark(
+    pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          "HOLDER'S ADDRESS:",
+          style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic),
+        ),
+        pw.SizedBox(height: 8),
+        pw.Table(
+          columnWidths: const {
+            0: pw.FlexColumnWidth(),
+            1: pw.FlexColumnWidth(),
+          },
+          children: [
+            pw.TableRow(
+              children: [
+                _addressBlock(showChangeCaption: false),
+                _addressBlock(showChangeCaption: true),
+              ],
+            ),
+            pw.TableRow(
+              children: [
+                _addressBlock(showChangeCaption: true),
+                _addressBlock(showChangeCaption: true),
+              ],
+            ),
+            pw.TableRow(
+              children: [
+                _addressBlock(showChangeCaption: true),
+                _addressBlock(showChangeCaption: true),
+              ],
+            ),
+          ],
+        ),
+        pw.Expanded(child: pw.SizedBox()),
+        _pageNumberFooter(pageNumber, totalPages),
+      ],
+    ),
+    isDraftPreview: isDraftPreview,
+  ),
+);
 
 /// The left-hand page of one entry spread: groups 1–8, [pageRows] flights
 /// (padded to [_rowsPerEntryPage] with blanks), and the labelled bottom
@@ -1330,6 +1379,7 @@ pw.Page _buildEntryPageOne({
   required Amc1Fcl050SpreadTotals spreadTotals,
   required int pageNumber,
   required int totalPages,
+  required bool isDraftPreview,
 }) {
   final columns = _physicalColumns(_pageOneGroups);
   final widths = _columnWidths(_pageOneGroups);
@@ -1345,40 +1395,43 @@ pw.Page _buildEntryPageOne({
   return pw.Page(
     pageFormat: _pageFormat.landscape,
     margin: const pw.EdgeInsets.all(_pageMargin),
-    build: (context) => pw.Column(
-      children: [
-        _numberBand(fonts, widths, columns),
-        _headingBand(fonts, _pageOneGroups, widths, columns),
-        pw.Table(
-          columnWidths: _tableColumnWidths(widths),
-          children: [
-            for (var i = 0; i < rowsPerPage; i++)
-              pw.TableRow(
-                children: _pageOneDataCells(
-                  fonts,
-                  widths,
-                  boundaries,
-                  i < pageRows.length ? pageRows[i] : null,
-                  topWeight: i == 0 ? _mediumBorderSide : _thinBorderSide,
-                  bottomWeight: i == rowsPerPage - 1
-                      ? _mediumBorderSide
-                      : _thinBorderSide,
-                  rowHeight: rowHeights[i],
+    build: (context) => _withDraftWatermark(
+      pw.Column(
+        children: [
+          _numberBand(fonts, widths, columns),
+          _headingBand(fonts, _pageOneGroups, widths, columns),
+          pw.Table(
+            columnWidths: _tableColumnWidths(widths),
+            children: [
+              for (var i = 0; i < rowsPerPage; i++)
+                pw.TableRow(
+                  children: _pageOneDataCells(
+                    fonts,
+                    widths,
+                    boundaries,
+                    i < pageRows.length ? pageRows[i] : null,
+                    topWeight: i == 0 ? _mediumBorderSide : _thinBorderSide,
+                    bottomWeight: i == rowsPerPage - 1
+                        ? _mediumBorderSide
+                        : _thinBorderSide,
+                    rowHeight: rowHeights[i],
+                  ),
                 ),
-              ),
-          ],
-        ),
-        _bottomBand(
-          fonts,
-          widths,
-          columns,
-          totalsRowValues,
-          withLabels: true,
-          hasRemarksColumn: false,
-        ),
-        pw.Expanded(child: pw.SizedBox()),
-        _pageNumberFooter(pageNumber, totalPages),
-      ],
+            ],
+          ),
+          _bottomBand(
+            fonts,
+            widths,
+            columns,
+            totalsRowValues,
+            withLabels: true,
+            hasRemarksColumn: false,
+          ),
+          pw.Expanded(child: pw.SizedBox()),
+          _pageNumberFooter(pageNumber, totalPages),
+        ],
+      ),
+      isDraftPreview: isDraftPreview,
     ),
   );
 }
@@ -1396,6 +1449,7 @@ pw.Page _buildEntryPageTwo({
   required Amc1Fcl050SpreadTotals spreadTotals,
   required int pageNumber,
   required int totalPages,
+  required bool isDraftPreview,
 }) {
   final columns = _physicalColumns(_pageTwoGroups);
   final widths = _columnWidths(_pageTwoGroups);
@@ -1409,40 +1463,43 @@ pw.Page _buildEntryPageTwo({
   return pw.Page(
     pageFormat: _pageFormat.landscape,
     margin: const pw.EdgeInsets.all(_pageMargin),
-    build: (context) => pw.Column(
-      children: [
-        _numberBand(fonts, widths, columns),
-        _headingBand(fonts, _pageTwoGroups, widths, columns),
-        pw.Table(
-          columnWidths: _tableColumnWidths(widths),
-          children: [
-            for (var i = 0; i < rowsPerPage; i++)
-              pw.TableRow(
-                children: _pageTwoDataCells(
-                  fonts,
-                  widths,
-                  boundaries,
-                  i < pageRows.length ? pageRows[i] : null,
-                  topWeight: i == 0 ? _mediumBorderSide : _thinBorderSide,
-                  bottomWeight: i == rowsPerPage - 1
-                      ? _mediumBorderSide
-                      : _thinBorderSide,
-                  rowHeight: rowHeights[i],
+    build: (context) => _withDraftWatermark(
+      pw.Column(
+        children: [
+          _numberBand(fonts, widths, columns),
+          _headingBand(fonts, _pageTwoGroups, widths, columns),
+          pw.Table(
+            columnWidths: _tableColumnWidths(widths),
+            children: [
+              for (var i = 0; i < rowsPerPage; i++)
+                pw.TableRow(
+                  children: _pageTwoDataCells(
+                    fonts,
+                    widths,
+                    boundaries,
+                    i < pageRows.length ? pageRows[i] : null,
+                    topWeight: i == 0 ? _mediumBorderSide : _thinBorderSide,
+                    bottomWeight: i == rowsPerPage - 1
+                        ? _mediumBorderSide
+                        : _thinBorderSide,
+                    rowHeight: rowHeights[i],
+                  ),
                 ),
-              ),
-          ],
-        ),
-        _bottomBand(
-          fonts,
-          widths,
-          columns,
-          totalsRowValues,
-          withLabels: false,
-          hasRemarksColumn: true,
-        ),
-        pw.Expanded(child: pw.SizedBox()),
-        _pageNumberFooter(pageNumber, totalPages),
-      ],
+            ],
+          ),
+          _bottomBand(
+            fonts,
+            widths,
+            columns,
+            totalsRowValues,
+            withLabels: false,
+            hasRemarksColumn: true,
+          ),
+          pw.Expanded(child: pw.SizedBox()),
+          _pageNumberFooter(pageNumber, totalPages),
+        ],
+      ),
+      isDraftPreview: isDraftPreview,
     ),
   );
 }
@@ -1462,12 +1519,17 @@ pw.Page _buildEntryPageTwo({
 /// AMC itself requires it on every page regardless of layout concerns;
 /// an interactive signature is still out of scope.
 ///
+/// [isDraftPreview] (#83) overlays [_draftWatermark] on every page when
+/// true — for previewing layout before a flight is sealed for export;
+/// defaults to false so every existing call site is unaffected.
+///
 /// Async: loads and embeds [_Fonts] once per call (see its own dartdoc).
 Future<pw.Document> buildAmc1Fcl050Logbook({
   required String holderName,
   required String holderLicenceNumber,
   required List<Amc1Fcl050Row> rows,
   Amc1Fcl050Totals openingBalance = Amc1Fcl050Totals.zero,
+  bool isDraftPreview = false,
 }) async {
   final fonts = await _loadFonts();
   final document = pw.Document();
@@ -1491,10 +1553,15 @@ Future<pw.Document> buildAmc1Fcl050Logbook({
       holderLicenceNumber: holderLicenceNumber,
       pageNumber: pageNumber++,
       totalPages: totalPages,
+      isDraftPreview: isDraftPreview,
     ),
   );
   document.addPage(
-    _buildAddressPage(pageNumber: pageNumber++, totalPages: totalPages),
+    _buildAddressPage(
+      pageNumber: pageNumber++,
+      totalPages: totalPages,
+      isDraftPreview: isDraftPreview,
+    ),
   );
 
   for (var s = 0; s < spreads.length; s++) {
@@ -1509,6 +1576,7 @@ Future<pw.Document> buildAmc1Fcl050Logbook({
         spreadTotals: spreadTotals[s],
         pageNumber: pageNumber++,
         totalPages: totalPages,
+        isDraftPreview: isDraftPreview,
       ),
     );
     document.addPage(
@@ -1520,6 +1588,7 @@ Future<pw.Document> buildAmc1Fcl050Logbook({
         spreadTotals: spreadTotals[s],
         pageNumber: pageNumber++,
         totalPages: totalPages,
+        isDraftPreview: isDraftPreview,
       ),
     );
   }
