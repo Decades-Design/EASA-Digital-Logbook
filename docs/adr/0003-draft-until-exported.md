@@ -59,7 +59,10 @@ that was never a record to begin with.
 
 The schema needs a draft/committed state machine, tracked for M2. Export becomes a state
 transition with side effects — it commits every draft entry included in the export — rather than
-a pure read of already-final data, which the `export/` layer must account for. The
+a pure read of already-final data, which the `export/` layer must account for. **Implemented in #83.** `FlightRepository.sealForExport` performs the transition; a flight
+committed some other way (e.g. #58's immediate commit-on-save) is unaffected by an export that
+later includes it — `FlightsTable.sealedByExportId`, separate from `committedAt`, distinguishes
+"committed" from "committed because of this export." The
 paper-logbook analogy argues *for* retaining history rather than against it: once an entry is
 committed, correcting it must behave like crossing out and re-entering in ink, not like erasing,
 which is exactly what rule 4's delta-revision behaviour after commit implements.
