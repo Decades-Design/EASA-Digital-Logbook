@@ -54,22 +54,30 @@ class _Amc1Fcl050ExportScreenState
     _licenceNumberController.text = profile.primaryLicenceNumber ?? '';
   }
 
+  /// No-ops when [currentProfile] is null: a fresh install with no
+  /// `PilotProfile` row yet has no `dateOfBirth`/`primaryJurisdictionId` for
+  /// this screen to know — both feed real logic elsewhere (medical-validity
+  /// banding, which jurisdiction totals/currency key off), so fabricating a
+  /// placeholder profile just to attach the holder-identity edit onto would
+  /// be exactly the "never guess a missing discriminator" CLAUDE.md rules
+  /// out, and would contradict `PilotProfile.holderName`'s own doc comment
+  /// ("an export screen with nothing set here must ask, not guess"). The
+  /// PDF itself reads straight from the text controllers regardless, so
+  /// skipping persistence here doesn't affect this export's own output —
+  /// only whether the fields are pre-filled next time, until a real profile
+  /// exists via whatever path already creates one.
   Future<void> _saveHolderFieldsIfChanged(PilotProfile? currentProfile) async {
+    if (currentProfile == null) return;
     final name = _holderNameController.text.trim();
     final licenceNumber = _licenceNumberController.text.trim();
-    final base =
-        currentProfile ??
-        const PilotProfile(
-          dateOfBirth: CalendarDate(1900, 1, 1),
-          primaryJurisdictionId: 'eu.easa.part-fcl',
-        );
-    if (base.holderName == name && base.primaryLicenceNumber == licenceNumber) {
+    if (currentProfile.holderName == name &&
+        currentProfile.primaryLicenceNumber == licenceNumber) {
       return;
     }
     await ref
         .read(pilotProfileRepositoryProvider)
         .save(
-          base.copyWith(
+          currentProfile.copyWith(
             holderName: name.isEmpty ? null : name,
             primaryLicenceNumber: licenceNumber.isEmpty ? null : licenceNumber,
           ),
@@ -167,14 +175,12 @@ class _Amc1Fcl050ExportScreenState
     setState(() => _busy = true);
     try {
       final plan = await _buildPlan(from, to);
-      final currentProfile = await ref.read(pilotProfileProvider.future);
-      await _saveHolderFieldsIfChanged(currentProfile);
 
       if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Export & seal'),
+          title: const Text('Export & Seal'),
           content: Text(
             plan.draftCount == 0
                 ? 'No new drafts in this range. This will still generate '
@@ -190,7 +196,7 @@ class _Amc1Fcl050ExportScreenState
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Export & seal'),
+              child: const Text('Export & Seal'),
             ),
           ],
         ),
@@ -215,6 +221,9 @@ class _Amc1Fcl050ExportScreenState
         allowedExtensions: ['pdf'],
       );
       if (savedUri == null) return; // pilot cancelled -- nothing sealed.
+
+      final currentProfile = await ref.read(pilotProfileProvider.future);
+      await _saveHolderFieldsIfChanged(currentProfile);
 
       final exportRecordId = await ref
           .read(exportRecordRepositoryProvider)
