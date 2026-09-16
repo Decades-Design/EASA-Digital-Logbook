@@ -243,6 +243,18 @@ class _Amc1Fcl050ExportScreenState
         '${plan.contentRows.length} flight(s) exported to $fileName; '
         '${plan.draftCount} sealed.',
       );
+    } catch (e) {
+      // The PDF may already be saved to disk by this point (recordExport
+      // or sealForExport threw after the file-save succeeded) -- nothing
+      // was sealed (see recordExport/sealForExport's own transactional
+      // guarantees), but a silent failure here would leave the pilot
+      // looking at a PDF that appears to be a completed, sealed export
+      // when it isn't. Design spec §Architecture piece 3 promises the
+      // pilot sees an error and can retry with a fresh file.
+      _showMessage(
+        'Export failed while sealing: $e. Nothing was sealed; the saved '
+        'PDF is not a sealed export.',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }

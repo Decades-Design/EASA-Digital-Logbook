@@ -124,4 +124,35 @@ void main() {
     // offBlocks-to-onBlocks span _flightOn always sets.
     expect(plan.openingBalance.totalTimeOfFlight.inMinutes, 60);
   });
+
+  test('content rows are sorted by offBlocks, not by committed-before-draft '
+      'insertion order', () async {
+    // Same calendar day for both, so a CalendarDate-only sort can't tell
+    // them apart -- the committed flight is built and appended to the
+    // internal list before the draft (see the loop order in
+    // buildAmc1Fcl050ExportPlan), but it flew LATER in the day. A correct
+    // offBlocks sort must still print the draft (09:00) before the
+    // committed flight (14:00).
+    final laterCommittedId = await flights.createDraft(
+      _flightOn(DateTime.utc(2026, 1, 20, 14)),
+      aircraftId: aircraftId,
+    );
+    await flights.commit(laterCommittedId);
+    await flights.createDraft(
+      _flightOn(DateTime.utc(2026, 1, 20, 9)),
+      aircraftId: aircraftId,
+    );
+
+    final plan = await buildAmc1Fcl050ExportPlan(
+      flightReadRepository: flightReads,
+      easaProjection: easaProjection,
+      from: const CalendarDate(2026, 1, 1),
+      to: const CalendarDate(2026, 1, 31),
+    );
+
+    expect(plan.contentRows.map((row) => row.departureTime), [
+      '09:00',
+      '14:00',
+    ]);
+  });
 }

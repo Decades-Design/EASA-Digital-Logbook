@@ -1,4 +1,5 @@
 import '../domain/model/calendar_date.dart';
+import '../domain/model/utc_instant.dart';
 import '../domain/projection/projection.dart';
 import '../domain/repository/flight_read_repository.dart';
 import 'amc1_fcl050_row.dart';
@@ -50,8 +51,24 @@ Future<Amc1Fcl050ExportPlan> buildAmc1Fcl050ExportPlan({
       .first;
   final allDrafts = await flightReadRepository.watchDrafts().first;
 
-  final beforeRange = <({String id, Amc1Fcl050Row row, CalendarDate date})>[];
-  final inRange = <({String id, Amc1Fcl050Row row, CalendarDate date})>[];
+  final beforeRange =
+      <
+        ({
+          String id,
+          Amc1Fcl050Row row,
+          CalendarDate date,
+          UtcInstant offBlocks,
+        })
+      >[];
+  final inRange =
+      <
+        ({
+          String id,
+          Amc1Fcl050Row row,
+          CalendarDate date,
+          UtcInstant offBlocks,
+        })
+      >[];
 
   for (final projected in allCommitted) {
     final flight = projected.record.flight;
@@ -62,9 +79,19 @@ Future<Amc1Fcl050ExportPlan> buildAmc1Fcl050ExportPlan({
       easaProjection: easaProjection,
     );
     if (date < from) {
-      beforeRange.add((id: projected.record.id, row: row, date: date));
+      beforeRange.add((
+        id: projected.record.id,
+        row: row,
+        date: date,
+        offBlocks: flight.offBlocks,
+      ));
     } else if (date <= to) {
-      inRange.add((id: projected.record.id, row: row, date: date));
+      inRange.add((
+        id: projected.record.id,
+        row: row,
+        date: date,
+        offBlocks: flight.offBlocks,
+      ));
     }
   }
 
@@ -77,11 +104,27 @@ Future<Amc1Fcl050ExportPlan> buildAmc1Fcl050ExportPlan({
       aircraft: record.aircraft,
       easaProjection: easaProjection,
     );
-    inRange.add((id: record.id, row: row, date: date));
+    inRange.add((
+      id: record.id,
+      row: row,
+      date: date,
+      offBlocks: record.flight.offBlocks,
+    ));
     draftFlightIds.add(record.id);
   }
 
-  inRange.sort((a, b) => a.date.compareTo(b.date));
+  // Sorted chronologically by offBlocks (design spec, Architecture piece 2
+  // step 2) -- CalendarDate alone can't order same-day flights, and relying
+  // on insertion order would put committed flights before drafts flown
+  // later the same day, plus risk Dart's List.sort switching from stable
+  // insertion sort to an unstable quicksort above 32 elements. `id` breaks
+  // ties so the ordering is a strict total order, keeping exports
+  // byte-identical for the same input (CLAUDE.md, Printable logbook
+  // export).
+  inRange.sort((a, b) {
+    final byTime = a.offBlocks.compareTo(b.offBlocks);
+    return byTime != 0 ? byTime : a.id.compareTo(b.id);
+  });
 
   return Amc1Fcl050ExportPlan(
     contentRows: [for (final entry in inRange) entry.row],
