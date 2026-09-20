@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../fixtures/decoders/aircraft_fixture.dart';
 import '../fixtures/decoders/flight_fixture.dart';
+import '../fixtures/decoders/pilot_capacity_fixture.dart';
 
 /// Exercises `buildAmc1Fcl050Row` against the real shipped EASA profile
 /// (`assets/jurisdictions/eu.easa.part-fcl.yaml`) and real domain fixtures
@@ -84,5 +85,63 @@ void main() {
       row.remarks,
       'IFR flight plan filed and flown throughout; VMC the entire route.',
     );
+  });
+
+  test('no countersignature required or expected prints nothing (#78)', () {
+    final row = buildAmc1Fcl050Row(
+      flight: flightFromFixture('vmc_ifr_flight'),
+      aircraft: aircraftFromFixture('g_abcd'),
+      easaProjection: easaProjection,
+    );
+
+    expect(row.countersignature, isNull);
+  });
+
+  test(
+    'a signed countersignature names the signatory and credential (#78)',
+    () {
+      final flight = flightFromFixture(
+        'vmc_ifr_flight',
+      ).copyWith(capacity: pilotCapacityFromFixture('picus_countersigned'));
+
+      final row = buildAmc1Fcl050Row(
+        flight: flight,
+        aircraft: aircraftFromFixture('g_abcd'),
+        easaProjection: easaProjection,
+      );
+
+      expect(
+        row.countersignature,
+        'Countersigned by K. Almqvist (SWE.ATPL.90233)',
+      );
+    },
+  );
+
+  test('a pending countersignature is flagged without a signatory (#78)', () {
+    final flight = flightFromFixture(
+      'vmc_ifr_flight',
+    ).copyWith(capacity: pilotCapacityFromFixture('picus_pending'));
+
+    final row = buildAmc1Fcl050Row(
+      flight: flight,
+      aircraft: aircraftFromFixture('g_abcd'),
+      easaProjection: easaProjection,
+    );
+
+    expect(row.countersignature, 'Countersignature pending');
+  });
+
+  test('a refused countersignature is flagged as refused (#78)', () {
+    final flight = flightFromFixture(
+      'vmc_ifr_flight',
+    ).copyWith(capacity: pilotCapacityFromFixture('picus_refused'));
+
+    final row = buildAmc1Fcl050Row(
+      flight: flight,
+      aircraft: aircraftFromFixture('g_abcd'),
+      easaProjection: easaProjection,
+    );
+
+    expect(row.countersignature, 'Countersignature refused');
   });
 }

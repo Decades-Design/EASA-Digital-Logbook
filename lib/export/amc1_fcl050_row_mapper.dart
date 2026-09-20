@@ -1,4 +1,5 @@
 import '../domain/model/aircraft.dart';
+import '../domain/model/countersignature.dart';
 import '../domain/model/flight.dart';
 import '../domain/model/flight_duration.dart';
 import '../domain/model/flight_times.dart';
@@ -39,6 +40,27 @@ String _namesPic(Flight flight) {
     return instructor.name ?? '';
   }
   return flight.otherPilotName ?? '';
+}
+
+/// Group 12's countersignature line (#78) — null when
+/// [PilotCapacity.countersignature] is null, the ordinary case, since
+/// `AMC1 FCL.050` requires one only for SPIC, PICUS, and instruction
+/// received. Deliberately does not name *which* of those applies: that is
+/// a projection conclusion, not a fact this mapper derives.
+String? _countersignatureLine(Countersignature? countersignature) {
+  if (countersignature == null) return null;
+
+  switch (countersignature.status) {
+    case CountersignatureStatus.signed:
+      final name = countersignature.signatoryName;
+      final credential = countersignature.signatoryCredentialNumber;
+      final who = name == null ? 'Countersigned' : 'Countersigned by $name';
+      return credential == null ? who : '$who ($credential)';
+    case CountersignatureStatus.pending:
+      return 'Countersignature pending';
+    case CountersignatureStatus.refused:
+      return 'Countersignature refused';
+  }
 }
 
 /// Maps one [flight] flown in [aircraft] to a printed `AMC1 FCL.050` row,
@@ -84,6 +106,7 @@ Amc1Fcl050Row buildAmc1Fcl050Row({
     landingsDay: flight.landings.dayFullStop + flight.landings.dayTouchAndGo,
     landingsNight:
         flight.landings.nightFullStop + flight.landings.nightTouchAndGo,
+    countersignature: _countersignatureLine(flight.capacity.countersignature),
     operationalNight: _quantity(result, 'night'),
     operationalIfr: _quantity(result, 'ifr'),
     pilotFunctionPic: pic,

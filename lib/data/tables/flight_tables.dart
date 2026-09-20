@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'aircraft_tables.dart';
+import 'export_record_table.dart';
 import 'import_batch_table.dart';
 
 /// One row per flight, current state only. `committedAt`/`tombstonedAt`
@@ -86,6 +87,15 @@ class FlightsTable extends Table {
 
   IntColumn get committedAt => integer().nullable()();
   IntColumn get tombstonedAt => integer().nullable()();
+
+  /// The export that sealed this flight from draft to committed (#83) —
+  /// null for a flight committed some other way (e.g. #58's "log this
+  /// flight now"), which is why this is a separate field from
+  /// `committedAt` rather than reusing it. Set exactly once, the moment
+  /// this flight transitions; committed entries never change lifecycle
+  /// fields again.
+  TextColumn get sealedByExportId =>
+      text().nullable().references(ExportRecordsTable, #id)();
 
   /// The import batch this flight was created by (#73), if any — null for
   /// a flight entered by hand. Kept even after `undoImportBatch` tombstones

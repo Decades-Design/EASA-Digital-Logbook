@@ -6,6 +6,7 @@ import '../model/flight.dart';
 import '../model/utc_instant.dart';
 import '../projection/projection.dart';
 import '../projection/projection_result.dart';
+import 'export_record_repository.dart';
 
 part 'flight_read_repository.freezed.dart';
 
@@ -114,7 +115,12 @@ enum FlightRevisionKind { commit, edit, tombstone, restore }
 /// [FlightRevisionKind.commit] entry — everything else has a prior state to
 /// compare against. [reason] is the free text given at the time (edit,
 /// tombstone or restore); null for the synthetic commit entry, which never
-/// had one to give.
+/// had one to give. [sealedByExport] is set only on the [FlightRevisionKind.commit]
+/// entry, and only when `FlightsTable.sealedByExportId` names a row — #83's
+/// gap: the data was recorded but nothing surfaced it, so a pilot (or an
+/// inspector) looking at a committed flight's history had no way to tell
+/// "committed by exporting the logbook" from "committed via #58's manual
+/// 'log this flight now'" apart.
 class FlightRevisionEntry {
   const FlightRevisionEntry({
     required this.kind,
@@ -122,6 +128,7 @@ class FlightRevisionEntry {
     required this.after,
     this.before,
     this.reason,
+    this.sealedByExport,
   });
 
   final FlightRevisionKind kind;
@@ -129,6 +136,7 @@ class FlightRevisionEntry {
   final Flight after;
   final Flight? before;
   final String? reason;
+  final ExportRecord? sealedByExport;
 }
 
 /// The full history for one committed flight (#60). [entries] is newest

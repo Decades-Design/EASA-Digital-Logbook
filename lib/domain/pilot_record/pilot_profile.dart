@@ -30,5 +30,16 @@ abstract class PilotProfile with _$PilotProfile {
     /// hasn't set one yet should see that figure omitted, not a guessed
     /// answer (CLAUDE.md: "never guess a missing discriminator").
     String? homeBaseIcao,
+
+    /// The name printed on group 1 of every AMC1 FCL.050 export front
+    /// matter page (#83). Nullable and never defaulted — an export screen
+    /// with nothing set here must ask, not guess.
+    String? holderName,
+
+    /// The licence number printed alongside [holderName]. Nullable, same
+    /// reasoning. Deliberately a single field, not a full multi-licence
+    /// model (CLAUDE.md's eventual "N licences, each with an issuing
+    /// authority") — that stays a separate, larger feature.
+    String? primaryLicenceNumber,
   }) = _PilotProfile;
 }

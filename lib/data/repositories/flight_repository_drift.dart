@@ -121,6 +121,29 @@ class DriftFlightRepository implements FlightRepository {
   }
 
   @override
+  Future<void> sealForExport({
+    required List<String> flightIds,
+    required String exportRecordId,
+  }) async {
+    await _db.transaction(() async {
+      for (final flightId in flightIds) {
+        final current = await _requireRow(flightId);
+        if (current.committedAt != null) {
+          continue; // already committed, untouched.
+        }
+        await (_db.update(
+          _db.flightsTable,
+        )..where((t) => t.id.equals(flightId))).write(
+          FlightsTableCompanion(
+            committedAt: Value(DateTime.now().toUtc().millisecondsSinceEpoch),
+            sealedByExportId: Value(exportRecordId),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
   Future<void> updateCommitted(
     String flightId,
     Flight flight, {

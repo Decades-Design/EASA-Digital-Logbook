@@ -115,4 +115,17 @@ abstract class FlightRepository {
   /// and marks the batch undone. Throws [StateError] if [batchId] is
   /// unknown or already undone.
   Future<ImportUndoResult> undoImportBatch(String batchId, {String? reason});
+
+  /// Seals every one of [flightIds] to committed as part of export
+  /// [exportRecordId] (#83): a flight still draft is committed and gets
+  /// `sealedByExportId` set to [exportRecordId]; a flight already
+  /// committed (by this export's own re-run, or by some other path such
+  /// as #58's manual commit) is left completely untouched — that's what
+  /// makes re-exporting an already-sealed range a no-op state-wise. All
+  /// in one transaction: an unknown flight id throws and nothing among
+  /// [flightIds] is sealed.
+  Future<void> sealForExport({
+    required List<String> flightIds,
+    required String exportRecordId,
+  });
 }

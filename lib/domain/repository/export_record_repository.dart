@@ -29,8 +29,9 @@ class ExportRecord {
 /// once the vendor app shows duplicates.
 abstract class ExportRecordRepository {
   /// Records that an export of [format] covering [from]..[to] just
-  /// happened.
-  Future<void> recordExport({
+  /// happened. Returns the new record's id — #83 links sealed flights
+  /// back to the export that sealed them via this id.
+  Future<String> recordExport({
     required String format,
     required CalendarDate from,
     required CalendarDate to,

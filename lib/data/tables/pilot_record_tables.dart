@@ -24,6 +24,13 @@ class PilotProfileTable extends Table {
   /// pilot who hasn't set one should read back as unset, not backfilled.
   TextColumn get homeBaseIcao => text().nullable()();
 
+  /// Mirrors `PilotProfile.holderName` — nullable, never defaulted (#83).
+  TextColumn get holderName => text().nullable()();
+
+  /// Mirrors `PilotProfile.primaryLicenceNumber` — nullable, never
+  /// defaulted (#83).
+  TextColumn get primaryLicenceNumber => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

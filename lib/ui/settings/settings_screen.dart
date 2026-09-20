@@ -12,6 +12,7 @@ import '../../domain/totals/totals_summary.dart';
 import '../aircraft/aircraft_list_screen.dart';
 import '../currency/rule_asset_paths.dart';
 import '../currency/sample_currency_data.dart';
+import '../io/amc1_fcl050_export_screen.dart';
 import '../io/export_screen.dart';
 import '../io/import_screen.dart';
 import '../../io/export_formats.dart';
@@ -141,6 +142,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 const _ImportRow(),
                 const _Divider(),
                 const _ExportRow(),
+                const _Divider(),
+                const _Amc1Fcl050ExportRow(),
                 const _Divider(),
                 // `exportDatabaseBackup`/`isBackupOverdue`
                 // (lib/data/database_backup.dart) are real and tested, but
@@ -344,6 +347,42 @@ class _ExportRow extends StatelessWidget {
               Text(
                 '$faaCsvExportFormatLabel CSV · range-scoped, warns about '
                 'overlap',
+                style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Amc1Fcl050ExportRow extends StatelessWidget {
+  const _Amc1Fcl050ExportRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ink = context.inkTiers;
+
+    return InkWell(
+      onTap: () => Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const Amc1Fcl050ExportScreen()),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Print logbook (AMC1 FCL.050)',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'PDF, range-scoped, seals drafts to committed',
                 style: theme.textTheme.labelSmall?.copyWith(color: ink.faint),
               ),
             ],

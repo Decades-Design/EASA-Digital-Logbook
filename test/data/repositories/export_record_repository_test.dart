@@ -120,4 +120,20 @@ void main() {
       );
     },
   );
+
+  test('recordExport returns the new row\'s id', () async {
+    final id = await exports.recordExport(
+      format: 'AMC1 FCL.050',
+      from: const CalendarDate(2026, 1, 1),
+      to: const CalendarDate(2026, 1, 31),
+    );
+
+    expect(id, isNotEmpty);
+    final overlapping = await exports.findOverlapping(
+      format: 'AMC1 FCL.050',
+      from: const CalendarDate(2026, 1, 15),
+      to: const CalendarDate(2026, 2, 15),
+    );
+    expect(overlapping.single.id, id);
+  });
 }

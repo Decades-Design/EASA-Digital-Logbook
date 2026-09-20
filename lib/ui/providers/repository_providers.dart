@@ -4,6 +4,7 @@ import '../../data/repositories/aircraft_repository.dart';
 import '../../data/repositories/csv_mapping_profile_repository.dart';
 import '../../data/repositories/custom_aerodrome_repository.dart';
 import '../../data/repositories/export_record_repository_drift.dart';
+import '../../data/repositories/export_sealing_coordinator_drift.dart';
 import '../../data/repositories/flight_read_repository_drift.dart';
 import '../../data/repositories/flight_repository_drift.dart';
 import '../../data/repositories/held_aircraft_qualification_repository.dart';
@@ -11,6 +12,7 @@ import '../../data/repositories/held_rating_repository.dart';
 import '../../data/repositories/medical_certificate_repository.dart';
 import '../../data/repositories/pilot_profile_repository.dart';
 import '../../domain/repository/export_record_repository.dart';
+import '../../domain/repository/export_sealing_coordinator.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../../domain/repository/flight_repository.dart';
 import 'database_provider.dart';
@@ -54,6 +56,14 @@ final customAerodromeRepositoryProvider = Provider<CustomAerodromeRepository>(
 
 final exportRecordRepositoryProvider = Provider<ExportRecordRepository>(
   (ref) => DriftExportRecordRepository(ref.watch(databaseProvider)),
+);
+
+final exportSealingCoordinatorProvider = Provider<ExportSealingCoordinator>(
+  (ref) => DriftExportSealingCoordinator(
+    ref.watch(databaseProvider),
+    ref.watch(exportRecordRepositoryProvider),
+    ref.watch(flightRepositoryProvider),
+  ),
 );
 
 final csvMappingProfileRepositoryProvider =

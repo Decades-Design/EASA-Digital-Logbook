@@ -409,6 +409,145 @@ void _seedV6Database(String path) {
   }
 }
 
+/// As [_seedV6Database]'s tables, but including `import_batch_id` on
+/// `flights` (#73's v7->v8 step) and unchanged otherwise -- the real v9
+/// shape, since no migration step between v8 and v9 touches either table
+/// this test's own v9->v10 step alters. `import_batches`/`export_records`/
+/// `csv_mapping_profiles` aren't created: nothing in the v9->v10 step
+/// references them, and sqlite3.open here never turns foreign_keys on, so
+/// the unresolved `REFERENCES` on `import_batch_id`/`sealed_by_export_id`
+/// don't need a real target table to exist.
+void _seedV9Database(String path) {
+  final db = sqlite3.sqlite3.open(path);
+  try {
+    db.execute('''
+      CREATE TABLE pilot_profile (
+        id TEXT NOT NULL,
+        date_of_birth TEXT NOT NULL,
+        primary_jurisdiction_id TEXT NOT NULL DEFAULT 'eu.easa.part-fcl',
+        home_base_icao TEXT NULL,
+        PRIMARY KEY (id)
+      )
+    ''');
+    db.execute(
+      'INSERT INTO pilot_profile (id, date_of_birth, primary_jurisdiction_id) '
+      'VALUES (?, ?, ?)',
+      ['singleton', '1990-01-01', 'eu.easa.part-fcl'],
+    );
+    db.execute('''
+      CREATE TABLE flights (
+        id TEXT NOT NULL,
+        aircraft_id TEXT NOT NULL,
+        pre_planned_navigation INTEGER NOT NULL,
+        off_blocks INTEGER NOT NULL,
+        on_blocks INTEGER NOT NULL,
+        takeoff INTEGER NULL,
+        landing INTEGER NULL,
+        other_pilot_name TEXT NULL,
+        other_pilot_credential_number TEXT NULL,
+        carrying_passengers INTEGER NOT NULL,
+        takeoffs_day_full_stop INTEGER NOT NULL,
+        takeoffs_day_touch_and_go INTEGER NOT NULL,
+        takeoffs_night_full_stop INTEGER NOT NULL,
+        takeoffs_night_touch_and_go INTEGER NOT NULL,
+        landings_day_full_stop INTEGER NOT NULL,
+        landings_day_touch_and_go INTEGER NOT NULL,
+        landings_night_full_stop INTEGER NOT NULL,
+        landings_night_touch_and_go INTEGER NOT NULL,
+        ifr_flight_plan_filed INTEGER NOT NULL,
+        actual_instrument_minutes INTEGER NOT NULL,
+        simulated_instrument_minutes INTEGER NOT NULL,
+        holding_procedures_count INTEGER NOT NULL,
+        tracking_performed INTEGER NOT NULL,
+        series_group_id TEXT NULL,
+        airworthiness_basis TEXT NULL,
+        remarks TEXT NOT NULL,
+        alternative_compliance_events TEXT NOT NULL DEFAULT '',
+        capacity_command_authority INTEGER NOT NULL,
+        capacity_sole_manipulator INTEGER NOT NULL,
+        capacity_sole_occupant INTEGER NOT NULL,
+        capacity_multi_pilot_operation INTEGER NOT NULL,
+        capacity_additional_crew_required_by_rule INTEGER NOT NULL,
+        capacity_acting_as_instructor INTEGER NOT NULL,
+        capacity_acting_as_examiner INTEGER NOT NULL,
+        capacity_picus_claimed INTEGER NOT NULL,
+        capacity_pic_intervention_not_required INTEGER NOT NULL,
+        capacity_manipulation_time_minutes INTEGER NULL,
+        capacity_solo_endorsement_held INTEGER NULL,
+        capacity_endorsing_instructor_name TEXT NULL,
+        capacity_instructor_capacity TEXT NULL,
+        capacity_instructor_influenced_flight INTEGER NULL,
+        capacity_instructor_name TEXT NULL,
+        capacity_instructor_credential_number TEXT NULL,
+        capacity_instructor_credential_expiry TEXT NULL,
+        capacity_other_pilot_role TEXT NULL,
+        capacity_countersignature_status TEXT NULL,
+        capacity_countersignature_signatory_name TEXT NULL,
+        capacity_countersignature_signatory_credential_number TEXT NULL,
+        capacity_countersignature_signatory_credential_expiry TEXT NULL,
+        capacity_countersignature_signed_at INTEGER NULL,
+        committed_at INTEGER NULL,
+        tombstoned_at INTEGER NULL,
+        import_batch_id TEXT NULL,
+        PRIMARY KEY (id)
+      )
+    ''');
+    db.execute(
+      'INSERT INTO flights (id, aircraft_id, pre_planned_navigation, '
+      'off_blocks, on_blocks, carrying_passengers, takeoffs_day_full_stop, '
+      'takeoffs_day_touch_and_go, takeoffs_night_full_stop, '
+      'takeoffs_night_touch_and_go, landings_day_full_stop, '
+      'landings_day_touch_and_go, landings_night_full_stop, '
+      'landings_night_touch_and_go, ifr_flight_plan_filed, '
+      'actual_instrument_minutes, simulated_instrument_minutes, '
+      'holding_procedures_count, tracking_performed, remarks, '
+      'capacity_command_authority, capacity_sole_manipulator, '
+      'capacity_sole_occupant, capacity_multi_pilot_operation, '
+      'capacity_additional_crew_required_by_rule, '
+      'capacity_acting_as_instructor, capacity_acting_as_examiner, '
+      'capacity_picus_claimed, capacity_pic_intervention_not_required, '
+      'committed_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '
+      '?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        'flight-1',
+        'aircraft-1',
+        0,
+        1000,
+        2000,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        'a pre-existing committed flight',
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        5000,
+      ],
+    );
+    db.execute('PRAGMA user_version = 9');
+  } finally {
+    db.close();
+  }
+}
+
 void main() {
   late Directory tempDir;
   late File dbFile;
@@ -548,5 +687,29 @@ void main() {
     expect(aircraftRows, hasLength(1));
     expect(aircraftRows.single.registration, 'G-ABCD');
     expect(aircraftRows.single.archived, isFalse);
+  });
+
+  test('#83: migrating a real v9 database to v10 preserves an existing '
+      'committed flight and backfills sealedByExportId/holderName/'
+      'primaryLicenceNumber to null', () async {
+    _seedV9Database(dbFile.path);
+
+    final db = await openWithBackup(dbFile, () async {
+      final database = AppDatabase(NativeDatabase(dbFile));
+      await database.customStatement('SELECT 1');
+      return database;
+    });
+    addTearDown(db.close);
+
+    final flightRows = await db.select(db.flightsTable).get();
+    expect(flightRows, hasLength(1));
+    expect(flightRows.single.id, 'flight-1');
+    expect(flightRows.single.committedAt, 5000);
+    expect(flightRows.single.sealedByExportId, isNull);
+
+    final pilotProfiles = PilotProfileRepository(db);
+    final profile = await pilotProfiles.find();
+    expect(profile?.holderName, isNull);
+    expect(profile?.primaryLicenceNumber, isNull);
   });
 }
