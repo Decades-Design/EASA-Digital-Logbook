@@ -225,18 +225,16 @@ class _Amc1Fcl050ExportScreenState
       final currentProfile = await ref.read(pilotProfileProvider.future);
       await _saveHolderFieldsIfChanged(currentProfile);
 
-      final exportRecordId = await ref
-          .read(exportRecordRepositoryProvider)
-          .recordExport(
+      // recordExportAndSeal runs both the ledger insert and the seal in one
+      // transaction: either both happened or neither did (#83's residual
+      // gap — the two used to be separate transactions).
+      await ref
+          .read(exportSealingCoordinatorProvider)
+          .recordExportAndSeal(
             format: _amc1Fcl050ExportFormatLabel,
             from: from,
             to: to,
-          );
-      await ref
-          .read(flightRepositoryProvider)
-          .sealForExport(
-            flightIds: plan.draftFlightIds,
-            exportRecordId: exportRecordId,
+            draftFlightIds: plan.draftFlightIds,
           );
 
       _showMessage(
@@ -244,10 +242,10 @@ class _Amc1Fcl050ExportScreenState
         '${plan.draftCount} sealed.',
       );
     } catch (e) {
-      // The PDF may already be saved to disk by this point (recordExport
-      // or sealForExport threw after the file-save succeeded) -- nothing
-      // was sealed (see recordExport/sealForExport's own transactional
-      // guarantees), but a silent failure here would leave the pilot
+      // The PDF may already be saved to disk by this point (the file write
+      // succeeded but recordExportAndSeal then threw) -- nothing was
+      // sealed and no ledger entry was recorded (its single transaction
+      // guarantees that), but a silent failure here would leave the pilot
       // looking at a PDF that appears to be a completed, sealed export
       // when it isn't. Design spec §Architecture piece 3 promises the
       // pilot sees an error and can retry with a fresh file.

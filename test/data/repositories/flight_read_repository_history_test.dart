@@ -4,6 +4,7 @@ import 'package:easa_digital_log/data/repositories/aircraft_repository.dart';
 import 'package:easa_digital_log/data/repositories/flight_read_repository_drift.dart';
 import 'package:easa_digital_log/data/repositories/flight_repository_drift.dart';
 import 'package:easa_digital_log/domain/model/aircraft.dart';
+import 'package:easa_digital_log/domain/model/calendar_date.dart';
 import 'package:easa_digital_log/domain/model/flight.dart';
 import 'package:easa_digital_log/domain/model/flight_duration.dart';
 import 'package:easa_digital_log/domain/model/pilot_capacity.dart';
@@ -99,6 +100,43 @@ void main() {
       expect(history.entries.single.after, _flight());
     },
   );
+
+  test('a flight committed via #58\'s manual commit (never exported) has no '
+      'sealedByExport on its commit entry', () async {
+    final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
+    await writes.commit(id);
+
+    final history = await reads.revisionHistory(id);
+
+    expect(history!.entries.single.sealedByExport, isNull);
+  });
+
+  test('#83: a flight sealed by an export names that export on its commit '
+      'entry', () async {
+    final id = await writes.createDraft(_flight(), aircraftId: aircraftId);
+    await db
+        .into(db.exportRecordsTable)
+        .insert(
+          ExportRecordRow(
+            id: 'export-1',
+            format: 'AMC1 FCL.050',
+            rangeFrom: '2026-06-01',
+            rangeTo: '2026-06-30',
+            exportedAt: DateTime.utc(2026, 6, 2, 14, 3).millisecondsSinceEpoch,
+          ),
+        );
+    await writes.sealForExport(flightIds: [id], exportRecordId: 'export-1');
+
+    final history = await reads.revisionHistory(id);
+    final sealedByExport = history!.entries.single.sealedByExport;
+
+    expect(sealedByExport, isNotNull);
+    expect(sealedByExport!.id, 'export-1');
+    expect(sealedByExport.format, 'AMC1 FCL.050');
+    expect(sealedByExport.from, const CalendarDate(2026, 6, 1));
+    expect(sealedByExport.to, const CalendarDate(2026, 6, 30));
+    expect(sealedByExport.exportedAt, UtcInstant.utc(2026, 6, 2, 14, 3));
+  });
 
   test('an edit to a flat field appears newest-first, with the reason and '
       'exact before/after values', () async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/model/calendar_date.dart';
 import '../../domain/model/utc_instant.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../entry/flight_diff.dart';
@@ -191,9 +192,27 @@ class _RevisionCard extends StatelessWidget {
           ],
           const SizedBox(height: 10),
           switch (entry.kind) {
-            FlightRevisionKind.commit => Text(
-              'Raw facts recorded at commit — the record\'s starting point.',
-              style: theme.textTheme.bodySmall?.copyWith(color: ink.faint),
+            FlightRevisionKind.commit => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Raw facts recorded at commit — the record\'s starting '
+                  'point.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: ink.faint),
+                ),
+                if (entry.sealedByExport != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Sealed by exporting ${entry.sealedByExport!.format} for '
+                    '${_formatCalendarDate(entry.sealedByExport!.from)} – '
+                    '${_formatCalendarDate(entry.sealedByExport!.to)}, '
+                    'generated ${_formatUtcDateTime(entry.sealedByExport!.exportedAt)}.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: ink.faint,
+                    ),
+                  ),
+                ],
+              ],
             ),
             FlightRevisionKind.tombstone => Text(
               'Removed from the logbook and every total.',
@@ -273,23 +292,27 @@ String _kindLabel(FlightRevisionKind kind) => switch (kind) {
   FlightRevisionKind.restore => 'Restored',
 };
 
+const _monthAbbreviations = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
 String _formatUtcDateTime(UtcInstant instant) {
   final d = instant.asUtcDateTime;
-  final months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
   final hh = d.hour.toString().padLeft(2, '0');
   final mm = d.minute.toString().padLeft(2, '0');
-  return '${d.day} ${months[d.month - 1]} ${d.year}, $hh:${mm}Z';
+  return '${d.day} ${_monthAbbreviations[d.month - 1]} ${d.year}, $hh:${mm}Z';
 }
+
+String _formatCalendarDate(CalendarDate date) =>
+    '${date.day} ${_monthAbbreviations[date.month - 1]} ${date.year}';

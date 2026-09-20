@@ -4,6 +4,7 @@ import '../../domain/model/calendar_date.dart';
 import '../../domain/model/flight.dart';
 import '../../domain/model/utc_instant.dart';
 import '../../domain/projection/projection.dart';
+import '../../domain/repository/export_record_repository.dart';
 import '../../domain/repository/flight_read_repository.dart';
 import '../database.dart';
 import '../flight_history.dart';
@@ -257,11 +258,33 @@ class DriftFlightReadRepository implements FlightReadRepository {
     // real one happens after the commit instant by construction.
     final committedFlight = buildFlightAsOf(row.committedAt!);
 
+    // #83: a flight committed by sealing (as opposed to #58's manual "log
+    // this flight now") names the export that sealed it. The FK guarantees
+    // the row exists whenever sealedByExportId is set, but this reads for
+    // display, not enforcement — a null result just omits the detail rather
+    // than throwing.
+    ExportRecord? sealedByExport;
+    if (row.sealedByExportId != null) {
+      final exportRow = await (_db.select(
+        _db.exportRecordsTable,
+      )..where((t) => t.id.equals(row.sealedByExportId!))).getSingleOrNull();
+      if (exportRow != null) {
+        sealedByExport = ExportRecord(
+          id: exportRow.id,
+          format: exportRow.format,
+          from: CalendarDate.parse(exportRow.rangeFrom),
+          to: CalendarDate.parse(exportRow.rangeTo),
+          exportedAt: _fromEpochMs(exportRow.exportedAt),
+        );
+      }
+    }
+
     final entries = <FlightRevisionEntry>[
       FlightRevisionEntry(
         kind: FlightRevisionKind.commit,
         recordedAt: _fromEpochMs(row.committedAt!),
         after: committedFlight,
+        sealedByExport: sealedByExport,
       ),
     ];
 
