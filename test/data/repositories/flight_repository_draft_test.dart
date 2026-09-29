@@ -84,6 +84,18 @@ void main() {
     },
   );
 
+  test('#90: createDraft is atomic — a failure partway through (an unknown '
+      'aircraftId violating the flights.aircraft_id foreign key) leaves no '
+      'flight row and no route-leg rows behind', () async {
+    await expectLater(
+      flights.createDraft(_draft(), aircraftId: 'no-such-aircraft'),
+      throwsA(anything),
+    );
+
+    expect(await db.select(db.flightsTable).get(), isEmpty);
+    expect(await db.select(db.flightRouteLegsTable).get(), isEmpty);
+  });
+
   test('updateDraft overwrites the row and replaces route legs', () async {
     final id = await flights.createDraft(_draft(), aircraftId: aircraftId);
 

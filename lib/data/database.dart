@@ -153,6 +153,19 @@ class AppDatabase extends _$AppDatabase {
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
+      // #90: crash safety. WAL survives a killed process without corruption
+      // (the old rollback-journal default does too, but WAL also lets a
+      // reader run concurrently with a writer, which nothing here needs yet
+      // but costs nothing to have). synchronous=FULL, not WAL's own
+      // NORMAL default, because NORMAL can lose the most recently committed
+      // transaction on a hard power cut — acceptable for most apps, not for
+      // a legal flight record (CLAUDE.md: "treat data integrity as a hard
+      // requirement"). journal_mode is sticky in the file header, so this
+      // is a no-op after the first open, but setting it every time keeps
+      // the intended mode explicit rather than inherited from whatever a
+      // past version left behind.
+      await customStatement('PRAGMA journal_mode = WAL');
+      await customStatement('PRAGMA synchronous = FULL');
     },
   );
 }
@@ -167,4 +180,19 @@ Future<AppDatabase> openAppDatabase(File dbFile) {
     await db.customStatement('SELECT 1');
     return db;
   });
+}
+
+/// #90 AC5: `PRAGMA quick_check` is fast enough to run on every startup for
+/// a personal logbook's data volume (structural checks only, not
+/// `integrity_check`'s full index-content verification) and catches
+/// corruption an open that otherwise succeeds wouldn't surface on its
+/// own — the detection half of #90, distinct from the WAL/synchronous
+/// configuration above that aims to prevent ever needing it.
+Future<bool> isDatabaseHealthy(AppDatabase db) async {
+  try {
+    final result = await db.customSelect('PRAGMA quick_check').getSingle();
+    return result.data.values.single == 'ok';
+  } catch (_) {
+    return false;
+  }
 }

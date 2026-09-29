@@ -29,7 +29,7 @@ import '../../data/database.dart';
 final databaseProvider = Provider<AppDatabase>((ref) {
   throw UnimplementedError(
     'databaseProvider has no default — main() must override it with the '
-    'already-opened AppDatabase (see openRealAppDatabase in '
+    'already-opened AppDatabase (see bootstrapRealAppDatabase in '
     'lib/data/app_database_bootstrap.dart), and a test must override it '
     'with an in-memory one.',
   );
