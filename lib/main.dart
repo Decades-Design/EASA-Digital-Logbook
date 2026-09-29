@@ -78,7 +78,7 @@ class _RootAppState extends State<RootApp> {
 
     if (result is DatabaseBootstrapCorrupt) {
       return MaterialApp(
-        title: 'Logbook',
+        title: 'DigiLog',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
@@ -108,7 +108,7 @@ class MainApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
-      title: 'Logbook',
+      title: 'DigiLog',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

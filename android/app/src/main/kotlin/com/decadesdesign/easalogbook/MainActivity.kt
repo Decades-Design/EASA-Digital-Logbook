@@ -1,4 +1,4 @@
-package com.example.easa_digital_log
+package com.decadesdesign.easalogbook
 
 import io.flutter.embedding.android.FlutterActivity
 

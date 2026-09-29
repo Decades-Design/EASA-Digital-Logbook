@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="easa_digital_log"
+        android:label="DigiLog"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

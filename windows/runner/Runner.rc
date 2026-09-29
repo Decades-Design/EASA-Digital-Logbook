@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "easa_digital_log" "\0"
+            VALUE "CompanyName", "Decades Design" "\0"
+            VALUE "FileDescription", "DigiLog" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "easa_digital_log" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "easa_digital_log.exe" "\0"
-            VALUE "ProductName", "easa_digital_log" "\0"
+            VALUE "InternalName", "DigiLog" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Decades Design. All rights reserved." "\0"
+            VALUE "OriginalFilename", "digilog.exe" "\0"
+            VALUE "ProductName", "DigiLog" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
