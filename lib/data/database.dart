@@ -181,3 +181,18 @@ Future<AppDatabase> openAppDatabase(File dbFile) {
     return db;
   });
 }
+
+/// #90 AC5: `PRAGMA quick_check` is fast enough to run on every startup for
+/// a personal logbook's data volume (structural checks only, not
+/// `integrity_check`'s full index-content verification) and catches
+/// corruption an open that otherwise succeeds wouldn't surface on its
+/// own — the detection half of #90, distinct from the WAL/synchronous
+/// configuration above that aims to prevent ever needing it.
+Future<bool> isDatabaseHealthy(AppDatabase db) async {
+  try {
+    final result = await db.customSelect('PRAGMA quick_check').getSingle();
+    return result.data.values.single == 'ok';
+  } catch (_) {
+    return false;
+  }
+}

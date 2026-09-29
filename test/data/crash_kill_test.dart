@@ -70,7 +70,9 @@ void main() {
       final db = await openAppDatabase(dbFile);
       addTearDown(db.close);
 
-      final quickCheck = await db.customSelect('PRAGMA quick_check').getSingle();
+      final quickCheck = await db
+          .customSelect('PRAGMA quick_check')
+          .getSingle();
       expect(quickCheck.data.values.single, 'ok');
 
       final flightRows = await db.select(db.flightsTable).get();
@@ -88,26 +90,22 @@ void main() {
     timeout: const Timeout(Duration(seconds: 30)),
   );
 
-  test(
-    'AC4: killing a process mid-import-batch leaves no partial write, and '
-    'the database opens clean afterwards',
-    () async {
-      await runAndKill('import-batch');
+  test('AC4: killing a process mid-import-batch leaves no partial write, and '
+      'the database opens clean afterwards', () async {
+    await runAndKill('import-batch');
 
-      final db = await openAppDatabase(dbFile);
-      addTearDown(db.close);
+    final db = await openAppDatabase(dbFile);
+    addTearDown(db.close);
 
-      final quickCheck = await db.customSelect('PRAGMA quick_check').getSingle();
-      expect(quickCheck.data.values.single, 'ok');
+    final quickCheck = await db.customSelect('PRAGMA quick_check').getSingle();
+    expect(quickCheck.data.values.single, 'ok');
 
-      final flightRows = await db.select(db.flightsTable).get();
-      expect(flightRows, isEmpty);
-      final batchRows = await db.select(db.importBatchesTable).get();
-      expect(batchRows, isEmpty);
+    final flightRows = await db.select(db.flightsTable).get();
+    expect(flightRows, isEmpty);
+    final batchRows = await db.select(db.importBatchesTable).get();
+    expect(batchRows, isEmpty);
 
-      final aircraftRows = await db.select(db.aircraftsTable).get();
-      expect(aircraftRows, hasLength(1));
-    },
-    timeout: const Timeout(Duration(seconds: 30)),
-  );
+    final aircraftRows = await db.select(db.aircraftsTable).get();
+    expect(aircraftRows, hasLength(1));
+  }, timeout: const Timeout(Duration(seconds: 30)));
 }

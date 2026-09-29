@@ -46,4 +46,30 @@ void main() {
       },
     );
   });
+
+  group('#90 isDatabaseHealthy', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('database_health_test');
+    });
+
+    tearDown(() => tempDir.delete(recursive: true));
+
+    test('true for a normal, freshly-opened database', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+
+      expect(await isDatabaseHealthy(db), isTrue);
+    });
+
+    test('false for a file that is not a SQLite database at all', () async {
+      final dbFile = File(p.join(tempDir.path, 'garbage.sqlite'));
+      await dbFile.writeAsBytes(List.filled(4096, 0xFF));
+      final db = AppDatabase(NativeDatabase(dbFile));
+      addTearDown(db.close);
+
+      expect(await isDatabaseHealthy(db), isFalse);
+    });
+  });
 }
