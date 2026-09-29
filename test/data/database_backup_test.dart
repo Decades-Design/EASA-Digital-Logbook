@@ -152,6 +152,23 @@ void main() {
     expect(await journal.exists(), isFalse);
   });
 
+  test('restoreDatabaseBackup also clears stale WAL sidecars (#90: the live '
+      'database runs in WAL mode, whose crash-recovery files are -wal/-shm, '
+      'not the older -journal)', () async {
+    await backupFile.writeAsString('backup content');
+    await dbFile.writeAsString('stale live content');
+    final wal = File('${dbFile.path}-wal');
+    final shm = File('${dbFile.path}-shm');
+    await wal.writeAsString('stale wal');
+    await shm.writeAsString('stale shm');
+
+    await restoreDatabaseBackup(backupFile, dbFile);
+
+    expect(await dbFile.readAsString(), 'backup content');
+    expect(await wal.exists(), isFalse);
+    expect(await shm.exists(), isFalse);
+  });
+
   group('isBackupOverdue', () {
     test('true when no backup has ever been taken', () {
       expect(isBackupOverdue(null, DateTime.utc(2026, 1, 1)), isTrue);

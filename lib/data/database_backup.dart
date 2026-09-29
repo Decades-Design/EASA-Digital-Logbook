@@ -51,13 +51,17 @@ Future<void> restoreDatabaseBackup(File backupFile, File liveDbFile) async {
   if (await liveDbFile.exists()) {
     await liveDbFile.delete();
   }
-  // A rollback-journal sidecar can survive an app crash mid-write. VACUUM
-  // INTO's output never has one, but leaving a stale one next to the file
-  // it replaces would make SQLite think a crashed transaction needs
-  // recovering against data that was never actually mid-write.
-  final journal = File('${liveDbFile.path}-journal');
-  if (await journal.exists()) {
-    await journal.delete();
+  // A rollback-journal (`-journal`) or, since #90 turned on WAL mode,
+  // write-ahead-log (`-wal`/`-shm`) sidecar can survive an app crash
+  // mid-write. VACUUM INTO's output never has any of these, but leaving a
+  // stale one next to the live file it replaces would make SQLite think a
+  // crashed transaction needs recovering against data that was never
+  // actually mid-write.
+  for (final suffix in ['-journal', '-wal', '-shm']) {
+    final sidecar = File('${liveDbFile.path}$suffix');
+    if (await sidecar.exists()) {
+      await sidecar.delete();
+    }
   }
 
   await liveDbFile.parent.create(recursive: true);
